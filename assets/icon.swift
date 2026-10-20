@@ -1,13 +1,13 @@
 import AppKit
 
 // AI Keeper app icon. A "K" drawn as a git branch: a stem and two branches ending in commit nodes.
-// Amber is the app's colour for rebuildable space. Run: swift icon.swift <outdir>
+// Ultramarine is the brand colour; amber marks the one node that is yours to take back. Run: swift icon.swift <outdir>
 
 func color(_ hex: UInt32, _ a: CGFloat = 1) -> CGColor {
     CGColor(red: CGFloat((hex >> 16) & 255) / 255, green: CGFloat((hex >> 8) & 255) / 255, blue: CGFloat(hex & 255) / 255, alpha: a)
 }
 
-let ivory: UInt32 = 0xEEF3EE, amber: UInt32 = 0xF4B740, pineTop: UInt32 = 0x17463F, pineBottom: UInt32 = 0x07181A
+let ivory: UInt32 = 0xFFFFFF, amber: UInt32 = 0xFFB833, pineTop: UInt32 = 0x4262FF, pineBottom: UInt32 = 0x1C2FD0, inkBlue: UInt32 = 0x1B2BC4
 
 /// Apple-style squircle (superellipse), not a plain rounded rect.
 func squircle(center: CGPoint, half: CGFloat, n: CGFloat = 5) -> CGPath {
@@ -31,7 +31,7 @@ func draw(_ cg: CGContext) {
 
     // Body with the standard soft drop shadow.
     cg.saveGState()
-    cg.setShadow(offset: CGSize(width: 0, height: -16), blur: 30, color: color(0x000000, 0.45))
+    cg.setShadow(offset: CGSize(width: 0, height: -16), blur: 30, color: color(0x0B1450, 0.40))
     cg.setFillColor(color(pineBottom)); cg.addPath(body); cg.fillPath()
     cg.restoreGState()
 
@@ -40,20 +40,15 @@ func draw(_ cg: CGContext) {
     let g = CGGradient(colorsSpace: space, colors: [color(pineTop), color(pineBottom)] as CFArray, locations: [0, 1])!
     cg.drawLinearGradient(g, start: CGPoint(x: 300, y: 940), end: CGPoint(x: 700, y: 90), options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
     // Light catching the top edge.
-    let hi = CGGradient(colorsSpace: space, colors: [color(0xFFFFFF, 0.13), color(0xFFFFFF, 0)] as CFArray, locations: [0, 1])!
+    let hi = CGGradient(colorsSpace: space, colors: [color(0xFFFFFF, 0.22), color(0xFFFFFF, 0)] as CFArray, locations: [0, 1])!
     cg.drawLinearGradient(hi, start: CGPoint(x: 512, y: 930), end: CGPoint(x: 512, y: 560), options: [.drawsBeforeStartLocation])
-    // Disk platter, barely there.
-    cg.setStrokeColor(color(ivory, 0.07)); cg.setLineWidth(16)
-    cg.strokeEllipse(in: CGRect(x: 512 - 318, y: 512 - 318, width: 636, height: 636))
-    cg.setLineWidth(5)
-    cg.strokeEllipse(in: CGRect(x: 512 - 250, y: 512 - 250, width: 500, height: 500))
     cg.restoreGState()
 
     // The K: stem + two branches.
     let stemX: CGFloat = 400, top: CGFloat = 744, bottom: CGFloat = 280, join: CGFloat = 512, armX: CGFloat = 648
     cg.saveGState()
-    cg.setShadow(offset: CGSize(width: 0, height: -8), blur: 14, color: color(0x000000, 0.4))
-    cg.setStrokeColor(color(ivory)); cg.setLineWidth(48); cg.setLineCap(.round); cg.setLineJoin(.round)
+    cg.setShadow(offset: CGSize(width: 0, height: -8), blur: 14, color: color(0x0B1450, 0.35))
+    cg.setStrokeColor(color(ivory)); cg.setLineWidth(40); cg.setLineCap(.round); cg.setLineJoin(.round)
     cg.move(to: CGPoint(x: stemX, y: bottom)); cg.addLine(to: CGPoint(x: stemX, y: top))
     cg.move(to: CGPoint(x: stemX, y: join)); cg.addLine(to: CGPoint(x: armX, y: top))
     cg.move(to: CGPoint(x: stemX, y: join)); cg.addLine(to: CGPoint(x: armX, y: bottom))
@@ -62,12 +57,12 @@ func draw(_ cg: CGContext) {
     // Commit nodes.
     func node(_ x: CGFloat, _ y: CGFloat, fill: UInt32, r: CGFloat) {
         cg.setFillColor(color(fill)); cg.fillEllipse(in: CGRect(x: x - r, y: y - r, width: 2 * r, height: 2 * r))
-        cg.setFillColor(color(pineBottom)); cg.fillEllipse(in: CGRect(x: x - r * 0.42, y: y - r * 0.42, width: r * 0.84, height: r * 0.84))
+        cg.setFillColor(color(inkBlue)); cg.fillEllipse(in: CGRect(x: x - r * 0.40, y: y - r * 0.40, width: r * 0.80, height: r * 0.80))
     }
-    node(stemX, top, fill: ivory, r: 60)
-    node(stemX, bottom, fill: ivory, r: 60)
-    node(armX, top, fill: ivory, r: 60)
-    node(armX, bottom, fill: amber, r: 68)   // the one that's yours to take back
+    node(stemX, top, fill: ivory, r: 52)
+    node(stemX, bottom, fill: ivory, r: 52)
+    node(armX, top, fill: ivory, r: 52)
+    node(armX, bottom, fill: amber, r: 60)   // the one that's yours to take back
     cg.restoreGState()
 }
 
