@@ -43,7 +43,11 @@ let ns = NSGraphicsContext(cgContext: ctxCG, flipped: false)
 func text(_ s: String, _ font: NSFont, _ color: NSColor, at p: NSPoint, kern: CGFloat = 0, align: NSTextAlignment = .left, width: CGFloat? = nil, alpha: CGFloat = 1) {
     let para = NSMutableParagraphStyle(); para.alignment = align; para.lineSpacing = -2
     let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color.withAlphaComponent(color.alphaComponent * alpha), .kern: kern, .paragraphStyle: para]
-    if let w = width { (s as NSString).draw(in: NSRect(x: p.x, y: p.y, width: w, height: 400), withAttributes: attrs) }
+    // With a width, p.y is the TOP of the block, so stacked blocks can't collide.
+    if let w = width {
+        let h = ceil((s as NSString).boundingRect(with: NSSize(width: w, height: 1000), options: [.usesLineFragmentOrigin], attributes: attrs).height)
+        (s as NSString).draw(in: NSRect(x: p.x, y: p.y - h, width: w, height: h), withAttributes: attrs)
+    }
     else { (s as NSString).draw(at: p, withAttributes: attrs) }
 }
 
@@ -53,17 +57,17 @@ func background() {
 
 func titleCard(alpha: Double, lift: Double) {
     let a = CGFloat(alpha), dy = CGFloat(lift)
-    icon.draw(in: NSRect(x: CGFloat(W) / 2 - 56, y: 700 + dy, width: 112, height: 112), from: .zero, operation: .sourceOver, fraction: a)
-    text("Your coding agents\nleave gigabytes behind.", NSFont.systemFont(ofSize: 104, weight: .heavy), ink, at: NSPoint(x: 160, y: 340 + dy), kern: -4.4, align: .center, width: CGFloat(W) - 320, alpha: a)
-    text("AI Keeper finds what they left on your Mac and clears it in the background.", NSFont.systemFont(ofSize: 34), slate, at: NSPoint(x: 160, y: 250 + dy), align: .center, width: CGFloat(W) - 320, alpha: a)
+    icon.draw(in: NSRect(x: CGFloat(W) / 2 - 56, y: 850 + dy, width: 112, height: 112), from: .zero, operation: .sourceOver, fraction: a)
+    text("Your coding agents\nleave gigabytes behind.", NSFont.systemFont(ofSize: 104, weight: .heavy), ink, at: NSPoint(x: 160, y: 810 + dy), kern: -4.4, align: .center, width: CGFloat(W) - 320, alpha: a)
+    text("AI Keeper finds what they left on your Mac and clears it in the background.", NSFont.systemFont(ofSize: 34), slate, at: NSPoint(x: 160, y: 520 + dy), align: .center, width: CGFloat(W) - 320, alpha: a)
 }
 
 func outroCard(alpha: Double, lift: Double) {
     let a = CGFloat(alpha), dy = CGFloat(lift)
-    icon.draw(in: NSRect(x: CGFloat(W) / 2 - 56, y: 700 + dy, width: 112, height: 112), from: .zero, operation: .sourceOver, fraction: a)
-    text("Get your disk back.", NSFont.systemFont(ofSize: 104, weight: .heavy), ink, at: NSPoint(x: 160, y: 520 + dy), kern: -4.4, align: .center, width: CGFloat(W) - 320, alpha: a)
-    text("Free for macOS 14 or later", NSFont.systemFont(ofSize: 34), slate, at: NSPoint(x: 160, y: 440 + dy), align: .center, width: CGFloat(W) - 320, alpha: a)
-    let box = NSRect(x: CGFloat(W) / 2 - 420, y: 300 + dy, width: 840, height: 104)
+    icon.draw(in: NSRect(x: CGFloat(W) / 2 - 56, y: 850 + dy, width: 112, height: 112), from: .zero, operation: .sourceOver, fraction: a)
+    text("Get your disk back.", NSFont.systemFont(ofSize: 104, weight: .heavy), ink, at: NSPoint(x: 160, y: 810 + dy), kern: -4.4, align: .center, width: CGFloat(W) - 320, alpha: a)
+    text("Free for macOS 14 or later", NSFont.systemFont(ofSize: 34), slate, at: NSPoint(x: 160, y: 665 + dy), align: .center, width: CGFloat(W) - 320, alpha: a)
+    let box = NSRect(x: CGFloat(W) / 2 - 420, y: 450 + dy, width: 840, height: 104)
     let path = NSBezierPath(roundedRect: box, xRadius: 16, yRadius: 16)
     ns.saveGraphicsState()
     let sh = NSShadow(); sh.shadowColor = NSColor.black.withAlphaComponent(0.18 * a); sh.shadowBlurRadius = 36; sh.shadowOffset = NSSize(width: 0, height: -14); sh.set()
@@ -72,7 +76,7 @@ func outroCard(alpha: Double, lift: Double) {
     let mono = NSFont.monospacedSystemFont(ofSize: 25, weight: .medium)
     text("$ brew tap chungquantin/ai-keeper", mono, rgb(223, 228, 236), at: NSPoint(x: box.minX + 36, y: box.minY + 58), alpha: a)
     text("$ brew install --cask ai-keeper", mono, rgb(223, 228, 236), at: NSPoint(x: box.minX + 36, y: box.minY + 22), alpha: a)
-    text("github.com/chungquantin/ai-keeper", NSFont.systemFont(ofSize: 30, weight: .semibold), cobalt, at: NSPoint(x: 160, y: 200 + dy), align: .center, width: CGFloat(W) - 320, alpha: a)
+    text("github.com/chungquantin/ai-keeper", NSFont.systemFont(ofSize: 30, weight: .semibold), cobalt, at: NSPoint(x: 160, y: 390 + dy), align: .center, width: CGFloat(W) - 320, alpha: a)
 }
 
 var cache: (Int, CGImage)?
@@ -121,7 +125,7 @@ for n in 0..<frameCount {
     background()
     if T < intro {
         let p = ease((T - 0.15) / 0.8), out = 1 - ease((T - (intro - fade)) / fade)
-        titleCard(alpha: p * out, lift: (1 - p) * -24)
+        titleCard(alpha: p * out, lift: (1 - p) * -24 - 170)
     } else if T < intro + duration {
         let r = T - intro
         let inP = ease(r / fade)
@@ -131,7 +135,7 @@ for n in 0..<frameCount {
         let outP = ease(r / fade)
         drawApp(at: duration, alpha: 1 - outP, scale: 1 - 0.035 * outP, captionAlpha: 1 - outP)
         let p = ease((r - 0.2) / 0.8)
-        outroCard(alpha: p, lift: (1 - p) * -24)
+        outroCard(alpha: p, lift: (1 - p) * -24 - 150)
     }
     pipe.fileHandleForWriting.write(Data(bytes: ctxCG.data!, count: bytes))
     if n % 90 == 0 { print("frame \(n)/\(frameCount)") }
