@@ -1,6 +1,6 @@
 cask "ai-keeper" do
   version "0.1.0"
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+  sha256 "27e809e0187f865569c2550e9511ab9fb8c557ee413d09c7bb10da3ec482eed7"
 
   url "https://github.com/chungquantin/ai-keeper/releases/download/v#{version}/AI-Keeper-#{version}.zip"
   name "AI Keeper"
