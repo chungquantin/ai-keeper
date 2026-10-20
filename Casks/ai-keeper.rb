@@ -25,6 +25,9 @@ cask "ai-keeper" do
 
   zap trash: [
     "~/Library/Application Support/AIKeeper",
+    "~/Library/Caches/chungquantin.ai-keeper",
+    "~/Library/Preferences/chungquantin.ai-keeper.plist",
+    # Left behind by builds before the bundle ID changed.
     "~/Library/Caches/co.architect.ai-keeper",
     "~/Library/Preferences/co.architect.ai-keeper.plist",
   ]

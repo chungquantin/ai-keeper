@@ -37,7 +37,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <plist version="1.0"><dict>
 <key>CFBundleName</key><string>AI Keeper</string>
 <key>CFBundleDisplayName</key><string>AI Keeper</string>
-<key>CFBundleIdentifier</key><string>co.architect.ai-keeper</string>
+<key>CFBundleIdentifier</key><string>chungquantin.ai-keeper</string>
 <key>CFBundleExecutable</key><string>AIKeeper</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>

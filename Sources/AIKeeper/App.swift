@@ -7,6 +7,7 @@ struct AIKeeperApp: App {
     @StateObject private var store = Store()
 
     init() {
+        Migration.run()   // before anything reads settings
         if Headless.handle(CommandLine.arguments) { exit(0) }
         if let i = CommandLine.arguments.firstIndex(of: "--deltest"), i + 1 < CommandLine.arguments.count {
             let path = CommandLine.arguments[i + 1]
