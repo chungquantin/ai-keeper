@@ -73,9 +73,11 @@ site/              landing page, deployed to GitHub Pages
 ## Releasing
 
 Push a tag: `git tag v0.2.0 && git push origin v0.2.0`. The release workflow builds a universal app, publishes
-`AI-Keeper-<version>.zip` with its checksum to GitHub Releases, and updates the cask. To sign and notarize, add the
-repository secrets `MACOS_CERT_P12`, `MACOS_CERT_PASSWORD`, `MACOS_SIGN_IDENTITY`, `APPLE_ID`, `APPLE_TEAM_ID` and
-`APPLE_APP_PASSWORD`; without them the app is ad-hoc signed.
+`AI-Keeper-<version>.zip` with its checksum to GitHub Releases, and updates the cask.
+
+Releases are ad-hoc signed until Developer ID credentials are added. To sign and notarize them (so Gatekeeper accepts a
+download without the right-click workaround), follow [docs/SIGNING.md](docs/SIGNING.md), which ends with one script,
+`scripts/setup-signing.sh`, that stores the credentials as repository secrets.
 
 ## Notes
 
