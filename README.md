@@ -20,7 +20,7 @@ Built with SwiftUI and Swift Package Manager. macOS 14 or later.
 
 ## Install
 
-**Homebrew** (also puts `aikeeper` on your PATH):
+**Homebrew** 7 or later (also puts `aikeeper` on your PATH):
 
 ```bash
 brew tap chungquantin/ai-keeper https://github.com/chungquantin/ai-keeper
