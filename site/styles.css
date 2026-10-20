@@ -38,24 +38,15 @@
   /* Radius */
   --r-sm: 6px; --r-md: 10px; --r-lg: 20px; --r-xl: 28px;
 
-  /* Elevation. Every level stacks a contact edge, a tight shadow and a long soft one,
-     so light reads as coming from above. Only the window level is tinted with cobalt. */
-  --e-1: 0 0 0 1px rgb(14 17 22 / .06), 0 1px 2px rgb(14 17 22 / .05);
-  --e-2: 0 0 0 1px rgb(14 17 22 / .05), 0 1px 2px rgb(14 17 22 / .05), 0 6px 12px -4px rgb(14 17 22 / .08);
-  --e-3: 0 0 0 1px rgb(14 17 22 / .05), 0 2px 4px rgb(14 17 22 / .05), 0 14px 28px -8px rgb(14 17 22 / .14), 0 32px 48px -24px rgb(14 17 22 / .12);
+  /* Elevation. Neutral, layered: a 1px edge, then doubling offset and blur so light reads as
+     coming from above. sm for controls, md for panels, lg for the app window. */
+  --e-sm: 0 2px 3px -1px rgb(0 0 0 / .10), 0 1px 0 rgb(25 28 33 / .02), 0 0 0 1px rgb(25 28 33 / .08);
+  --e-md: 0 0 0 1px rgb(0 0 0 / .06), 0 1px 1px -0.5px rgb(0 0 0 / .06), 0 3px 3px -1.5px rgb(0 0 0 / .06), 0 6px 6px -3px rgb(0 0 0 / .06), 0 12px 12px -6px rgb(0 0 0 / .06), 0 24px 24px -12px rgb(0 0 0 / .06);
+  --e-lg: 0 2.8px 2.2px rgb(0 0 0 / .034), 0 6.7px 5.3px rgb(0 0 0 / .048), 0 12.5px 10px rgb(0 0 0 / .06), 0 22.3px 17.9px rgb(0 0 0 / .072), 0 41.8px 33.4px rgb(0 0 0 / .086), 0 100px 80px rgb(0 0 0 / .12);
+  --e-1: var(--e-sm);
+  --e-2: var(--e-sm);
+  --e-3: var(--e-md);
   --e-brand: 0 0 0 1px rgb(26 49 196 / .9), inset 0 1px 0 rgb(255 255 255 / .22), 0 1px 2px rgb(26 49 196 / .35), 0 8px 16px -6px rgb(37 69 245 / .55);
-  /* For transparent window captures: filter follows the window's rounded alpha. */
-  --e-window:
-    drop-shadow(0 0.5px 0.5px rgb(14 17 22 / .22))
-    drop-shadow(0 2px 3px rgb(14 17 22 / .07))
-    drop-shadow(0 10px 14px rgb(14 17 22 / .07))
-    drop-shadow(0 30px 40px rgb(14 17 22 / .11))
-    drop-shadow(0 70px 90px rgb(37 69 245 / .16));
-  --e-window-sm:
-    drop-shadow(0 0.5px 0.5px rgb(14 17 22 / .22))
-    drop-shadow(0 2px 3px rgb(14 17 22 / .07))
-    drop-shadow(0 14px 20px rgb(14 17 22 / .10))
-    drop-shadow(0 32px 40px rgb(37 69 245 / .12));
 
   --ease: cubic-bezier(.2, .7, .2, 1);
   --wrap: 1180px;
@@ -149,8 +140,14 @@ h3 { font-size: var(--fs-lg); letter-spacing: -0.02em; line-height: 1.2; }
 .stage { position: relative; margin-top: var(--s-8); padding-bottom: var(--s-9); }
 .stage::before { content: ""; position: absolute; inset: 38% 0 0; background: linear-gradient(180deg, var(--paper) 0, var(--floor-hi) 12%, var(--floor) 78%, var(--paper) 100%); }
 .stage .wrap { position: relative; }
-.window { width: 100%; filter: var(--e-window); }
-.window-sm { width: 100%; filter: var(--e-window-sm); }
+/* A macOS window: corners are a percentage of the width (26pt on a 1360pt capture), a hairline edge and
+   an inner top highlight like AppKit draws, and the neutral layered shadow. */
+.win { position: relative; width: 100%; border-radius: 1.9% / 2.63%; box-shadow: var(--e-md); background: #fff; }
+.win img { width: 100%; border-radius: inherit; }
+.win::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / .12), inset 0 1px 0 rgb(255 255 255 / .55); }
+.win-lg { box-shadow: var(--e-lg); }
+.win-dialog { border-radius: 4.4% / 5.9%; max-width: 540px; }
 .rise { animation: rise .9s var(--ease) both; animation-delay: .1s; }
 @keyframes rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
 
@@ -162,15 +159,11 @@ h3 { font-size: var(--fs-lg); letter-spacing: -0.02em; line-height: 1.2; }
 .copy-col { position: sticky; top: 108px; }
 .copy-col h2 { margin-bottom: var(--s-5); }
 
-/* A plate is the floor with a window cropped into it. */
-.plate { position: relative; overflow: hidden; border-radius: var(--r-xl); background: linear-gradient(160deg, var(--floor-hi), var(--floor)); padding: var(--s-7) 0 0 var(--s-7); box-shadow: 0 0 0 1px rgb(14 17 22 / .04) inset; }
-.plate .window-sm { width: 112%; max-width: none; }
-.plate-r { padding: var(--s-7) var(--s-7) 0 0; }
-.plate-pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-6); padding: var(--s-7) var(--s-7) 0; align-items: start; }
-.plate-pair .window-sm { width: 100%; }
+/* A plate is the floor with a window set on it. */
+.plate { border-radius: var(--r-xl); background: linear-gradient(160deg, var(--floor-hi), var(--floor)); padding: var(--s-8); box-shadow: 0 0 0 1px rgb(14 17 22 / .04) inset; }
+.plate-pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-6); align-items: start; }
 .plate-pair > :last-child { margin-top: var(--s-8); }
-.plate-center { display: grid; place-items: center; padding: var(--s-8); }
-.plate-center .window-sm { width: min(100%, 540px); }
+.plate-center { display: grid; place-items: center; }
 
 .wide-head { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--s-8); align-items: end; margin-bottom: var(--s-7); }
 
@@ -200,11 +193,9 @@ h3 { font-size: var(--fs-lg); letter-spacing: -0.02em; line-height: 1.2; }
   .copy-col { position: static; }
   .section { padding-top: var(--s-9); }
   .stage { margin-top: var(--s-7); padding-bottom: var(--s-8); }
-  .plate { padding: var(--s-5) 0 0 var(--s-5); border-radius: var(--r-lg); }
-  .plate-r { padding: var(--s-5) var(--s-5) 0 0; }
-  .plate-pair { grid-template-columns: 1fr; padding: var(--s-5) var(--s-5) 0; }
+  .plate { padding: var(--s-4); border-radius: var(--r-lg); }
+  .plate-pair { grid-template-columns: 1fr; }
   .plate-pair > :last-child { margin-top: 0; }
-  .plate-center { padding: var(--s-5); }
   .nav-links a:not(.btn) { display: none; }
   .nav .wrap { height: 60px; }
   .close { margin-top: var(--s-9); padding: var(--s-9) 0; }

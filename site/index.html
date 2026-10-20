@@ -19,13 +19,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
-<style>
-  .plate-crop { aspect-ratio: 1.25 / 1; }
-  .plate-crop .window-sm { width: 118%; }
-  .plate-wide { aspect-ratio: 1.9 / 1; padding: var(--s-7) 0 0 var(--s-8); }
-  .plate-wide .window-sm { width: 100%; }
-  @media (max-width: 900px) { .plate-crop { aspect-ratio: auto; } .plate-wide { aspect-ratio: auto; padding: var(--s-5) 0 0 var(--s-5); } .plate-wide .window-sm, .plate-crop .window-sm { width: 112%; max-width: none; } }
-</style>
+
 </head>
 <body>
 
@@ -57,7 +51,7 @@
   </div>
   <div class="stage">
     <div class="wrap">
-      <img class="window rise" src="assets/overview.webp" width="1800" height="1298" alt="The AI Keeper overview: 108 GB you can get back, a bar showing where disk space goes, and the biggest folders with Clean buttons.">
+      <div class="win win-lg rise"><img src="assets/overview.webp" width="1800" height="1298" alt="The AI Keeper overview: 108 GB you can get back, a bar showing where disk space goes, and the biggest folders with Clean buttons."></div>
     </div>
   </div>
 </section>
@@ -68,7 +62,7 @@
       <h2>See where the disk went.</h2>
       <p class="prose">One bar splits your disk into developer files, library, tool folders and apps. Below it, the biggest folders each get a plain explanation, and a Clean button when the contents can be rebuilt.</p>
     </div>
-    <div class="plate plate-wide"><img class="window-sm" src="assets/overview-map.webp" width="1800" height="1298" loading="lazy" alt="The disk map: a stacked bar by category and a list of the largest folders with sizes and Clean buttons."></div>
+    <div class="plate"><div class="win"><img src="assets/overview-map.webp" width="1800" height="1298" loading="lazy" alt="The disk map: a stacked bar by category and a list of the largest folders with sizes and Clean buttons."></div></div>
   </div>
 </section>
 
@@ -81,7 +75,7 @@
   </div>
   <div class="stage" style="margin-top:0">
     <div class="wrap">
-      <img class="window" src="assets/workspaces.webp" width="1800" height="1298" loading="lazy" alt="All workspaces with Git status and PR badges, and an inspector explaining why one worktree is safe to remove.">
+      <div class="win"><img src="assets/workspaces.webp" width="1800" height="1298" loading="lazy" alt="All workspaces with Git status and PR badges, and an inspector explaining why one worktree is safe to remove."></div>
     </div>
   </div>
 </section>
@@ -92,16 +86,16 @@
       <h2>Watch what is running, and what it costs.</h2>
       <p class="prose">Agents lists every running Claude, Codex and other agent with its CPU, memory and session cost. Usage charts daily spend by model from logs on your Mac, and warns you at the budget you set.</p>
     </div>
-    <div class="plate"><div class="plate-pair" style="padding-bottom:0">
-      <img class="window-sm" src="assets/agents.webp" width="1800" height="1298" loading="lazy" alt="Running agents with their state, working directory, CPU and cost.">
-      <img class="window-sm" src="assets/usage.webp" width="1800" height="1298" loading="lazy" alt="Daily AI spend by model across Claude and Codex, with budgets.">
+    <div class="plate"><div class="plate-pair">
+      <div class="win"><img src="assets/agents.webp" width="1800" height="1298" loading="lazy" alt="Running agents with their state, working directory, CPU and cost."></div>
+      <div class="win"><img src="assets/usage.webp" width="1800" height="1298" loading="lazy" alt="Daily AI spend by model across Claude and Codex, with budgets."></div>
     </div></div>
   </div>
 </section>
 
 <section class="section" id="system">
   <div class="wrap split split-flip">
-    <div class="plate plate-crop"><img class="window-sm" src="assets/system.webp" width="1800" height="1298" loading="lazy" alt="The System page with CPU, memory, disk and network charts and the heaviest process groups."></div>
+    <div class="plate"><div class="win"><img src="assets/system.webp" width="1800" height="1298" loading="lazy" alt="The System page with CPU, memory, disk and network charts and the heaviest process groups."></div></div>
     <div class="copy-col">
       <h2>A health check in the sidebar.</h2>
       <p class="prose">CPU, memory, disk and network in one live view. Developer processes are grouped, so a runaway build stands out.</p>
@@ -130,7 +124,7 @@
       <p class="prose">Each cleanup opens a list of exactly what will be removed and how much space it frees. Unpushed and uncommitted work is saved first, and workspaces with a running agent are skipped.</p>
       <p class="prose">Everything runs on your Mac. No account needed.</p>
     </div>
-    <div class="plate plate-center"><img class="window-sm" src="assets/cleanup-confirm.webp" width="1083" height="809" loading="lazy" alt="The confirmation dialog listing three workspaces to remove and the space each frees."></div>
+    <div class="plate plate-center"><div class="win win-dialog"><img src="assets/cleanup-confirm.webp" width="1083" height="809" loading="lazy" alt="The confirmation dialog listing three workspaces to remove and the space each frees."></div></div>
   </div>
 </section>
 

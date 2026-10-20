@@ -77,7 +77,7 @@
 
   <section class="ds-block">
     <h2>Space and radius</h2>
-    <p class="intro">A 4pt scale. Radii step up with the size of the thing: buttons and code blocks 10, windows and plates 20 to 28.</p>
+    <p class="intro">A 4pt scale. Radii step up with the size of the thing: buttons and code blocks 10, windows 26 on a 1360 capture (1.9% of width), plates 28.</p>
     <div class="ds-grid c3">
       <div>
         <div class="spec"><small>--s-2</small><div class="bar" style="width:8px"></div></div>
@@ -100,15 +100,15 @@
 
   <section class="ds-block">
     <h2>Elevation</h2>
-    <p class="intro">Each level stacks a one-pixel contact edge, a tight shadow and a long soft one, so light comes from above. Windows use drop-shadow filters that follow their rounded corners, and carry a cobalt-tinted long cast. Shadows only read on the floor, so surfaces that lift always sit on it.</p>
+    <p class="intro">Shadows are neutral and layered: a one-pixel edge, then offset and blur that double with each layer, so light comes from above. Small for controls, medium for panels and dialogs, large for the app window. Shadows only read on the floor, so surfaces that lift sit on it. App windows also get a hairline edge and an inner top highlight, like AppKit draws.</p>
     <div class="floor">
       <div class="ds-grid c3">
-        <div class="lift" style="box-shadow:var(--e-1)">--e-1 · hairline</div>
-        <div class="lift" style="box-shadow:var(--e-2)">--e-2 · button</div>
-        <div class="lift" style="box-shadow:var(--e-3)">--e-3 · dialog</div>
+        <div class="lift" style="box-shadow:var(--e-sm)">--e-sm · controls</div>
+        <div class="lift" style="box-shadow:var(--e-md)">--e-md · panels</div>
+        <div class="lift" style="box-shadow:var(--e-lg)">--e-lg · hero</div>
       </div>
       <div style="margin-top:var(--s-7);display:grid;place-items:center">
-        <div class="lift" style="width:min(100%,520px);height:200px;filter:var(--e-window)">--e-window · app window</div>
+        <div class="win win-lg" style="width:min(100%,520px);height:240px;display:grid;place-items:center;font:13px var(--font-code);color:var(--slate)">.win · app window</div>
       </div>
     </div>
   </section>
