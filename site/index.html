@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Keeper: clean up after your coding agents</title>
+<meta name="description" content="AI Keeper finds the worktrees, build folders and caches that Claude Code, Codex, Conductor and other coding agents leave on your Mac, tells you which are safe to delete, and cleans them up in the background.">
+<meta name="theme-color" content="#0E2B28">
+<link rel="canonical" href="https://chungquantin.github.io/ai-keeper/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="AI Keeper: clean up after your coding agents">
+<meta property="og:description" content="Find what your coding agents left on your Mac, see what is safe to delete, and clean it up in the background.">
+<meta property="og:url" content="https://chungquantin.github.io/ai-keeper/">
+<meta property="og:image" content="https://chungquantin.github.io/ai-keeper/icon-512.png">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%230E2B28'/%3E%3Cpath d='M23.3 14v36.1M23.3 32l19.3-18M23.3 32l19.3 18.1' stroke='%23EEF3EE' stroke-width='3.7' stroke-linecap='round' fill='none'/%3E%3Ccircle cx='23.3' cy='14' r='4.6' fill='%23EEF3EE'/%3E%3Ccircle cx='23.3' cy='50.1' r='4.6' fill='%23EEF3EE'/%3E%3Ccircle cx='42.6' cy='14' r='4.6' fill='%23EEF3EE'/%3E%3Ccircle cx='42.6' cy='50.1' r='5.3' fill='%23F4B740'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400&display=swap">
+
+<style>
+:root {
+  --pine: #0E2B28;
+  --deep: #081B1B;
+  --ivory: #EEF3EE;
+  --mist: #A9C2B8;
+  --line: rgba(238, 243, 238, 0.14);
+  --amber: #F4B740;
+  --safe: #5FBF8F;
+  --use: #6FB0F0;
+  --review: #E5788A;
+  --idle: #8A9C95;
+  --serif: "Newsreader", "Iowan Old Style", Georgia, serif;
+  --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--pine);
+  color: var(--ivory);
+  font-family: var(--sans);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 3px; border-radius: 6px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+.wrap { width: min(1120px, 100% - clamp(40px, 10vw, 112px)); margin-inline: auto; }
+
+/* Navigation */
+.nav { display: flex; align-items: center; justify-content: space-between; padding-block: 22px; }
+.brand { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; }
+.brand svg { width: 30px; height: 30px; display: block; }
+.nav-links { display: flex; align-items: center; gap: clamp(16px, 3vw, 32px); font-size: 0.95rem; color: var(--mist); }
+.nav-links a { text-decoration: none; white-space: nowrap; }
+@media (max-width: 560px) { .nav-links .hide-sm { display: none; } }
+.nav-links a:hover { color: var(--ivory); }
+.nav-links .btn { color: var(--pine); }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 11px 18px; border-radius: 10px;
+  background: var(--ivory); color: var(--pine);
+  font: 500 0.95rem/1 var(--sans); text-decoration: none; border: 1px solid transparent; cursor: pointer;
+}
+.btn:hover { background: #fff; }
+.btn.quiet { background: transparent; color: var(--ivory); border-color: var(--line); }
+.btn.quiet:hover { border-color: var(--mist); background: transparent; }
+
+/* Hero */
+.hero { padding-top: clamp(36px, 7vw, 88px); }
+.hero h1 {
+  font-family: var(--serif); font-weight: 450; font-optical-sizing: auto;
+  font-size: clamp(2.7rem, 6.6vw, 5rem); line-height: 1; letter-spacing: -0.028em;
+  margin: 0; max-width: 19ch; text-wrap: balance;
+}
+.lede { font-size: clamp(1.08rem, 1.5vw, 1.25rem); line-height: 1.55; color: var(--mist); max-width: 58ch; margin: 22px 0 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; margin-top: 28px; }
+
+.cmd {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; max-width: 100%;
+  background: var(--deep); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px 10px 12px 16px; font-family: var(--mono); font-size: 0.86rem; line-height: 1.7; color: var(--ivory);
+}
+.cmd pre { margin: 0; font: inherit; white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.copy {
+  flex: none; background: transparent; color: var(--mist); border: 1px solid var(--line);
+  border-radius: 7px; padding: 6px 10px; font: 500 0.8rem/1 var(--sans); cursor: pointer;
+}
+.copy:hover { color: var(--ivory); border-color: var(--mist); }
+
+/* The strip: the one memorable element */
+.strip-block { margin-top: clamp(36px, 5vw, 64px); }
+.strip-note { color: var(--mist); font-size: 0.95rem; margin: 0 0 14px; }
+.strip { display: flex; gap: 3px; height: 60px; border-radius: 12px; overflow: hidden; }
+.seg {
+  flex: var(--gb) 1 0; min-width: 8px; border: 0; padding: 0; cursor: pointer;
+  background: var(--c); transition: filter 0.15s;
+}
+.seg:hover { filter: brightness(1.12); }
+.seg[aria-pressed="true"] { box-shadow: inset 0 0 0 3px var(--ivory); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 22px; margin: 18px 0 0; padding: 0; list-style: none; }
+.legend button {
+  display: inline-flex; align-items: center; gap: 8px; background: none; border: 0; padding: 4px 0; cursor: pointer;
+  color: var(--mist); font: 400 0.95rem/1.3 var(--sans);
+}
+.legend button:hover, .legend button[aria-pressed="true"] { color: var(--ivory); }
+.legend i { width: 10px; height: 10px; border-radius: 3px; background: var(--c); flex: none; }
+.legend b { font-weight: 500; font-variant-numeric: tabular-nums; }
+.caption { margin: 22px 0 0; min-height: 3.2em; max-width: 64ch; font-size: 1.1rem; }
+.caption strong { font-family: var(--serif); font-weight: 500; font-size: 1.35rem; display: block; margin-bottom: 2px; }
+.caption span { color: var(--mist); }
+@media (prefers-reduced-motion: no-preference) {
+  .strip { clip-path: inset(0 100% 0 0 round 12px); animation: reveal 1.3s cubic-bezier(0.2, 0.7, 0.2, 1) 0.25s forwards; }
+  @keyframes reveal { to { clip-path: inset(0 0 0 0 round 12px); } }
+}
+
+/* Sections */
+.band { border-top: 1px solid var(--line); padding-block: clamp(64px, 9vw, 120px); }
+.band.first { margin-top: clamp(64px, 9vw, 112px); }
+.split { display: grid; grid-template-columns: 5fr 7fr; gap: clamp(32px, 6vw, 96px); align-items: start; }
+.split.flip { grid-template-columns: 7fr 5fr; }
+.split.flip .text { order: 2; }
+.split > * { min-width: 0; }   /* lets wide children (tables, code) scroll instead of stretching the column */
+.h2 {
+  font-family: var(--serif); font-weight: 450; font-size: clamp(2rem, 4vw, 3rem); line-height: 1.08; letter-spacing: -0.02em;
+  margin: 0 0 20px; max-width: 16ch; text-wrap: balance;
+}
+.text p { color: var(--mist); max-width: 50ch; margin: 0 0 16px; }
+.text p:last-child { margin-bottom: 0; }
+@media (max-width: 860px) {
+  .split, .split.flip { grid-template-columns: 1fr; }
+  .split.flip .text { order: 0; }
+}
+
+/* Illustration frames */
+.frame { background: var(--deep); border: 1px solid var(--line); border-radius: 16px; padding: clamp(16px, 2.4vw, 26px); }
+.frame-note { margin: 12px 4px 0; font-size: 0.85rem; color: var(--mist); }
+
+.scroll { overflow-x: auto; }
+.ledger { width: 100%; border-collapse: collapse; font-size: 0.95rem; min-width: 520px; }
+.ledger th { text-align: left; font-weight: 500; color: var(--mist); padding: 0 12px 12px 0; border-bottom: 1px solid var(--line); }
+.ledger td { padding: 14px 12px 14px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ledger tr:last-child td { border-bottom: 0; padding-bottom: 2px; }
+.ledger .name { font-family: var(--mono); font-size: 0.88rem; white-space: nowrap; padding-right: 20px; }
+.ledger .git { color: var(--mist); }
+.verdict { display: inline-flex; align-items: baseline; gap: 8px; }
+.verdict::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--d); flex: none; translate: 0 -1px; }
+.v-safe { --d: var(--safe); } .v-use { --d: var(--use); } .v-review { --d: var(--review); } .v-idle { --d: var(--idle); }
+
+/* Cleanup illustration */
+.job-top { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.job-top h3 { margin: 0; font-size: 1.05rem; font-weight: 600; }
+.job-pct { font-family: var(--serif); font-size: 3rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.bar { height: 8px; border-radius: 99px; background: rgba(238, 243, 238, 0.12); margin: 16px 0 12px; overflow: hidden; }
+.bar > i { display: block; height: 100%; width: 62%; background: var(--safe); border-radius: 99px; }
+.job-meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 0.92rem; color: var(--mist); font-variant-numeric: tabular-nums; }
+.job-path { font-family: var(--mono); font-size: 0.82rem; color: var(--mist); margin: 14px 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.job-actions { display: flex; gap: 10px; justify-content: space-between; align-items: center; margin-top: 20px; font-size: 0.85rem; color: var(--mist); }
+.pill { border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; color: var(--ivory); font-size: 0.85rem; }
+
+/* Agent rows */
+.rows { margin: 0; padding: 0; list-style: none; }
+.rows li { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.rows li:first-child { padding-top: 0; }
+.rows li:last-child { border-bottom: 0; padding-bottom: 0; }
+.rows .who { font-weight: 500; }
+.rows .where { color: var(--mist); font-size: 0.92rem; display: block; }
+.rows .state { white-space: nowrap; font-size: 0.92rem; }
+.spend { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); font-size: 0.92rem; color: var(--mist); }
+.spend .bar { margin: 10px 0 0; }
+.spend .bar > i { background: var(--amber); width: 41%; }
+
+/* Code */
+.term { background: var(--deep); border: 1px solid var(--line); border-radius: 16px; padding: clamp(16px, 2.4vw, 26px); font-family: var(--mono); font-size: 0.88rem; line-height: 1.75; overflow-x: auto; }
+.term pre { margin: 0; }
+.term .p { color: var(--mist); }
+.term .dim { color: var(--mist); }
+
+/* Safety list */
+.facts { margin: 0; padding: 0; list-style: none; display: grid; gap: 0; }
+.facts li { padding: 20px 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: minmax(0, 15rem) 1fr; gap: 8px 32px; }
+.facts li:first-child { padding-top: 0; }
+.facts li:last-child { border-bottom: 0; }
+.facts strong { font-family: var(--serif); font-weight: 500; font-size: 1.25rem; line-height: 1.25; }
+.facts span { color: var(--mist); max-width: 52ch; }
+@media (max-width: 640px) { .facts li { grid-template-columns: 1fr; } }
+
+/* Install */
+.ways { display: grid; gap: 28px; }
+.way h3 { margin: 0 0 6px; font-size: 1.05rem; font-weight: 600; }
+.way p { margin: 0 0 12px; color: var(--mist); max-width: 56ch; }
+.way .term { padding: 14px 16px; }
+.way .term pre { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.way .term-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.reqs { margin-top: 28px; color: var(--mist); font-size: 0.95rem; }
+
+/* Footer */
+.foot { border-top: 1px solid var(--line); padding-block: 36px 56px; color: var(--mist); font-size: 0.9rem; }
+.foot-row { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px 32px; }
+.foot a { text-decoration: none; }
+.foot a:hover { color: var(--ivory); }
+.foot p { margin: 14px 0 0; max-width: 70ch; }
+</style>
+</head>
+
+<body>
+<div class="wrap">
+  <header class="nav">
+    <a class="brand" href="#top" aria-label="AI Keeper home">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <defs><linearGradient id="g" x1="0.2" y1="0" x2="0.8" y2="1"><stop offset="0" stop-color="#17463F"/><stop offset="1" stop-color="#07181A"/></linearGradient></defs>
+        <rect width="64" height="64" rx="15" fill="url(#g)"/>
+        <path d="M23.3 14v36.1M23.3 32l19.3-18M23.3 32l19.3 18.1" stroke="#EEF3EE" stroke-width="3.7" stroke-linecap="round" fill="none"/>
+        <circle cx="23.3" cy="14" r="4.6" fill="#EEF3EE"/><circle cx="23.3" cy="14" r="1.9" fill="#07181A"/>
+        <circle cx="23.3" cy="50.1" r="4.6" fill="#EEF3EE"/><circle cx="23.3" cy="50.1" r="1.9" fill="#07181A"/>
+        <circle cx="42.6" cy="14" r="4.6" fill="#EEF3EE"/><circle cx="42.6" cy="14" r="1.9" fill="#07181A"/>
+        <circle cx="42.6" cy="50.1" r="5.3" fill="#F4B740"/><circle cx="42.6" cy="50.1" r="2.2" fill="#07181A"/>
+      </svg>
+      AI Keeper
+    </a>
+    <nav class="nav-links" aria-label="Main">
+      <a class="hide-sm" href="#how">How it works</a>
+      <a href="https://github.com/chungquantin/ai-keeper">GitHub</a>
+      <a class="btn" href="#install">Install</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <h1>Your coding agents leave gigabytes behind.</h1>
+      <p class="lede">AI Keeper finds the worktrees, build folders and caches that Claude Code, Codex, Conductor and other agents leave on your Mac. It tells you which are safe to delete, then cleans them up in the background.</p>
+      <div class="actions">
+        <div class="cmd">
+          <pre>brew tap chungquantin/ai-keeper https://github.com/chungquantin/ai-keeper
+brew install --cask ai-keeper</pre>
+          <button class="copy" type="button" data-copy="brew tap chungquantin/ai-keeper https://github.com/chungquantin/ai-keeper&#10;brew install --cask ai-keeper">Copy</button>
+        </div>
+        <a class="btn quiet" href="https://github.com/chungquantin/ai-keeper/releases/latest">Download for macOS</a>
+      </div>
+
+      <div class="strip-block">
+        <p class="strip-note">Where 800 GB went on one developer's Mac, as AI Keeper measured it. Select a piece.</p>
+        <div class="strip" id="strip" role="group" aria-label="Disk usage by item"></div>
+        <ul class="legend" id="legend"></ul>
+        <p class="caption" id="caption" aria-live="polite"></p>
+        <noscript><p class="caption"><strong>Rust build output · 529 GB</strong><span>Safe to delete. The next build recreates it. The rest was OrbStack data (93 GB), agent worktrees (44 GB), app data (33 GB), Codex history (18 GB) and caches (16 GB).</span></p></noscript>
+      </div>
+    </section>
+
+    <section class="band first" id="how">
+      <div class="split">
+        <div class="text">
+          <h2 class="h2">Know what is safe to delete.</h2>
+          <p>Every worktree gets a plain answer: still needed, or done. AI Keeper reads the git state and the pull request, so a merged branch with nothing unsaved is marked as safe, and a folder with uncommitted work is never.</p>
+          <p>It looks in the places each tool keeps its worktrees: Claude Code, Conductor, Codex, Superset, and plain git.</p>
+        </div>
+        <div>
+          <div class="frame">
+            <div class="scroll">
+              <table class="ledger">
+                <thead><tr><th>Worktree</th><th>Git</th><th>Verdict</th></tr></thead>
+                <tbody>
+                  <tr><td class="name">feat-search-index</td><td class="git">PR #412 merged an hour ago, clean</td><td><span class="verdict v-safe">Not needed. Safe to remove.</span></td></tr>
+                  <tr><td class="name">fix-billing-retry</td><td class="git">PR #418 open, checks passing</td><td><span class="verdict v-use">In use.</span></td></tr>
+                  <tr><td class="name">spike-queue</td><td class="git">14 uncommitted files, no PR</td><td><span class="verdict v-review">Has work. Review first.</span></td></tr>
+                  <tr><td class="name">scratch-rename</td><td class="git">Nothing beyond main, no changes</td><td><span class="verdict v-idle">Nothing here.</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <p class="frame-note">Example data.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="split flip">
+        <div class="text">
+          <h2 class="h2">Cleaning runs in the background.</h2>
+          <p>Deleting a 500 GB build folder takes minutes. AI Keeper does it in parallel, shows real progress with a time estimate, and keeps going when you close the window or switch apps.</p>
+          <p>Queue more cleanups behind it, stop one at any time, and get a notification when it finishes. Before a workspace is removed, its unpushed commits and uncommitted changes are saved so you can restore them.</p>
+        </div>
+        <div>
+          <div class="frame" aria-label="Example of a cleanup in progress">
+            <div class="job-top"><h3>Deleting build folders</h3><span class="job-pct">62%</span></div>
+            <div class="bar"><i></i></div>
+            <div class="job-meta"><span>329 GB of 531 GB</span><span>2.1 GB/s · about 1m 35s left</span></div>
+            <p class="job-path">my-service/target/debug/deps</p>
+            <div class="job-actions"><span class="pill">Stop</span><span>Keeps going in the background</span></div>
+          </div>
+          <p class="frame-note">Example data.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="split">
+        <div class="text">
+          <h2 class="h2">See your agents, and what they cost.</h2>
+          <p>Which agents are running, and which one is waiting on you to approve something. You get a notification the moment one needs you, and another when a long task finishes.</p>
+          <p>Token use and estimated cost for Claude Code, Codex and Pi, with a daily or weekly budget that warns you before spend runs away.</p>
+        </div>
+        <div>
+          <div class="frame">
+            <ul class="rows">
+              <li><span><span class="who">Claude Code</span><span class="where">api-server</span></span><span class="state verdict v-review">Needs you</span></li>
+              <li><span><span class="who">Codex</span><span class="where">web-app</span></span><span class="state verdict v-safe">Working</span></li>
+              <li><span><span class="who">Claude Code</span><span class="where">docs-site</span></span><span class="state verdict v-idle">Idle 12m</span></li>
+            </ul>
+            <div class="spend">$12.40 of your $30 daily budget
+              <div class="bar"><i></i></div>
+            </div>
+          </div>
+          <p class="frame-note">Example data. Costs are estimates at public API prices.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="split flip">
+        <div class="text">
+          <h2 class="h2">Your agents can use it too.</h2>
+          <p>A command-line tool and an MCP server let an agent check free disk space before a big build, or clean up the build folders in its own worktree when it finishes.</p>
+          <p>Every action is a dry run unless the agent confirms it, and it can only touch build folders that AI Keeper has already attributed to that workspace.</p>
+        </div>
+        <div>
+          <div class="term"><pre><span class="p">$</span> aikeeper status
+Disk         661 GB free of 994 GB
+Agents       8 running, 1 needs you
+Rebuildable  45 GB in build folders
+
+<span class="p">$</span> aikeeper clean-artifacts ~/code/my-service
+<span class="dim">{ "dry_run": true, "would_free_gb": 9.9, … }</span>
+
+<span class="p">$</span> claude mcp add aikeeper -- aikeeper mcp</pre></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band">
+      <div class="split">
+        <div class="text">
+          <h2 class="h2">Careful by default.</h2>
+          <p>Cleanup tools earn trust by what they refuse to do.</p>
+        </div>
+        <ul class="facts">
+          <li><strong>Unsaved work is never marked safe.</strong><span>A worktree with uncommitted changes needs your explicit say-so, and shows in red.</span></li>
+          <li><strong>A snapshot comes first.</strong><span>Unpushed commits, the uncommitted diff and untracked files are kept for 30 days, with a one-click restore.</span></li>
+          <li><strong>Running agents are left alone.</strong><span>A folder an agent is working in is skipped, so a build never disappears under it.</span></li>
+          <li><strong>Main checkouts stay.</strong><span>Only their build folders are cleaned, never the repository itself.</span></li>
+          <li><strong>The Trash comes first.</strong><span>Workspaces go to the Trash unless you choose to delete them. Build folders are deleted directly, because your next build recreates them.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="band" id="install">
+      <div class="split">
+        <div class="text">
+          <h2 class="h2">Install</h2>
+          <p>AI Keeper runs on macOS 14 Sonoma or later, on Apple silicon and Intel.</p>
+        </div>
+        <div class="ways">
+          <div class="way">
+            <h3>Homebrew</h3>
+            <p>Also puts the <code>aikeeper</code> command on your PATH.</p>
+            <div class="term"><div class="term-row"><pre>brew tap chungquantin/ai-keeper https://github.com/chungquantin/ai-keeper
+brew install --cask ai-keeper</pre><button class="copy" type="button" data-copy="brew tap chungquantin/ai-keeper https://github.com/chungquantin/ai-keeper&#10;brew install --cask ai-keeper">Copy</button></div></div>
+          </div>
+          <div class="way">
+            <h3>Download</h3>
+            <p>Get the zip from the <a href="https://github.com/chungquantin/ai-keeper/releases/latest">latest release</a> and drag AI Keeper to Applications. The app is not notarized yet, so the first time you open it, right-click it and choose Open.</p>
+          </div>
+          <div class="way">
+            <h3>Build from source</h3>
+            <p>Needs the Swift toolchain that ships with Xcode or the Command Line Tools.</p>
+            <div class="term"><div class="term-row"><pre>git clone https://github.com/chungquantin/ai-keeper
+cd ai-keeper &amp;&amp; ./scripts/install.sh</pre><button class="copy" type="button" data-copy="git clone https://github.com/chungquantin/ai-keeper&#10;cd ai-keeper && ./scripts/install.sh">Copy</button></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="foot-row">
+      <span>AI Keeper</span>
+      <span><a href="https://github.com/chungquantin/ai-keeper">Source on GitHub</a> · <a href="https://github.com/chungquantin/ai-keeper/releases">Releases</a> · <a href="https://github.com/chungquantin/ai-keeper/issues">Report a problem</a></span>
+    </div>
+    <p>AI Keeper is an independent project. It is not affiliated with Anthropic, OpenAI or the other tools it works with. Names are used only to say which tools it supports.</p>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var data = [
+    { name: "Rust build output", gb: 529, c: "#F4B740", text: "Safe to delete. The next build recreates it." },
+    { name: "OrbStack data",     gb: 93,  c: "#3F6E62", text: "Containers, images and Linux VMs. docker system prune frees unused images." },
+    { name: "Agent worktrees",   gb: 44,  c: "#4D8274", text: "Checkouts your agents created. AI Keeper tells you which ones are finished." },
+    { name: "App data",          gb: 33,  c: "#5B9585", text: "Databases and downloads kept by your apps." },
+    { name: "Codex history",     gb: 18,  c: "#6BA897", text: "Session logs from the Codex command line." },
+    { name: "Caches",            gb: 16,  c: "#7DB8A8", text: "Tool and model caches, rebuilt on demand." },
+    { name: "Everything else",   gb: 67,  c: "#8FC6B8", text: "The rest of the home folder." }
+  ];
+  var strip = document.getElementById("strip"), legend = document.getElementById("legend"), caption = document.getElementById("caption");
+  var segs = [], items = [];
+
+  function select(i) {
+    var d = data[i];
+    segs.forEach(function (s, n) { s.setAttribute("aria-pressed", n === i); });
+    items.forEach(function (s, n) { s.setAttribute("aria-pressed", n === i); });
+    caption.innerHTML = "";
+    var strong = document.createElement("strong"); strong.textContent = d.name + " · " + d.gb + " GB";
+    var span = document.createElement("span"); span.textContent = d.text;
+    caption.appendChild(strong); caption.appendChild(span);
+  }
+
+  data.forEach(function (d, i) {
+    var seg = document.createElement("button");
+    seg.className = "seg"; seg.type = "button";
+    seg.style.setProperty("--gb", d.gb); seg.style.setProperty("--c", d.c);
+    seg.setAttribute("aria-label", d.name + ", " + d.gb + " gigabytes");
+    seg.addEventListener("click", function () { select(i); });
+    strip.appendChild(seg); segs.push(seg);
+
+    var li = document.createElement("li"), b = document.createElement("button");
+    b.type = "button"; b.style.setProperty("--c", d.c);
+    b.innerHTML = '<i></i>' + d.name + ' <b>' + d.gb + ' GB</b>';
+    b.addEventListener("click", function () { select(i); });
+    li.appendChild(b); legend.appendChild(li); items.push(b);
+  });
+  select(0);
+
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var text = btn.getAttribute("data-copy");
+      var done = function () { var old = btn.textContent; btn.textContent = "Copied"; setTimeout(function () { btn.textContent = old; }, 1600); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done);
+      else done();
+    });
+  });
+})();
+</script>
+</body>
+</html>
