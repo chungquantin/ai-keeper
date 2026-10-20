@@ -24,10 +24,11 @@ Built with SwiftUI and Swift Package Manager. macOS 14 or later.
 
 ```bash
 brew tap chungquantin/ai-keeper https://github.com/chungquantin/ai-keeper
+brew trust --tap chungquantin/ai-keeper   # Homebrew asks you to trust non-official taps once
 brew install --cask ai-keeper
 ```
 
-**Download** the zip from [Releases](https://github.com/chungquantin/ai-keeper/releases/latest) and drag AI Keeper to Applications.
+**Download** the zip from [the website](https://chungquantin.github.io/ai-keeper/) or [Releases](https://github.com/chungquantin/ai-keeper/releases/latest) and drag AI Keeper to Applications.
 Releases are not notarized yet, so the first time, right-click the app and choose Open (Homebrew handles this for you).
 
 Landing page: https://chungquantin.github.io/ai-keeper/

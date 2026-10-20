@@ -67,16 +67,17 @@ func outroCard(alpha: Double, lift: Double) {
     icon.draw(in: NSRect(x: CGFloat(W) / 2 - 56, y: 850 + dy, width: 112, height: 112), from: .zero, operation: .sourceOver, fraction: a)
     text("Get your disk back.", NSFont.systemFont(ofSize: 104, weight: .heavy), ink, at: NSPoint(x: 160, y: 810 + dy), kern: -4.4, align: .center, width: CGFloat(W) - 320, alpha: a)
     text("Free for macOS 14 or later", NSFont.systemFont(ofSize: 34), slate, at: NSPoint(x: 160, y: 665 + dy), align: .center, width: CGFloat(W) - 320, alpha: a)
-    let box = NSRect(x: CGFloat(W) / 2 - 420, y: 450 + dy, width: 840, height: 104)
+    let box = NSRect(x: CGFloat(W) / 2 - 420, y: 430 + dy, width: 840, height: 144)
     let path = NSBezierPath(roundedRect: box, xRadius: 16, yRadius: 16)
     ns.saveGraphicsState()
     let sh = NSShadow(); sh.shadowColor = NSColor.black.withAlphaComponent(0.18 * a); sh.shadowBlurRadius = 36; sh.shadowOffset = NSSize(width: 0, height: -14); sh.set()
     ink.withAlphaComponent(a).setFill(); path.fill()
     ns.restoreGraphicsState()
     let mono = NSFont.monospacedSystemFont(ofSize: 25, weight: .medium)
-    text("$ brew tap chungquantin/ai-keeper", mono, rgb(223, 228, 236), at: NSPoint(x: box.minX + 36, y: box.minY + 58), alpha: a)
+    text("$ brew tap chungquantin/ai-keeper", mono, rgb(223, 228, 236), at: NSPoint(x: box.minX + 36, y: box.minY + 96), alpha: a)
+    text("$ brew trust --tap chungquantin/ai-keeper", mono, rgb(223, 228, 236), at: NSPoint(x: box.minX + 36, y: box.minY + 59), alpha: a)
     text("$ brew install --cask ai-keeper", mono, rgb(223, 228, 236), at: NSPoint(x: box.minX + 36, y: box.minY + 22), alpha: a)
-    text("github.com/chungquantin/ai-keeper", NSFont.systemFont(ofSize: 30, weight: .semibold), cobalt, at: NSPoint(x: 160, y: 390 + dy), align: .center, width: CGFloat(W) - 320, alpha: a)
+    text("github.com/chungquantin/ai-keeper", NSFont.systemFont(ofSize: 30, weight: .semibold), cobalt, at: NSPoint(x: 160, y: 370 + dy), align: .center, width: CGFloat(W) - 320, alpha: a)
 }
 
 var cache: (Int, CGImage)?
