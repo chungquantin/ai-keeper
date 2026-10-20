@@ -16,10 +16,15 @@ jobs:
       version: ${{ steps.meta.outputs.version }}
       sha256: ${{ steps.package.outputs.sha256 }}
     env:
-      # Optional. Without these the app is ad-hoc signed and not notarized.
+      # Optional. Without these the app is ad-hoc signed and not notarized (see docs/SIGNING.md).
       MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
       MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
       SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+      # Notarization: an App Store Connect API key (preferred) ...
+      APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      # ... or an Apple ID with an app-specific password.
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
@@ -29,6 +34,24 @@ jobs:
       - name: Version from tag
         id: meta
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Check signing configuration
+        id: signing
+        run: |
+          have_notary=false
+          if [ -n "$APPLE_API_KEY_P8" ] && [ -n "$APPLE_API_KEY_ID" ] && [ -n "$APPLE_API_ISSUER" ]; then have_notary=true; fi
+          if [ -n "$APPLE_ID" ] && [ -n "$APPLE_TEAM_ID" ] && [ -n "$APPLE_APP_PASSWORD" ]; then have_notary=true; fi
+          if [ -n "$MACOS_CERT_P12" ] && [ -n "$SIGN_IDENTITY" ] && [ "$have_notary" = true ]; then
+            echo "notarize=1" >> "$GITHUB_OUTPUT"
+            echo "Signing with Developer ID and notarizing."
+          elif [ -n "$MACOS_CERT_P12$SIGN_IDENTITY$APPLE_API_KEY_P8$APPLE_ID" ]; then
+            # Some signing secrets exist but not all. Shipping a half-signed build would still trigger Gatekeeper.
+            echo "::error::Signing secrets are partly configured. Set MACOS_CERT_P12, MACOS_CERT_PASSWORD, MACOS_SIGN_IDENTITY and either the APPLE_API_KEY_* trio or the APPLE_ID trio. See docs/SIGNING.md."
+            exit 1
+          else
+            echo "notarize=0" >> "$GITHUB_OUTPUT"
+            echo "::warning::No signing secrets: building an ad-hoc signed app that Gatekeeper will warn about. See docs/SIGNING.md."
+          fi
 
       - name: Import Developer ID certificate
         if: env.MACOS_CERT_P12 != ''
@@ -50,7 +73,7 @@ jobs:
           VERSION: ${{ steps.meta.outputs.version }}
           BUILD_NUMBER: ${{ github.run_number }}
         run: |
-          if [ -n "$APPLE_ID" ] && [ -n "$SIGN_IDENTITY" ]; then export NOTARIZE=1; fi
+          if [ "${{ steps.signing.outputs.notarize }}" = "1" ]; then export NOTARIZE=1; else unset SIGN_IDENTITY; fi
           ./scripts/package.sh
           echo "sha256=$(cat "dist/AI-Keeper-${VERSION}.zip.sha256")" >> "$GITHUB_OUTPUT"
 
@@ -59,6 +82,19 @@ jobs:
           unzip -q "dist/AI-Keeper-${{ steps.meta.outputs.version }}.zip" -d "$RUNNER_TEMP/check"
           "$RUNNER_TEMP/check/AI Keeper.app/Contents/MacOS/AIKeeper" help
           lipo -archs "$RUNNER_TEMP/check/AI Keeper.app/Contents/MacOS/AIKeeper"
+
+      - name: Report signing status
+        run: |
+          APP="$RUNNER_TEMP/check/AI Keeper.app"
+          if [ "${{ steps.signing.outputs.notarize }}" = "1" ]; then
+            xcrun stapler validate "$APP"
+            spctl --assess --type execute -vv "$APP"
+            echo "### Signed and notarized :white_check_mark:" >> "$GITHUB_STEP_SUMMARY"
+            echo "Gatekeeper accepts this build on first launch." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Not notarized :warning:" >> "$GITHUB_STEP_SUMMARY"
+            echo "Users must right-click the app and choose Open the first time. Add signing secrets (docs/SIGNING.md) to fix this." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Publish GitHub release
         uses: softprops/action-gh-release@v2
