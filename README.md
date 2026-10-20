@@ -18,6 +18,20 @@ Built with SwiftUI and Swift Package Manager. macOS 14 or later.
 - **System.** Health score, CPU, memory, swap, disk I/O, battery and network, sampled only while the page is open.
 - **Agent access.** `aikeeper` CLI and an MCP server so agents can check disk space and clean their own build folders.
 
+## Install
+
+**Homebrew** (also puts `aikeeper` on your PATH):
+
+```bash
+brew tap chungquantin/ai-keeper https://github.com/chungquantin/ai-keeper
+brew install --cask ai-keeper
+```
+
+**Download** the zip from [Releases](https://github.com/chungquantin/ai-keeper/releases/latest) and drag AI Keeper to Applications.
+Releases are not notarized yet, so the first time, right-click the app and choose Open (Homebrew handles this for you).
+
+Landing page: https://chungquantin.github.io/ai-keeper/
+
 ## Build
 
 ```bash
@@ -50,8 +64,18 @@ Settings → Agent access installs the command-line tool.
 ```
 Sources/AIKeeper   the app (scanner, cleanup engine, monitors, SwiftUI views)
 assets/            app icon and the Swift script that draws it
-scripts/           bundle.sh and install.sh
+scripts/           bundle, package (universal, signed zip), install, cask update
+Casks/             Homebrew cask (this repo is its own tap)
+site/              landing page, deployed to GitHub Pages
+.github/workflows/ CI, release on tag, Pages deploy
 ```
+
+## Releasing
+
+Push a tag: `git tag v0.2.0 && git push origin v0.2.0`. The release workflow builds a universal app, publishes
+`AI-Keeper-<version>.zip` with its checksum to GitHub Releases, and updates the cask. To sign and notarize, add the
+repository secrets `MACOS_CERT_P12`, `MACOS_CERT_PASSWORD`, `MACOS_SIGN_IDENTITY`, `APPLE_ID`, `APPLE_TEAM_ID` and
+`APPLE_APP_PASSWORD`; without them the app is ad-hoc signed.
 
 ## Notes
 
