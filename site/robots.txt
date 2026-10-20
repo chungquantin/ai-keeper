@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /design-system.html
+
+Sitemap: https://chungquantin.github.io/ai-keeper/sitemap.xml
