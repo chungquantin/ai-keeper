@@ -1,0 +1,89 @@
+name: Release
+
+# Push a tag like v0.2.0 to build a universal app, publish it on GitHub Releases
+# and point the Homebrew cask at it.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-26
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      sha256: ${{ steps.package.outputs.sha256 }}
+    env:
+      # Optional. Without these the app is ad-hoc signed and not notarized.
+      MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+      MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+      SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version from tag
+        id: meta
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Import Developer ID certificate
+        if: env.MACOS_CERT_P12 != ''
+        run: |
+          echo "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
+          PW="$(uuidgen)"
+          security create-keychain -p "$PW" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$PW" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$PW" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+          rm -f "$RUNNER_TEMP/cert.p12"
+
+      - name: Build, sign and package
+        id: package
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: |
+          if [ -n "$APPLE_ID" ] && [ -n "$SIGN_IDENTITY" ]; then export NOTARIZE=1; fi
+          ./scripts/package.sh
+          echo "sha256=$(cat "dist/AI-Keeper-${VERSION}.zip.sha256")" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the packaged app launches
+        run: |
+          unzip -q "dist/AI-Keeper-${{ steps.meta.outputs.version }}.zip" -d "$RUNNER_TEMP/check"
+          "$RUNNER_TEMP/check/AI Keeper.app/Contents/MacOS/AIKeeper" help
+          lipo -archs "$RUNNER_TEMP/check/AI Keeper.app/Contents/MacOS/AIKeeper"
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/AI-Keeper-${{ steps.meta.outputs.version }}.zip
+            dist/AI-Keeper-${{ steps.meta.outputs.version }}.zip.sha256
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+
+  cask:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Point the cask at this release
+        run: ./scripts/update-cask.sh "${{ needs.release.outputs.version }}" "${{ needs.release.outputs.sha256 }}"
+
+      - name: Commit the cask
+        run: |
+          if git diff --quiet; then echo "Cask already up to date"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(cask): ai-keeper ${{ needs.release.outputs.version }}"
+          git push origin HEAD:main
