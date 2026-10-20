@@ -167,6 +167,10 @@ h3 { font-size: var(--fs-lg); letter-spacing: -0.02em; line-height: 1.2; }
 
 .wide-head { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: var(--s-8); align-items: end; margin-bottom: var(--s-7); }
 
+/* ---------- Video ---------- */
+.video-frame { border-radius: var(--r-xl); overflow: hidden; box-shadow: var(--e-lg); background: var(--floor); aspect-ratio: 16 / 9; }
+.video-frame video { display: block; width: 100%; height: 100%; object-fit: cover; }
+
 /* ---------- Index: names and descriptions ---------- */
 .index-title { margin-bottom: var(--s-7); max-width: 12em; }
 .index { border-top: 1px solid var(--ink); }
