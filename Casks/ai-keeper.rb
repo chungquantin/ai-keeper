@@ -4,7 +4,7 @@ cask "ai-keeper" do
 
   url "https://github.com/chungquantin/ai-keeper/releases/download/v#{version}/AI-Keeper-#{version}.zip"
   name "AI Keeper"
-  desc "Find and clean up what AI coding agents leave on your Mac"
+  desc "Find and clean up what AI coding agents leave behind"
   homepage "https://chungquantin.github.io/ai-keeper/"
 
   livecheck do
@@ -12,16 +12,15 @@ cask "ai-keeper" do
     strategy :github_latest
   end
 
-  depends_on macos: ">= :sonoma"
+  depends_on macos: :sonoma
 
   app "AI Keeper.app"
   # Puts the command-line tool and MCP server on your PATH as `aikeeper`.
   binary "#{appdir}/AI Keeper.app/Contents/MacOS/AIKeeper", target: "aikeeper"
 
   # Releases are not notarized yet, so clear the quarantine flag Homebrew sets on downloads.
-  postflight do
-    system_command "/usr/bin/xattr",
-                   args: ["-cr", "#{appdir}/AI Keeper.app"]
+  postflight_steps do
+    run "/usr/bin/xattr", args: ["-cr", "{{appdir}}/AI Keeper.app"]
   end
 
   zap trash: [
