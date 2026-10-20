@@ -295,7 +295,10 @@ struct RootView: View {
             .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: store.alert?.id)
         }
         .onChange(of: store.requestedSection) { _, s in if let s { section = s; store.requestedSection = nil } }
-        .task { if let dir = Screenshots.outDir { await Screenshots.run(store: store, dir: dir) } }
+        .task {
+            if let dir = Screenshots.outDir { await Screenshots.run(store: store, dir: dir) }
+            else if let dir = Recording.outDir { await Recording.run(store: store, dir: dir) }
+        }
         .sheet(item: $store.plan) { CleanupSheet(plan: $0) }
         .sheet(isPresented: $store.needsOnboarding) { OnboardingView().environmentObject(store).interactiveDismissDisabled() }
         .toolbar {
