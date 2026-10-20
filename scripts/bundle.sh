@@ -12,8 +12,11 @@ ARCH_LIST=(${ARCHS:-})
 if [ "${#ARCH_LIST[@]}" -gt 1 ]; then
   SLICES=()
   for a in "${ARCH_LIST[@]}"; do
-    swift build -c release --triple "${a}-apple-macosx14.0"
-    SLICES+=("$(swift build -c release --triple "${a}-apple-macosx14.0" --show-bin-path)/AIKeeper")
+    # A separate scratch dir per architecture: sharing one build database between triples makes SwiftPM fail
+    # intermittently with "command ... not registered".
+    SCRATCH="$PWD/.build-universal/$a"
+    swift build -c release --triple "${a}-apple-macosx14.0" --scratch-path "$SCRATCH"
+    SLICES+=("$(swift build -c release --triple "${a}-apple-macosx14.0" --scratch-path "$SCRATCH" --show-bin-path)/AIKeeper")
   done
   mkdir -p dist
   BIN=dist/AIKeeper-universal
@@ -41,6 +44,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <key>CFBundleShortVersionString</key><string>${VERSION}</string>
 <key>CFBundleVersion</key><string>${BUILD}</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
+<key>LSApplicationCategoryType</key><string>public.app-category.developer-tools</string>
 <key>NSHighResolutionCapable</key><true/>
 </dict></plist>
 PLIST
