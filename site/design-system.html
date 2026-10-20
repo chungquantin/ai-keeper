@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Keeper design system</title>
+<meta name="description" content="Color, type, space, elevation and components used by the AI Keeper site.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+  .ds h2 { margin-bottom: var(--s-3); }
+  .ds .intro { max-width: 34em; margin-bottom: var(--s-7); }
+  .ds-block { padding-top: var(--s-9); }
+  .ds-grid { display: grid; gap: var(--s-5); }
+  .ds-grid.c3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ds-grid.c4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ds-grid.c6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .sw { border-radius: var(--r-md); box-shadow: var(--e-1); overflow: hidden; background: var(--paper); }
+  .sw i { display: block; height: 88px; }
+  .sw b { display: block; padding: var(--s-3) var(--s-3) 0; color: var(--ink); font-weight: 600; font-size: 14px; }
+  .sw span { display: block; padding: 0 var(--s-3) var(--s-3); font: 13px var(--font-code); color: var(--slate-2); }
+  .spec { display: grid; grid-template-columns: 9em 1fr; gap: var(--s-5); align-items: baseline; padding: var(--s-4) 0; border-bottom: 1px solid var(--rule); }
+  .spec small { font: 13px var(--font-code); color: var(--slate-2); }
+  .floor { background: linear-gradient(160deg, var(--floor-hi), var(--floor)); border-radius: var(--r-xl); padding: var(--s-7); }
+  .lift { height: 120px; border-radius: var(--r-lg); background: var(--paper); display: grid; place-items: center; font: 13px var(--font-code); color: var(--slate); }
+  .bar { height: 12px; background: var(--cobalt); border-radius: 3px; }
+  .rules li { margin-left: 1.1em; margin-bottom: var(--s-2); max-width: 36em; }
+  @media (max-width: 900px) { .ds-grid.c3, .ds-grid.c4 { grid-template-columns: 1fr 1fr; } .ds-grid.c6 { grid-template-columns: repeat(3, 1fr); } .spec { grid-template-columns: 1fr; gap: var(--s-1); } .floor { padding: var(--s-5); } }
+</style>
+</head>
+<body>
+<header class="nav">
+  <div class="wrap">
+    <a class="brand" href="./"><img src="favicon.svg" alt="" width="32" height="32">AI Keeper</a>
+    <nav class="nav-links" aria-label="Main"><a href="./">Back to site</a></nav>
+  </div>
+</header>
+
+<main class="ds wrap">
+  <section class="hero" style="padding-bottom:0">
+    <h1 style="max-width:8em">Design system</h1>
+    <p class="lead" style="margin-top:var(--s-5)">Every value on the site comes from a token in <code>styles.css</code>. This page shows each one in use.</p>
+  </section>
+
+  <section class="ds-block">
+    <h2>Color</h2>
+    <p class="intro">White paper, cool grey floor, near-black ink. Cobalt is the brand and the only chromatic accent. Amber is reserved for reclaimable space, as in the app.</p>
+    <div class="ds-grid c6">
+      <div class="sw"><i style="background:var(--paper);box-shadow:inset 0 -1px 0 var(--rule)"></i><b>Paper</b><span>--paper #ffffff</span></div>
+      <div class="sw"><i style="background:var(--floor)"></i><b>Floor</b><span>--floor #f1f3f7</span></div>
+      <div class="sw"><i style="background:var(--ink)"></i><b>Ink</b><span>--ink #0e1116</span></div>
+      <div class="sw"><i style="background:var(--slate)"></i><b>Slate</b><span>--slate #5b6472</span></div>
+      <div class="sw"><i style="background:var(--cobalt)"></i><b>Cobalt</b><span>--cobalt #2545f5</span></div>
+      <div class="sw"><i style="background:var(--amber)"></i><b>Amber</b><span>--amber #f5a624</span></div>
+    </div>
+    <div class="ds-grid c4" style="margin-top:var(--s-5)">
+      <div class="sw"><i style="background:var(--floor-hi);box-shadow:inset 0 -1px 0 var(--rule)"></i><b>Floor high</b><span>--floor-hi</span></div>
+      <div class="sw"><i style="background:var(--rule)"></i><b>Rule</b><span>--rule</span></div>
+      <div class="sw"><i style="background:var(--slate-2)"></i><b>Slate light</b><span>--slate-2</span></div>
+      <div class="sw"><i style="background:var(--cobalt-wash)"></i><b>Cobalt wash</b><span>--cobalt-wash</span></div>
+    </div>
+  </section>
+
+  <section class="ds-block">
+    <h2>Type</h2>
+    <p class="intro">Bricolage Grotesque carries headlines with tight tracking and its optical sizing left on. Hanken Grotesk sets everything else. Body copy stays under 34em.</p>
+    <div class="spec"><small>Display<br>--fs-3xl</small><div class="display" style="font-size:var(--fs-3xl);letter-spacing:-0.045em;line-height:.98">Gigabytes</div></div>
+    <div class="spec"><small>Heading<br>--fs-2xl</small><h2 style="margin:0">See where the disk went.</h2></div>
+    <div class="spec"><small>Title<br>--fs-xl</small><h3 style="font-size:var(--fs-xl);letter-spacing:-0.03em">Background cleanup</h3></div>
+    <div class="spec"><small>Lead<br>--fs-lg</small><p class="lead">AI Keeper shows which worktrees and build folders are safe to delete.</p></div>
+    <div class="spec"><small>Body<br>--fs-base</small><p class="prose">Each cleanup opens a list of exactly what will be removed and how much space it frees.</p></div>
+    <div class="spec"><small>Fine print<br>14px</small><p class="fine">Free. Requires macOS 14 or later.</p></div>
+  </section>
+
+  <section class="ds-block">
+    <h2>Space and radius</h2>
+    <p class="intro">A 4pt scale. Radii step up with the size of the thing: buttons and code blocks 10, windows and plates 20 to 28.</p>
+    <div class="ds-grid c3">
+      <div>
+        <div class="spec"><small>--s-2</small><div class="bar" style="width:8px"></div></div>
+        <div class="spec"><small>--s-4</small><div class="bar" style="width:16px"></div></div>
+        <div class="spec"><small>--s-5</small><div class="bar" style="width:24px"></div></div>
+        <div class="spec"><small>--s-6</small><div class="bar" style="width:32px"></div></div>
+        <div class="spec"><small>--s-8</small><div class="bar" style="width:64px"></div></div>
+        <div class="spec"><small>--s-9</small><div class="bar" style="width:96px"></div></div>
+      </div>
+      <div class="ds-grid" style="align-content:start">
+        <div class="lift" style="border-radius:var(--r-sm);box-shadow:var(--e-1)">--r-sm 6</div>
+        <div class="lift" style="border-radius:var(--r-md);box-shadow:var(--e-1)">--r-md 10</div>
+      </div>
+      <div class="ds-grid" style="align-content:start">
+        <div class="lift" style="border-radius:var(--r-lg);box-shadow:var(--e-1)">--r-lg 20</div>
+        <div class="lift" style="border-radius:var(--r-xl);box-shadow:var(--e-1)">--r-xl 28</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ds-block">
+    <h2>Elevation</h2>
+    <p class="intro">Each level stacks a one-pixel contact edge, a tight shadow and a long soft one, so light comes from above. Windows use drop-shadow filters that follow their rounded corners, and carry a cobalt-tinted long cast. Shadows only read on the floor, so surfaces that lift always sit on it.</p>
+    <div class="floor">
+      <div class="ds-grid c3">
+        <div class="lift" style="box-shadow:var(--e-1)">--e-1 · hairline</div>
+        <div class="lift" style="box-shadow:var(--e-2)">--e-2 · button</div>
+        <div class="lift" style="box-shadow:var(--e-3)">--e-3 · dialog</div>
+      </div>
+      <div style="margin-top:var(--s-7);display:grid;place-items:center">
+        <div class="lift" style="width:min(100%,520px);height:200px;filter:var(--e-window)">--e-window · app window</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ds-block">
+    <h2>Components</h2>
+    <p class="intro">Buttons lift one pixel on hover and settle on press. One primary action per view.</p>
+    <div class="floor">
+      <div class="hero-actions" style="margin-bottom:var(--s-6)">
+        <a class="btn btn-primary" href="#">Download for macOS</a>
+        <a class="btn" href="#">View source</a>
+        <a class="btn btn-primary btn-sm" href="#">Download</a>
+        <a class="link" href="#">Install with Homebrew</a>
+      </div>
+      <div class="cmd"><code><span class="p">$ </span>brew install --cask ai-keeper</code><button class="copy" type="button">Copy</button></div>
+    </div>
+    <div class="index" style="margin-top:var(--s-7)">
+      <div class="index-row"><h3>Index row</h3><p>A name and a sentence, set on a ruled line. Used where content is a list of parallel things, in place of a card grid.</p></div>
+      <div class="index-row"><h3>Plate</h3><p>A floor-colored panel with a window cropped into it. The crop shows depth and keeps one screenshot from filling the page.</p></div>
+    </div>
+  </section>
+
+  <section class="ds-block" style="padding-bottom:var(--s-10)">
+    <h2>Rules</h2>
+    <ul class="rules" style="margin-top:var(--s-5)">
+      <li>Sentence case everywhere. Buttons say what happens: Download, Copy, View source.</li>
+      <li>Headings carry the point. Structure such as rules, rows and plates must mean something.</li>
+      <li>One motion on load: the hero window rising into place. Everything else answers a click or hover. Reduced motion turns it off.</li>
+      <li>No green. Cobalt for action, amber for space you can reclaim.</li>
+    </ul>
+  </section>
+</main>
+
+<footer class="foot"><div class="wrap"><span>AI Keeper design system</span><nav aria-label="Footer"><a href="./">Back to site</a></nav></div></footer>
+</body>
+</html>
