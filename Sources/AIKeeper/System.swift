@@ -237,7 +237,7 @@ struct Health {
     var reason = "Healthy"
     var tips: [Tip] = []
     struct Tip: Identifiable { let id = UUID(); let text: String; var action: String?; var target: Section? }
-    var color: Color { score >= 80 ? .green : score >= 60 ? .orange : .red }
+    var color: Color { score >= 80 ? Brand.accent : score >= 60 ? .orange : .red }
 
     static func evaluate(_ s: SystemSnapshot, topCPU: String?, topMemory: String?) -> Health {
         var penalties: [(Int, String)] = []
@@ -281,7 +281,9 @@ final class SystemMonitor: ObservableObject {
     @Published var writeHistory: [Double] = []
     @Published var downHistory: [Double] = []
     @Published var upHistory: [Double] = []
-    let machine = MachineInfo.read()
+    let machine: MachineInfo = Demo.enabled
+        ? MachineInfo(model: "MacBook Pro", chip: "Apple M4 Pro", cores: 14, memory: 36 << 30, os: "macOS 26.1", uptime: 5 * 86_400 + 4 * 3600)
+        : MachineInfo.read()
     private let sampler = SystemSampler()
     private let keep = 60
 
@@ -292,6 +294,7 @@ final class SystemMonitor: ObservableObject {
 
     /// Runs until the page goes away: the task is cancelled with the view, so a closed page costs nothing.
     func run() async {
+        if Demo.enabled { loadDemo(); return }
         _ = sampler.sample()   // prime the counters; rates need two samples
         var tick = 0
         while !Task.isCancelled {
@@ -302,6 +305,35 @@ final class SystemMonitor: ObservableObject {
             if tick % 2 == 0 { groups = await Task.detached { Procs.scan().groups }.value }
             tick += 1
         }
+    }
+
+    /// Fixed, plausible numbers for screenshots.
+    private func loadDemo() {
+        var s = SystemSnapshot()
+        s.cpuTotal = 0.38
+        s.cores = [0.74, 0.52, 0.61, 0.44, 0.38, 0.29, 0.31, 0.22, 0.18, 0.41, 0.35, 0.27, 0.12, 0.09]
+        s.load = (4.82, 4.11, 3.95)
+        s.memTotal = 36 << 30; s.memUsed = Int64(21.4 * 1_073_741_824); s.memAvailable = Int64(11.2 * 1_073_741_824)
+        s.swapTotal = 4 << 30; s.swapUsed = Int64(0.9 * 1_073_741_824); s.pressure = 1
+        s.diskTotal = 994_600_000_000; s.diskUsed = 382_200_000_000
+        s.readBps = 24_000_000; s.writeBps = 6_500_000
+        s.netDown = 3_200_000; s.netUp = 410_000; s.netInterface = "en0"; s.netIP = "192.168.1.24"
+        s.battery = BatteryInfo(level: 0.78, charging: false, onAC: false, minutesRemaining: 412, cycles: 187, healthPercent: 91, temperatureC: 31.4)
+        snap = s
+        func wave(_ base: Double, _ amp: Double, _ phase: Double) -> [Double] {
+            (0..<60).map { i -> Double in
+                let t = Double(i)
+                let slow = sin(t / 5 + phase) * amp
+                let fast = sin(t / 2.3) * amp / 3
+                return max(0, base + slow + fast)
+            }
+        }
+        cpuHistory = wave(0.38, 0.12, 0); readHistory = wave(22e6, 14e6, 1); writeHistory = wave(6e6, 4e6, 2)
+        downHistory = wave(3e6, 2e6, 3); upHistory = wave(0.4e6, 0.3e6, 4)
+        func g(_ n: String, _ procs: Int, _ gb: Double, _ cpu: Double, dev: Bool = false) -> ProcGroup { ProcGroup(name: n, pids: Array(0..<procs).map(Int32.init), rss: Int64(gb * 1_073_741_824), cpu: cpu, dev: dev) }
+        groups = [g("Google Chrome", 41, 3.4, 22), g("Xcode", 9, 2.9, 31, dev: true), g("OrbStack", 3, 2.4, 18, dev: true), g("Cursor", 14, 1.8, 9, dev: true),
+                  g("Slack", 8, 1.1, 3), g("claude", 4, 0.9, 6, dev: true), g("rust-analyzer", 1, 0.8, 11, dev: true), g("Figma", 6, 0.7, 2),
+                  g("Spotify", 5, 0.5, 1), g("Notion", 5, 0.5, 1)]
     }
 
     private func push(_ a: inout [Double], _ v: Double) { a.append(v); if a.count > keep { a.removeFirst(a.count - keep) } }
@@ -337,7 +369,7 @@ struct Sparkline: View {
 
 struct Meter: View {
     let value: Double
-    var color: Color = .green
+    var color: Color = Brand.accent
     var body: some View {
         GeometryReader { g in
             ZStack(alignment: .leading) {
@@ -352,7 +384,7 @@ struct Meter: View {
 private func mem(_ b: Int64) -> String { ByteCountFormatter.string(fromByteCount: b, countStyle: .memory) }
 
 private func rate(_ bps: Double) -> String { ByteCountFormatter.string(fromByteCount: Int64(bps), countStyle: .decimal) + "/s" }
-private func load(_ v: Double, warn: Double = 0.7, bad: Double = 0.9) -> Color { v >= bad ? .red : v >= warn ? .orange : .green }
+private func load(_ v: Double, warn: Double = 0.7, bad: Double = 0.9) -> Color { v >= bad ? .red : v >= warn ? .orange : Brand.accent }
 
 struct SystemCard<Content: View>: View {
     let title: String, symbol: String
@@ -388,6 +420,7 @@ struct SystemView: View {
                 processes
             }.padding(24).frame(maxWidth: 1000, alignment: .leading).frame(maxWidth: .infinity)
         }
+        .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: 62) }   // keep the first row clear of the glass toolbar
         .navigationTitle("System")
         .navigationSubtitle("Live · updates every 2 seconds")
         .task { await m.run() }
@@ -459,13 +492,13 @@ struct SystemView: View {
                 Text(mem(s.memUsed)).font(.figure(30)).monospacedDigit()
                 Text("of \(mem(s.memTotal))").foregroundStyle(.secondary)
                 Spacer()
-                Pill(text: s.pressure >= 4 ? "Critical" : s.pressure >= 2 ? "Under pressure" : "Healthy", color: s.pressure >= 4 ? .red : s.pressure >= 2 ? .orange : .green)
+                Pill(text: s.pressure >= 4 ? "Critical" : s.pressure >= 2 ? "Under pressure" : "Healthy", color: s.pressure >= 4 ? .red : s.pressure >= 2 ? .orange : Brand.accent)
             }
             Meter(value: s.memFraction, color: load(s.memFraction, warn: 0.8, bad: 0.92))
             fact("Available", mem(s.memAvailable))
             VStack(alignment: .leading, spacing: 5) {
                 HStack { Text("Swap").foregroundStyle(.secondary); Spacer(); Text("\(mem(s.swapUsed)) of \(mem(s.swapTotal))").monospacedDigit() }.font(.callout)
-                Meter(value: s.swapFraction, color: s.swapUsed > 8_000_000_000 ? .red : s.swapUsed > 4_000_000_000 ? .orange : .green)
+                Meter(value: s.swapFraction, color: s.swapUsed > 8_000_000_000 ? .red : s.swapUsed > 4_000_000_000 ? .orange : Brand.accent)
             }
         }
     }
@@ -492,7 +525,7 @@ struct SystemView: View {
                 Spacer()
                 if let mins = b.minutesRemaining { Text("\(mins / 60)h \(mins % 60)m \(b.charging ? "to full" : "left")").foregroundStyle(.secondary).monospacedDigit() }
             }
-            Meter(value: b.level, color: b.level < 0.15 && !b.onAC ? .red : b.level < 0.3 && !b.onAC ? .orange : .green)
+            Meter(value: b.level, color: b.level < 0.15 && !b.onAC ? .red : b.level < 0.3 && !b.onAC ? .orange : Brand.accent)
             if let h = b.healthPercent { fact("Battery health", "\(h)%") }
             if let c = b.cycles { fact("Charge cycles", "\(c)") }
             if let t = b.temperatureC { fact("Temperature", String(format: "%.1f °C", t)) }

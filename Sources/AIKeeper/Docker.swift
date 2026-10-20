@@ -62,7 +62,7 @@ struct DockerView: View {
                                 Text("\(r.total) total, \(r.active) active").foregroundStyle(.secondary)
                                 Spacer()
                                 Text(r.size).monospacedDigit()
-                                Text("Reclaimable \(r.reclaimable)").foregroundStyle(.green).monospacedDigit().frame(width: 190, alignment: .trailing)
+                                Text("Reclaimable \(r.reclaimable)").foregroundStyle(Brand.accent).monospacedDigit().frame(width: 190, alignment: .trailing)
                             }.padding(.horizontal, 16).padding(.vertical, 11)
                             if r.id != rows.last?.id { Divider() }
                         }
@@ -91,6 +91,7 @@ struct DockerView: View {
                 }
             }.padding(28).frame(maxWidth: 860, alignment: .leading).frame(maxWidth: .infinity)
         }
+        .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: 62) }   // keep the first row clear of the glass toolbar
         .navigationTitle("Containers")
         .toolbar { ToolbarItem { Button { Task { await refresh() } } label: { Label("Refresh", systemImage: "arrow.clockwise") }.disabled(loading) } }
         .task { await refresh() }

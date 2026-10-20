@@ -62,6 +62,9 @@ struct EntryListView: View {
             .inspectorColumnWidth(min: 280, ideal: 330, max: 440)
         }
         .onChange(of: selection) { _, new in if new.count == 1 { showInspector = true } }
+        .onChange(of: store.requestedSelection) { _, id in
+            if let id { selection = [id]; showInspector = true; store.requestedSelection = nil }
+        }
         .toolbar {
             ToolbarItem { Button { showInspector.toggle() } label: { Label("Inspector", systemImage: "sidebar.right") } }
             ToolbarItem {
@@ -87,7 +90,7 @@ struct EntryListView: View {
                     VStack(alignment: .leading, spacing: 1) {
                         HStack(spacing: 8) {
                             Text(e.name).fontWeight(.medium).lineLimit(1).truncationMode(.middle)
-                            if !store.runningAgents(in: e).isEmpty { Pill(text: "Agent running", color: .green) }
+                            if !store.runningAgents(in: e).isEmpty { Pill(text: "Agent running", color: Brand.accent) }
                         }
                         Text(subtitle(e)).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                     }
@@ -110,7 +113,7 @@ struct EntryListView: View {
                 } else { ProgressView().controlSize(.mini) }
             }.width(min: 90, ideal: 110)
             TableColumn("Last active", value: \.activityValue) { e in
-                if let d = e.lastActivity { Text(d.formatted(.relative(presentation: .numeric))).foregroundStyle(.secondary) }
+                if let d = e.lastActivity { Text(d.formatted(.relative(presentation: .numeric, unitsStyle: .abbreviated))).foregroundStyle(.secondary) }
             }.width(min: 80, ideal: 100)
             TableColumn("Status") { e in
                 let (t, c) = e.statusPill
@@ -232,7 +235,7 @@ struct DetailView: View {
                     Label(s.rawValue, systemImage: s.symbol).font(.caption).foregroundStyle(.secondary).labelStyle(.titleAndIcon)
                 }
             }
-            if !store.runningAgents(in: e).isEmpty { Pill(text: "An agent is running here", color: .green) }
+            if !store.runningAgents(in: e).isEmpty { Pill(text: "An agent is running here", color: Brand.accent) }
         }
     }
 
@@ -263,11 +266,11 @@ struct DetailView: View {
                 else if PRService.gh != nil { Button { Task { await store.fetchPRs() } } label: { Image(systemName: "arrow.clockwise") }.buttonStyle(.borderless).help("Refresh pull requests") }
             }
             VStack(spacing: 0) {
-                fact("Working tree", g.dirtyCount == 0 ? "Clean" : "\(g.dirtyCount) uncommitted", g.dirtyCount == 0 ? .green : .orange)
+                fact("Working tree", g.dirtyCount == 0 ? "Clean" : "\(g.dirtyCount) uncommitted", g.dirtyCount == 0 ? Brand.accent : .orange)
                 Divider()
-                fact("Pushed", g.unpushed == 0 ? "All on a remote" : "\(g.unpushed) only here", g.unpushed == 0 ? .green : .orange)
+                fact("Pushed", g.unpushed == 0 ? "All on a remote" : "\(g.unpushed) only here", g.unpushed == 0 ? Brand.accent : .orange)
                 Divider()
-                fact("Versus \(g.defaultBranch)", versus(g, pr: e.pr), (g.merged || (e.pr?.state == "MERGED" && g.unpushedAfterMerge == 0)) ? .green : .secondary)
+                fact("Versus \(g.defaultBranch)", versus(g, pr: e.pr), (g.merged || (e.pr?.state == "MERGED" && g.unpushedAfterMerge == 0)) ? Brand.accent : .secondary)
                 if let s = g.lastSubject, !s.isEmpty {
                     Divider()
                     VStack(alignment: .leading, spacing: 3) {
@@ -282,7 +285,7 @@ struct DetailView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
                         Pill(text: pr.state == "OPEN" ? (pr.isDraft == true ? "Draft" : "Open") : pr.state.capitalized,
-                             color: pr.state == "OPEN" ? .blue : pr.state == "MERGED" ? .green : .gray)
+                             color: pr.state == "OPEN" ? .gray : pr.state == "MERGED" ? Brand.merged : .gray)
                         Text("#\(pr.number)").fontWeight(.medium)
                         Spacer(minLength: 4)
                         Button { if let u = URL(string: pr.url) { NSWorkspace.shared.open(u) } } label: { Label("GitHub", systemImage: "arrow.up.right.square") }

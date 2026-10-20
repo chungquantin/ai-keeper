@@ -184,7 +184,7 @@ struct JobPanel: View {
                 Text("\(Int(c.fraction * 100))%").font(.figure(44)).monospacedDigit().contentTransition(.numericText())
             }
             VStack(alignment: .leading, spacing: 8) {
-                ProgressView(value: c.fraction).progressViewStyle(.linear).tint(.green)
+                ProgressView(value: c.fraction).progressViewStyle(.linear).tint(Brand.accent)
                 HStack {
                     Text("\(c.freed.bytesString) of \(c.total.bytesString)").monospacedDigit()
                     Spacer()
@@ -210,7 +210,7 @@ struct JobPanel: View {
     private func finished(_ o: CleanupOutcome) -> some View {
         let ok = o.failures.isEmpty && !o.cancelled
         return VStack(spacing: 14) {
-            Image(systemName: ok ? "checkmark.seal.fill" : "exclamationmark.triangle.fill").font(.system(size: 54)).foregroundStyle(ok ? .green : .orange)
+            Image(systemName: ok ? "checkmark.seal.fill" : "exclamationmark.triangle.fill").font(.system(size: 54)).foregroundStyle(ok ? Brand.accent : .orange)
             Text("\(o.freed.bytesString) freed").font(.figure(40))
             if o.cancelled { Text("Stopped early. Whatever was left is still on disk.").foregroundStyle(.secondary) }
             if !job.options.permanent { Text("Moved to Trash. Empty it to get the space back.").foregroundStyle(.secondary) }
@@ -278,7 +278,7 @@ private struct FinishedLine: View {
     var body: some View {
         let freed = jobs.reduce(Int64(0)) { $0 + ($1.outcome?.freed ?? 0) }
         HStack(spacing: 8) {
-            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+            Image(systemName: "checkmark.circle.fill").foregroundStyle(Brand.accent)
             Text("\(freed.bytesString) freed").font(.caption).monospacedDigit()
             Spacer()
             Image(systemName: "chevron.up").font(.caption2).foregroundStyle(.tertiary)
@@ -315,7 +315,7 @@ private struct JobRow: View {
             case .queued:
                 HStack { Text("Waiting").foregroundStyle(.secondary); Spacer(); Button("Cancel") { store.cancelJob(job) }.controlSize(.small) }.font(.callout)
             case .running:
-                ProgressView(value: job.status.fraction).tint(.green)
+                ProgressView(value: job.status.fraction).tint(Brand.accent)
                 HStack {
                     Text("\(job.status.freed.bytesString) of \(job.status.total.bytesString)").monospacedDigit()
                     if let r = job.status.remaining { Text("· \(r.shortDuration) left").foregroundStyle(.secondary) }
@@ -327,7 +327,7 @@ private struct JobRow: View {
                 let o = job.outcome ?? CleanupOutcome()
                 HStack {
                     Image(systemName: o.failures.isEmpty && !o.cancelled ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                        .foregroundStyle(o.failures.isEmpty && !o.cancelled ? .green : .orange)
+                        .foregroundStyle(o.failures.isEmpty && !o.cancelled ? Brand.accent : .orange)
                     Text("\(o.freed.bytesString) freed" + (o.cancelled ? " · stopped" : o.failures.isEmpty ? "" : " · \(o.failures.count) failed")).font(.callout)
                     Spacer()
                     Button("Dismiss") { store.dismissJob(job) }.controlSize(.small)

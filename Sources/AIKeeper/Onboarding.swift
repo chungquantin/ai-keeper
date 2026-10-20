@@ -27,7 +27,7 @@ struct ToolRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
                     Text(det.spec.name).fontWeight(.medium)
-                    if det.found { Pill(text: det.running > 0 ? "Detected · \(det.running) running" : "Detected", color: .green) }
+                    if det.found { Pill(text: det.running > 0 ? "Detected · \(det.running) running" : "Detected", color: Brand.accent) }
                     else { Pill(text: "Not found", color: .gray) }
                 }
                 Text(det.spec.blurb).font(.callout).foregroundStyle(.secondary)

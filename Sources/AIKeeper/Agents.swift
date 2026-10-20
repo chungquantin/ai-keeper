@@ -25,14 +25,14 @@ enum AgentKind: String, CaseIterable {
     var color: Color {
         switch self {
         case .claude: .orange
-        case .codex: .green
+        case .codex: Color(red: 0.20, green: 0.25, blue: 0.33)
         case .gemini: .blue
         case .aider: .purple
         case .cursor: .teal
         case .opencode: .pink
         case .mcp: .gray
         case .pi: .indigo
-        case .zcode: .mint
+        case .zcode: .cyan
         case .goose: .brown
         }
     }
@@ -163,6 +163,7 @@ struct AgentsView: View {
                 section("MCP servers", mcp, empty: "No MCP servers running.")
             }.padding(24)
         }
+        .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: 62) }   // keep the first row clear of the glass toolbar
         .navigationTitle("Agents")
         .navigationSubtitle("Live · refreshes every 4s")
         .confirmationDialog(
@@ -238,9 +239,9 @@ struct AgentsView: View {
     @ViewBuilder private func statePill(_ a: AgentProc) -> some View {
         switch a.state {
         case .needsInput: Pill(text: "Needs you", color: .orange)
-        case .working: Pill(text: "Working", color: .green)
+        case .working: Pill(text: "Working", color: Brand.accent)
         case .idle: Pill(text: a.lastEvent.map { "Idle \(Date().timeIntervalSince($0).shortDuration)" } ?? "Idle", color: .gray)
-        case .unknown: Pill(text: a.isActive ? "Active" : "Idle", color: a.isActive ? .green : .gray)
+        case .unknown: Pill(text: a.isActive ? "Active" : "Idle", color: a.isActive ? Brand.accent : .gray)
         }
     }
 

@@ -2,12 +2,12 @@ import SwiftUI
 
 extension Entry {
     var statusPill: (String, Color) {
-        if kind == .repo { return ("Main checkout", .blue) }
+        if kind == .repo { return ("Main checkout", .gray) }
         if verdict == .dangling { return ("Stale record", .gray) }
         if safety == .danger { return ("Uncommitted", .red) }
-        if verdict == .deprecated { return safety == .caution ? ("Review first", .orange) : ("Safe to remove", .green) }
-        if safety == .caution { return ("Local commits", .blue) }
-        return measured ? ("Active", .blue) : ("Measuring", .gray)
+        if verdict == .deprecated { return safety == .caution ? ("Review first", .orange) : ("Safe to remove", Brand.accent) }
+        if safety == .caution { return ("Local commits", .gray) }
+        return measured ? ("Active", .gray) : ("Measuring", .gray)
     }
 }
 
@@ -30,10 +30,10 @@ struct OverviewView: View {
         let artifactWS = store.workspaces.filter { $0.verdict != .deprecated && !$0.artifacts.isEmpty }.count
         return [
             Category(id: "ws", title: "Deprecated workspaces",
-                     detail: "\(store.removableWorkspaces.count) archived, merged or idle", color: .green,
+                     detail: "\(store.removableWorkspaces.count) archived, merged or idle", color: Brand.accent,
                      bytes: store.total(store.removableWorkspaces), section: .deprecated),
             Category(id: "art", title: "Build folders",
-                     detail: "node_modules, target, .next in \(artifactWS) active workspaces", color: .orange,
+                     detail: "node_modules, target, .next in \(artifactWS) active workspaces", color: Brand.reclaim,
                      bytes: store.keptArtifactBytes, section: .all),
             Category(id: "ses", title: "Orphaned chat history",
                      detail: "\(store.orphanSessions.count) Claude projects whose folder is gone", color: .teal,
@@ -58,6 +58,7 @@ struct OverviewView: View {
             .frame(maxWidth: 860, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
+        .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: 62) }   // keep the first row clear of the glass toolbar
         .navigationTitle("Overview")
         .background(Color(nsColor: .windowBackgroundColor))
     }
@@ -102,7 +103,7 @@ struct OverviewView: View {
                 if store.keptArtifactBytes > 0 {
                     Button("Clean build folders · \(store.keptArtifactBytes.bytesString)") {
                         store.propose(.purgeArtifacts, for: store.buildHolders)
-                    }.buttonStyle(.borderedProminent).tint(.green).controlSize(.large)
+                    }.buttonStyle(.borderedProminent).tint(Brand.accent).controlSize(.large)
                 }
                 if !store.removableWorkspaces.isEmpty {
                     Button("Review \(store.removableWorkspaces.count) deprecated workspaces") {
@@ -176,7 +177,7 @@ struct OverviewView: View {
                 HStack(spacing: 2) {
                     Rectangle().fill(.secondary.opacity(0.35)).frame(width: w * max(0, Double(d.used) - managed) / total)
                     Rectangle().fill(.secondary.opacity(0.75)).frame(width: w * max(0, managed - reclaim) / total)
-                    Rectangle().fill(Color.green).frame(width: w * reclaim / total)
+                    Rectangle().fill(Brand.reclaim).frame(width: w * reclaim / total)
                     Spacer(minLength: 0)
                 }
                 .clipShape(Capsule())
@@ -185,7 +186,7 @@ struct OverviewView: View {
             HStack(spacing: 18) {
                 legend(.secondary.opacity(0.35), "Everything else")
                 legend(.secondary.opacity(0.75), "Workspaces you keep")
-                legend(.green, "Reclaimable")
+                legend(Brand.reclaim, "Reclaimable")
             }.font(.caption)
         }
     }
@@ -211,12 +212,12 @@ struct OverviewView: View {
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
                                 Capsule().fill(.secondary.opacity(0.55)).frame(width: geo.size.width * Double(g.total) / maxV)
-                                Capsule().fill(Color.green).frame(width: geo.size.width * Double(g.reclaim) / maxV)
+                                Capsule().fill(Brand.reclaim).frame(width: geo.size.width * Double(g.reclaim) / maxV)
                             }.frame(maxHeight: .infinity)
                         }.frame(height: 18)
                         VStack(alignment: .trailing, spacing: 1) {
                             Text(g.total.bytesString).monospacedDigit()
-                            Text(g.reclaim > 0 ? "−\(g.reclaim.bytesString)" : " ").font(.caption).foregroundStyle(.green).monospacedDigit()
+                            Text(g.reclaim > 0 ? "−\(g.reclaim.bytesString)" : " ").font(.caption).foregroundStyle(Brand.reclaim).monospacedDigit()
                         }.frame(width: 80, alignment: .trailing)
                     }
                     .padding(.horizontal, 16).padding(.vertical, 9)

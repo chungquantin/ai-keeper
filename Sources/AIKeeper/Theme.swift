@@ -1,6 +1,15 @@
 import SwiftUI
 
 /// Shared surface + type tokens. Neutral graphite surfaces; green is reserved for "space you can get back".
+/// The brand palette. Ultramarine marks actions and "safe/finished" states, amber marks space you can reclaim,
+/// violet marks merged pull requests, and everything neutral is gray. Green is deliberately not used.
+enum Brand {
+    static let accent = Color(red: 0.145, green: 0.271, blue: 0.961)    // #2545F5
+    static let reclaim = Color(red: 0.961, green: 0.651, blue: 0.141)   // #F5A624
+    static let merged = Color(red: 0.514, green: 0.380, blue: 0.929)    // #8361ED
+    static let ink = Color(red: 0.063, green: 0.094, blue: 0.157)       // #101828
+}
+
 extension View {
     func panel(_ radius: CGFloat = 12) -> some View {
         background(.background.secondary, in: RoundedRectangle(cornerRadius: radius, style: .continuous))

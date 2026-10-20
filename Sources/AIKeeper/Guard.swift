@@ -206,8 +206,8 @@ struct FreeSpaceChart: View {
             } else {
                 Chart {
                     ForEach(pts, id: \.t) { s in
-                        AreaMark(x: .value("Time", s.t), y: .value("Free GB", Double(s.free) / 1e9)).foregroundStyle(.green.opacity(0.18))
-                        LineMark(x: .value("Time", s.t), y: .value("Free GB", Double(s.free) / 1e9)).foregroundStyle(.green)
+                        AreaMark(x: .value("Time", s.t), y: .value("Free GB", Double(s.free) / 1e9)).foregroundStyle(Brand.accent.opacity(0.18))
+                        LineMark(x: .value("Time", s.t), y: .value("Free GB", Double(s.free) / 1e9)).foregroundStyle(Brand.accent)
                     }
                     RuleMark(y: .value("Floor", Double(store.floorBytes) / 1e9))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4])).foregroundStyle(.orange)

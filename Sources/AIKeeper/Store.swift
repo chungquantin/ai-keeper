@@ -60,13 +60,14 @@ final class Store: ObservableObject {
     @Published var map: StorageMapResult?
     @Published var mapRefreshing = false
     @Published var needsOnboarding = false
+    @Published var requestedSelection: String?   // lets screenshots and menu commands pick a row
     @Published var requestedSection: Section?   // set by menu commands, consumed by RootView
     @Published var prRefreshing = false
     @Published var detections: [Detection] = []
     @Published var footprints: [String: Int64] = [:]
     @Published var toolsChanged = false
     @Published var enabledTools: Set<String> = Set(ToolSettings.storedEnabled ?? ToolCatalog.all.map(\.id)) {
-        didSet { UserDefaults.standard.set(enabledTools.sorted(), forKey: ToolSettings.enabledKey) }
+        didSet { if !Demo.enabled { UserDefaults.standard.set(enabledTools.sorted(), forKey: ToolSettings.enabledKey) } }
     }
     @Published var repoRoots: [String] = ToolSettings.roots {
         didSet { UserDefaults.standard.set(repoRoots, forKey: ToolSettings.rootsKey) }
@@ -136,6 +137,7 @@ final class Store: ObservableObject {
     func bootstrap() async {
         guard !started else { return }
         started = true
+        if Demo.enabled { loadDemo(); return }   // no scanning, polling or notifications in demo mode
         Vault.purgeExpired(days: Int(UserDefaults.standard.number("vault.days", default: 30)))
         refreshVault()
         if ToolSettings.onboarded { Notifier.requestPermission() }
@@ -357,6 +359,7 @@ final class Store: ObservableObject {
     }
 
     func refreshDisk() {
+        if Demo.enabled { return }
         let url = URL(fileURLWithPath: NSHomeDirectory())
         if let v = try? url.resourceValues(forKeys: [.volumeTotalCapacityKey, .volumeAvailableCapacityKey, .volumeAvailableCapacityForImportantUsageKey]) {
             let important = v.volumeAvailableCapacityForImportantUsage ?? 0

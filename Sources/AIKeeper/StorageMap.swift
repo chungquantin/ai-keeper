@@ -18,12 +18,12 @@ struct MapGroup: Identifiable, Codable {
     let colorName: String
     var color: Color {
         switch colorName {
-        case "blue": .blue
-        case "purple": .purple
-        case "teal": .teal
-        case "pink": .pink
-        case "indigo": .indigo
-        default: .gray
+        case "blue": Brand.accent
+        case "purple": Color(red: 0.514, green: 0.380, blue: 0.929)
+        case "teal": Color(red: 0.31, green: 0.66, blue: 0.96)
+        case "pink": Color(red: 0.58, green: 0.64, blue: 0.72)
+        case "indigo": Color(red: 0.12, green: 0.17, blue: 0.42)
+        default: Color(red: 0.80, green: 0.84, blue: 0.89)
         }
     }
 }
@@ -225,7 +225,7 @@ struct StorageMapView: View {
                     if h.parent != "~" { Text(h.parent).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head) }
                 }
                 if let hint = h.hint { Text(hint).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
-                Capsule().fill(h.cleanable ? Color.green : Color.secondary.opacity(0.55))
+                Capsule().fill(h.cleanable ? Brand.reclaim : Color.secondary.opacity(0.55))
                     .frame(height: 4).frame(maxWidth: .infinity, alignment: .leading)
                     .scaleEffect(x: max(0.01, Double(h.size) / maxSize), anchor: .leading)
                     .padding(.top, 2)
@@ -240,9 +240,9 @@ struct StorageMapView: View {
             HStack(spacing: 6) {
                 Button("Explore") { explore(h.path) }.controlSize(.small)
                 if h.path.lowercased().contains("orbstack") || h.path.lowercased().contains("docker") {
-                    Button("Prune…") { open(.containers) }.controlSize(.small).buttonStyle(.borderedProminent).tint(.green)
+                    Button("Prune…") { open(.containers) }.controlSize(.small).buttonStyle(.borderedProminent).tint(Brand.accent)
                 } else {
-                Button("Clean") { store.cleanHotspot(h) }.controlSize(.small).buttonStyle(.borderedProminent).tint(.green)
+                Button("Clean") { store.cleanHotspot(h) }.controlSize(.small).buttonStyle(.borderedProminent).tint(Brand.accent)
                     .opacity(h.cleanable ? 1 : 0).disabled(!h.cleanable)
                 }
             }.frame(width: 160, alignment: .trailing)

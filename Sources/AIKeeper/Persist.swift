@@ -4,8 +4,10 @@ import UserNotifications
 /// Small JSON store under ~/Library/Application Support/AIKeeper.
 enum Persist {
     static let dir: URL = {
-        let u = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("AIKeeper", isDirectory: true)
+        // Demo mode must never read or write the real caches.
+        let base = Demo.enabled ? FileManager.default.temporaryDirectory.appendingPathComponent("AIKeeperDemo", isDirectory: true)
+                                : FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        let u = Demo.enabled ? base : base.appendingPathComponent("AIKeeper", isDirectory: true)
         try? FileManager.default.createDirectory(at: u, withIntermediateDirectories: true)
         return u
     }()

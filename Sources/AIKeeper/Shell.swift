@@ -31,7 +31,15 @@ enum Shell {
 }
 
 extension Int64 {
-    var bytesString: String { ByteCountFormatter.string(fromByteCount: self, countStyle: .file) }
+    var bytesString: String {
+        guard Demo.enabled else { return ByteCountFormatter.string(fromByteCount: self, countStyle: .file) }
+        // Screenshots always use US number formatting (String(format:) is locale-independent).
+        let v = Double(self)
+        if v >= 1e12 { return String(format: "%.2f TB", v / 1e12) }
+        if v >= 1e9 { return String(format: v >= 1e10 ? "%.0f GB" : "%.1f GB", v / 1e9) }
+        if v >= 1e6 { return String(format: "%.0f MB", v / 1e6) }
+        return String(format: "%.0f KB", v / 1e3)
+    }
 }
 
 let home = FileManager.default.homeDirectoryForCurrentUser.path

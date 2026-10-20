@@ -335,8 +335,10 @@ struct UsageView: View {
     @State private var range = Range.month
     @State private var metric = Metric.cost
     @State private var tool: AgentTool?
-    @AppStorage("budget.daily") private var dailyBudget = 0.0
-    @AppStorage("budget.weekly") private var weeklyBudget = 0.0
+    @AppStorage("budget.daily") private var storedDaily = 0.0
+    @AppStorage("budget.weekly") private var storedWeekly = 0.0
+    private var dailyBudget: Double { Demo.enabled ? 40 : storedDaily }
+    private var weeklyBudget: Double { Demo.enabled ? 260 : storedWeekly }
 
     private var scoped: [UsageRow] { tool == nil ? store.usage : store.usage.filter { $0.agent == tool } }
     private var rows: [UsageRow] {
@@ -380,6 +382,7 @@ struct UsageView: View {
                 }
             }.padding(24)
         }
+        .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: 62) }   // keep the first row clear of the glass toolbar
         .navigationTitle("AI Usage")
         .toolbar {
             ToolbarItem { Picker("Tool", selection: $tool) { Text("All").tag(AgentTool?.none); ForEach(AgentTool.enabled, id: \.self) { Text($0.rawValue).tag(AgentTool?.some($0)) } }.pickerStyle(.segmented) }
@@ -414,7 +417,7 @@ struct UsageView: View {
         return VStack(alignment: .leading, spacing: 5) {
             HStack { Text(title).fontWeight(.medium); Spacer()
                 Text(String(format: "$%.2f of $%.0f", value, budget)).monospacedDigit().foregroundStyle(f >= 1 ? Color.red : .secondary) }
-            ProgressView(value: min(f, 1)).tint(f >= 1 ? .red : f >= 0.8 ? .orange : .green)
+            ProgressView(value: min(f, 1)).tint(f >= 1 ? .red : f >= 0.8 ? .orange : Brand.accent)
         }
     }
 
@@ -428,7 +431,7 @@ struct UsageView: View {
     private func limit(_ title: String, _ pct: Double, _ resets: Date) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack { Text(title).fontWeight(.medium); Spacer(); Text("\(Int(pct))% used").monospacedDigit().foregroundStyle(.secondary) }
-            ProgressView(value: min(pct / 100, 1)).tint(pct >= 90 ? .red : pct >= 70 ? .orange : .green)
+            ProgressView(value: min(pct / 100, 1)).tint(pct >= 90 ? .red : pct >= 70 ? .orange : Brand.accent)
             Text(resets > .now ? "Resets \(resets.formatted(.relative(presentation: .named)))" : "Window has reset").font(.caption).foregroundStyle(.tertiary)
         }.frame(maxWidth: .infinity)
     }
@@ -474,8 +477,8 @@ struct UsageView: View {
             Chart(bars) { b in
                 BarMark(x: .value("Day", b.day, unit: .day), y: .value(metric.rawValue, b.v)).foregroundStyle(by: .value("Model", b.family))
             }
-            .chartForegroundStyleScale(["Opus": Color.purple, "Sonnet": Color.orange, "Haiku": Color.teal,
-                                        "Fable": Color.pink, "Codex": Color.green, "Pi": Color.blue, "Other": Color.gray])
+            .chartForegroundStyleScale(["Opus": Color(red: 0.514, green: 0.380, blue: 0.929), "Sonnet": Brand.accent, "Haiku": Color(red: 0.31, green: 0.66, blue: 0.96),
+                                        "Fable": Color(red: 0.93, green: 0.36, blue: 0.62), "Codex": Color(red: 0.39, green: 0.45, blue: 0.55), "Pi": Color(red: 0.58, green: 0.64, blue: 0.72), "Other": Color(red: 0.80, green: 0.84, blue: 0.89)])
             .chartYAxis { AxisMarks { v in
                 AxisGridLine(); AxisValueLabel { if let d = v.as(Double.self) { Text(metric == .cost ? "$\(Int(d))" : compact(Int(d))) } }
             } }

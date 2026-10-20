@@ -204,6 +204,7 @@ struct VaultView: View {
                 }
             }.padding(28).frame(maxWidth: 860, alignment: .leading).frame(maxWidth: .infinity)
         }
+        .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: 62) }   // keep the first row clear of the glass toolbar
         .navigationTitle("Recently removed")
         .alert("Restore", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
             Button("OK") { message = nil }

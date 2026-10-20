@@ -188,6 +188,7 @@ struct DedupView: View {
                 tips
             }.padding(28).frame(maxWidth: 860, alignment: .leading).frame(maxWidth: .infinity)
         }
+        .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: 62) }   // keep the first row clear of the glass toolbar
         .navigationTitle("Duplicates")
         .confirmationDialog("Merge duplicate files?", isPresented: $confirm, titleVisibility: .visible) {
             Button("Merge and free \((model.report?.reclaim ?? 0).bytesString)") { model.merge() }
@@ -220,7 +221,7 @@ struct DedupView: View {
                     }
                     Text("\(r.duplicateFiles) duplicate files in \(r.groups.count) groups, out of \(r.scannedFiles) files scanned.").foregroundStyle(.secondary)
                     HStack {
-                        Button("Merge duplicates") { confirm = true }.buttonStyle(.borderedProminent).tint(.green).controlSize(.large)
+                        Button("Merge duplicates") { confirm = true }.buttonStyle(.borderedProminent).tint(Brand.accent).controlSize(.large)
                         Button("Analyze again") { model.analyze(roots: roots) }.controlSize(.large)
                     }
                 } else {
@@ -230,7 +231,7 @@ struct DedupView: View {
             case .merging(let d, let t, let freed):
                 progress("Merging", "\(freed.bytesString) shared so far", value: Double(d) / Double(max(t, 1)))
             case .finished(let freed, let failed):
-                Label("\(freed.bytesString) now shared", systemImage: "checkmark.seal.fill").font(.title2.bold()).foregroundStyle(.green)
+                Label("\(freed.bytesString) now shared", systemImage: "checkmark.seal.fill").font(.title2.bold()).foregroundStyle(Brand.accent)
                 if failed > 0 { Text("\(failed) files were skipped (changed or on another volume).").foregroundStyle(.secondary) }
                 Text("Free space updates as macOS reclaims the blocks. Run Analyze again any time.").font(.callout).foregroundStyle(.secondary)
                 Button("Done") { model.phase = .idle }

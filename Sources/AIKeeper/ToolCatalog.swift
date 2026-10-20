@@ -73,10 +73,13 @@ struct Detection: Identifiable {
 enum ToolSettings {
     static let enabledKey = "tools.enabled", onboardedKey = "onboarded", rootsKey = "repo.roots"
 
-    static var onboarded: Bool { UserDefaults.standard.bool(forKey: onboardedKey) }
+    static var onboarded: Bool { Demo.enabled || UserDefaults.standard.bool(forKey: onboardedKey) }
     static var storedEnabled: [String]? { UserDefaults.standard.stringArray(forKey: enabledKey) }
     /// Before onboarding every tool counts as enabled, so existing behaviour is unchanged.
-    static func enabled(_ id: String) -> Bool { storedEnabled?.contains(id) ?? true }
+    static func enabled(_ id: String) -> Bool {
+        if Demo.enabled { return ["claude", "codex", "conductor", "superset", "pi"].contains(id) }
+        return storedEnabled?.contains(id) ?? true
+    }
 
     static let candidateRoots = ["Developer", "Projects", "code", "src", "dev", "work", "repos", "GitHub", "Documents/GitHub", "Sites"]
     static var roots: [String] { UserDefaults.standard.stringArray(forKey: rootsKey) ?? candidateRoots.map { "\(home)/\($0)" } }

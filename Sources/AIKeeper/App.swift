@@ -295,6 +295,7 @@ struct RootView: View {
             .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: store.alert?.id)
         }
         .onChange(of: store.requestedSection) { _, s in if let s { section = s; store.requestedSection = nil } }
+        .task { if let dir = Screenshots.outDir { await Screenshots.run(store: store, dir: dir) } }
         .sheet(item: $store.plan) { CleanupSheet(plan: $0) }
         .sheet(isPresented: $store.needsOnboarding) { OnboardingView().environmentObject(store).interactiveDismissDisabled() }
         .toolbar {
@@ -380,7 +381,7 @@ struct SidebarView: View {
 
     private func row(_ s: Section, badge: String?, accent: Bool = false) -> some View {
         Label(s.title, systemImage: s.symbol)
-            .badge(badge.map { Text($0).foregroundStyle(accent ? Color.green : Color.secondary) })
+            .badge(badge.map { Text($0) })   // no custom color: it stays readable on the selected row
             .tag(s)
     }
 }
@@ -462,7 +463,7 @@ struct MenuContent: View {
             Divider()
             ForEach(store.activeJobs.prefix(1)) { JobMenuLine(job: $0) }
             Label("\(store.disk.available.bytesString) free", systemImage: "internaldrive")
-            Label("\(store.reclaimable.bytesString) reclaimable", systemImage: "leaf").foregroundStyle(.green)
+            Label("\(store.reclaimable.bytesString) reclaimable", systemImage: "leaf").foregroundStyle(Brand.reclaim)
             Divider()
             Button("Open AI Keeper") {
                 openWindow(id: "main"); NSApp.activate(ignoringOtherApps: true)
