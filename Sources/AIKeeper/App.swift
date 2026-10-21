@@ -46,7 +46,7 @@ struct AIKeeperApp: App {
         }
         if CommandLine.arguments.contains("--probe2") {
             let d = DockerCLI.usage(); print("DOCKER err=\(d.error ?? "none") rows=\(d.rows.map { "\($0.type) \($0.size) rec \($0.reclaimable)" })")
-            let p = Procs.scan(); print("MEM used=\(p.mem.used.bytesString)/\(p.mem.total.bytesString) swap=\(p.mem.swapUsed.bytesString) free=\(p.mem.freePercent)%")
+            let p = Procs.scanWithMemory(); print("MEM used=\(p.mem.used.bytesString)/\(p.mem.total.bytesString) swap=\(p.mem.swapUsed.bytesString) free=\(p.mem.freePercent)%")
             for g in p.groups.prefix(6) { print("  \(g.name) n=\(g.pids.count) \(g.rss.bytesString) cpu=\(String(format: "%.0f", g.cpu)) dev=\(g.dev)") }
             exit(0)
         }

@@ -23,25 +23,18 @@ struct GuardAlert: Identifiable {
 /// Processes that write a lot to disk; named in alerts so you know what to stop.
 enum BuildProcs {
     static func scan() -> [String] {
-        let out = Shell.run("/bin/ps", ["-axo", "pid=,command="]).out
         let rx = try! NSRegularExpression(pattern: #"(^|/)(cargo|rustc|npm|pnpm|yarn|docker|buildkitd|xcodebuild|gradle|pip3?|uv)( |$)"#)
-        var found: [(pid: String, name: String)] = []
-        for line in out.split(separator: "\n") {
-            let s = String(line).trimmingCharacters(in: .whitespaces)
-            guard let sp = s.firstIndex(of: " ") else { continue }
-            let cmd = String(s[s.index(after: sp)...])
+        var found: [(pid: Int32, name: String)] = []
+        for p in ProcTable.all() {
+            let cmd = p.command
             if let m = rx.firstMatch(in: cmd, range: NSRange(cmd.startIndex..., in: cmd)), let r = Range(m.range(at: 2), in: cmd) {
-                found.append((String(s[..<sp]), String(cmd[r])))
+                found.append((p.pid, String(cmd[r])))
             }
             if found.count >= 6 { break }
         }
         guard !found.isEmpty else { return [] }
-        let cw = Shell.run("/usr/sbin/lsof", ["-a", "-d", "cwd", "-Fpn", "-p", found.map(\.pid).joined(separator: ",")]).out
-        var cwd: [String: String] = [:]
-        var cur = ""
-        for l in cw.split(separator: "\n") {
-            if l.hasPrefix("p") { cur = String(l.dropFirst()) } else if l.hasPrefix("n") { cwd[cur] = String(l.dropFirst()) }
-        }
+        var cwd: [Int32: String] = [:]
+        for f in found { cwd[f.pid] = ProcTable.cwd(f.pid) }
         // "cargo and rustc in X" rather than "cargo in X, rustc in X".
         var order: [String] = [], names: [String: [String]] = [:]
         for f in found {

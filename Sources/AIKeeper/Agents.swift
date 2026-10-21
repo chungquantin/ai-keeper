@@ -62,31 +62,19 @@ struct AgentProc: Identifiable, Hashable {
 
 enum AgentScanner {
     static func scan() -> [AgentProc] {
-        let out = Shell.run("/bin/ps", ["-axo", "pid=,ppid=,etime=,pcpu=,rss=,command="]).out
+        let procs = ProcTable.all()
         var found: [AgentProc] = []
         var table: [Int32: (ppid: Int32, cpu: Double)] = [:]
-        for line in out.split(separator: "\n") {
-            let f = line.split(separator: " ", maxSplits: 5, omittingEmptySubsequences: true)
-            guard f.count == 6, let pid = Int32(f[0]), let ppid = Int32(f[1]),
-                  pid != getpid() else { continue }
-            table[pid] = (ppid, Double(f[3]) ?? 0)
-            let cmd = f[5].trimmingCharacters(in: .whitespaces)
-            guard let kind = classify(cmd) else { continue }
+        let me = getpid(), now = Date()
+        for p in procs where p.pid != me {
+            table[p.pid] = (p.ppid, p.cpu)
+            guard let kind = classify(p.command) else { continue }
             found.append(AgentProc(
-                pid: pid, ppid: ppid, kind: kind, elapsed: parseElapsed(String(f[2])),
-                cpu: Double(f[3]) ?? 0, rssBytes: (Int64(f[4]) ?? 0) * 1024, command: cmd))
+                pid: p.pid, ppid: p.ppid, kind: kind, elapsed: now.timeIntervalSince(p.started),
+                cpu: p.cpu, rssBytes: p.rss, command: p.command))
         }
         guard !found.isEmpty else { return [] }
-
-        let pids = found.map { String($0.pid) }.joined(separator: ",")
-        let cwds = Shell.run("/usr/sbin/lsof", ["-a", "-d", "cwd", "-Fpn", "-p", pids]).out
-        var map: [Int32: String] = [:]
-        var cur: Int32?
-        for l in cwds.split(separator: "\n") {
-            if l.hasPrefix("p") { cur = Int32(l.dropFirst()) }
-            else if l.hasPrefix("n"), let c = cur { map[c] = String(l.dropFirst()) }
-        }
-        for i in found.indices { found[i].cwd = map[found[i].pid] }
+        for i in found.indices { found[i].cwd = ProcTable.cwd(found[i].pid) }
         // CPU used by an agent's child processes (builds, tests) means it is working even if its own CPU is low.
         var kids: [Int32: [Int32]] = [:]
         for (p, v) in table { kids[v.ppid, default: []].append(p) }

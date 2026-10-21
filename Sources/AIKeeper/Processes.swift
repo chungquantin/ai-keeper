@@ -19,18 +19,21 @@ struct MemoryInfo {
 enum Procs {
     static let devNames = ["rust-analyzer", "rustc", "cargo", "node", "tsserver", "esbuild", "Cursor", "Code", "Docker", "OrbStack", "claude", "codex", "java", "gradle", "Xcode", "SourceKit", "lldb", "python"]
 
+    /// Groups by app. Reads the kernel's process table directly; no subprocess.
     static func scan() -> (groups: [ProcGroup], mem: MemoryInfo) {
-        let out = Shell.run("/bin/ps", ["-axo", "pid=,rss=,pcpu=,command="]).out
         var map: [String: ProcGroup] = [:]
-        for line in out.split(separator: "\n") {
-            let f = line.split(separator: " ", maxSplits: 3, omittingEmptySubsequences: true)
-            guard f.count == 4, let pid = Int32(f[0]), let rss = Int64(f[1]), let cpu = Double(f[2]) else { continue }
-            let name = groupName(String(f[3]))
+        for p in ProcTable.all() {
+            let name = groupName(p.command)
             var g = map[name] ?? ProcGroup(name: name, dev: devNames.contains { name.localizedCaseInsensitiveContains($0) })
-            g.pids.append(pid); g.rss += rss * 1024; g.cpu += cpu
+            g.pids.append(p.pid); g.rss += p.rss; g.cpu += p.cpu
             map[name] = g
         }
-        return (map.values.sorted { $0.rss > $1.rss }, memory())
+        return (map.values.sorted { $0.rss > $1.rss }, MemoryInfo())
+    }
+
+    /// Four subprocesses; only the dev command line (`--probe2`) asks for it.
+    static func scanWithMemory() -> (groups: [ProcGroup], mem: MemoryInfo) {
+        let r = scan(); return (r.groups, memory())
     }
 
     /// "/Applications/Cursor.app/Contents/..." -> "Cursor"; plain binaries -> basename.

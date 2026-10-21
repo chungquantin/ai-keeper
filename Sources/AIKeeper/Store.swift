@@ -141,13 +141,14 @@ final class Store: ObservableObject {
         Vault.purgeExpired(days: Int(UserDefaults.standard.number("vault.days", default: 30)))
         refreshVault()
         if ToolSettings.onboarded { Notifier.requestPermission() }
-        // Poll every 4s while the app is in front; every ~20s when it's in the background (the menu bar still updates).
+        // Poll every 5s only while the window is actually in front and visible; every 30s otherwise (the menu bar still updates).
         Task {
             var tick = 0
             while !Task.isCancelled {
-                if NSApp.isActive || tick % 5 == 0 { await refreshAgents() }
+                let watching = NSApp.isActive && NSApp.windows.contains { $0.isVisible && $0.occlusionState.contains(.visible) }
+                if watching || tick % 6 == 0 { await refreshAgents() }
                 tick += 1
-                try? await Task.sleep(for: .seconds(4))
+                try? await Task.sleep(for: .seconds(5))
             }
         }
         Task { while !Task.isCancelled { await guardTick(); try? await Task.sleep(for: .seconds(30)) } }
@@ -158,9 +159,10 @@ final class Store: ObservableObject {
         }
         // Cached spend is already on screen; refresh it quietly once the UI has settled.
         if hasCachedUsage { Task { try? await Task.sleep(for: .seconds(12)); loadUsage() } } else { loadUsage() }
-        // A fresh cache is good enough: re-measuring everything on each launch is what made startup heavy.
+        // A recent cache is good enough: re-measuring everything on each launch is what made startup heavy.
+        // The Refresh button re-measures on demand.
         let scanAge = Persist.age("scan.json")
-        if let scanAge, scanAge < 30 * 60, !entries.isEmpty {
+        if let scanAge, scanAge < 6 * 3600, !entries.isEmpty {
             lastScan = Date().addingTimeInterval(-scanAge); phase = .done
         } else { await scan() }
     }
@@ -219,7 +221,7 @@ final class Store: ObservableObject {
     }
 
     func refreshAgents() async {
-        let list = await Task.detached { SessionPeek.assign(AgentScanner.scan()) }.value
+        let list = await Task.detached(priority: .utility) { SessionPeek.assign(AgentScanner.scan()) }.value
         let shown = list.filter { $0.kind.toolID.map(ToolSettings.enabled) ?? true }.sorted { ($0.state == .needsInput ? 0 : 1) < ($1.state == .needsInput ? 0 : 1) }
         let key = shown.map(\.displayKey)
         if key != lastAgentKey { lastAgentKey = key; agents = shown }   // CPU jitter alone shouldn't re-render every view
@@ -288,10 +290,10 @@ final class Store: ObservableObject {
 
         await withTaskGroup(of: Entry.self) { group in
             var next = 0, done = 0
-            let width = 6
+            let width = 3   // each worker spawns git and du; more in parallel only makes the rest of the Mac wait
             while next < min(width, todo.count) {
                 let e = todo[next]; next += 1
-                group.addTask(priority: .utility) { Enricher.enrich(e) }
+                group.addTask(priority: .background) { Enricher.enrich(e) }
             }
             while let result = await group.next() {
                 pending[result.id] = result
@@ -299,7 +301,7 @@ final class Store: ObservableObject {
                 if Date().timeIntervalSince(lastFlush) > 0.3 { flush(done: done) }
                 if next < todo.count {
                     let e = todo[next]; next += 1
-                    group.addTask(priority: .utility) { Enricher.enrich(e) }
+                    group.addTask(priority: .background) { Enricher.enrich(e) }
                 }
             }
             flush(done: done)

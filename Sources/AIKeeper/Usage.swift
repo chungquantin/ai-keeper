@@ -100,6 +100,45 @@ enum UsageParser {
     private nonisolated(unsafe) static var codexCache: [String: (sig: String, v: ([UsageRow], SessionInfo?, (Date, CodexLimits)?))] = [:]
     private nonisolated(unsafe) static var piCache: [String: (sig: String, v: ([UsageRow], SessionInfo?))] = [:]
 
+    // The caches above also live on disk, so a relaunch re-reads only the logs that changed. Parsing all of a busy
+    // machine's session logs from scratch takes seconds of CPU, and it used to happen at every launch.
+    private struct DiskCache: Codable {
+        struct Item: Codable { var id: String; var row: UsageRow }
+        struct C: Codable { var sig: String; var items: [Item]; var title: String; var cwd: String; var sessionID: String; var first: Date; var last: Date }
+        struct X: Codable { var sig: String; var rows: [UsageRow]; var info: SessionInfo?; var limDate: Date?; var lim: CodexLimits? }
+        var claude: [String: C] = [:]
+        var codex: [String: X] = [:]
+        var pi: [String: X] = [:]
+    }
+    private nonisolated(unsafe) static var diskRestored = false
+    private nonisolated(unsafe) static var cacheDirty = false
+
+    private static func restoreDiskCache() {
+        cacheLock.lock(); defer { cacheLock.unlock() }
+        guard !diskRestored else { return }
+        diskRestored = true
+        guard let d = Persist.load(DiskCache.self, "usage-files.json") else { return }
+        for (k, c) in d.claude {
+            claudeCache[k] = (c.sig, FileResult(items: c.items.map { ($0.id, $0.row) }, title: c.title, cwd: c.cwd, sessionID: c.sessionID, first: c.first, last: c.last))
+        }
+        for (k, x) in d.codex { codexCache[k] = (x.sig, (x.rows, x.info, x.limDate.flatMap { dt in x.lim.map { (dt, $0) } })) }
+        for (k, x) in d.pi { piCache[k] = (x.sig, (x.rows, x.info)) }
+    }
+
+    private static func saveDiskCache() {
+        cacheLock.lock()
+        guard cacheDirty else { cacheLock.unlock(); return }
+        cacheDirty = false
+        var d = DiskCache()
+        for (k, v) in claudeCache {
+            d.claude[k] = .init(sig: v.sig, items: v.r.items.map { .init(id: $0.id, row: $0.row) }, title: v.r.title, cwd: v.r.cwd, sessionID: v.r.sessionID, first: v.r.first, last: v.r.last)
+        }
+        for (k, v) in codexCache { d.codex[k] = .init(sig: v.sig, rows: v.v.0, info: v.v.1, limDate: v.v.2?.0, lim: v.v.2?.1) }
+        for (k, v) in piCache { d.pi[k] = .init(sig: v.sig, rows: v.v.0, info: v.v.1) }
+        cacheLock.unlock()
+        Persist.save(d, "usage-files.json")
+    }
+
     private static func signature(_ url: URL) -> String {
         let v = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey])
         return "\(v?.contentModificationDate?.timeIntervalSince1970 ?? 0)|\(v?.fileSize ?? 0)"
@@ -110,11 +149,13 @@ enum UsageParser {
         cacheLock.lock(); let hit = store[url.path]; cacheLock.unlock()
         if let hit, hit.sig == sig { return hit.v }
         let v = parse()
-        cacheLock.lock(); store[url.path] = (sig, v); cacheLock.unlock()
+        cacheLock.lock(); store[url.path] = (sig, v); cacheDirty = true; cacheLock.unlock()
         return v
     }
 
     static func load() -> UsageData {
+        restoreDiskCache()
+        defer { saveDiskCache() }
         var out = UsageData()
         let iso = ISO8601DateFormatter(); iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
@@ -128,7 +169,7 @@ enum UsageParser {
                 let r: FileResult
                 if let hit, hit.sig == sig { r = hit.r } else {
                     r = parseClaude(url, iso: iso)
-                    cacheLock.lock(); claudeCache[url.path] = (sig, r); cacheLock.unlock()
+                    cacheLock.lock(); claudeCache[url.path] = (sig, r); cacheDirty = true; cacheLock.unlock()
                 }
                 files.append((url, r))
                 for (id, row) in r.items {

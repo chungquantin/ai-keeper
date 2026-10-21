@@ -302,7 +302,7 @@ final class SystemMonitor: ObservableObject {
             snap = sampler.sample()
             push(&cpuHistory, snap.cpuTotal); push(&readHistory, snap.readBps); push(&writeHistory, snap.writeBps)
             push(&downHistory, snap.netDown); push(&upHistory, snap.netUp)
-            if tick % 2 == 0 { groups = await Task.detached { Procs.scan().groups }.value }
+            if tick % 2 == 0 { groups = await Task.detached(priority: .utility) { Procs.scan().groups }.value }
             tick += 1
         }
     }

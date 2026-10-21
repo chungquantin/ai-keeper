@@ -6,6 +6,11 @@ enum Shell {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: exe)
         p.arguments = args
+        // Housekeeping must never compete with what you are doing: the scheduler and the disk both yield to foreground work.
+        p.qualityOfService = .background
+        var env = ProcessInfo.processInfo.environment
+        env["GIT_OPTIONAL_LOCKS"] = "0"   // read-only status checks should not touch your repositories' index files
+        p.environment = env
         if let cwd { p.currentDirectoryURL = URL(fileURLWithPath: cwd) }
         let pipe = Pipe()
         p.standardOutput = pipe
