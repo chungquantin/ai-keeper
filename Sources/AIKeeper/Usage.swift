@@ -125,10 +125,22 @@ enum UsageParser {
         for (k, x) in d.pi { piCache[k] = (x.sig, (x.rows, x.info)) }
     }
 
+    /// Logs that were deleted or rotated away must not stay in memory and on disk forever.
+    private static func pruneCaches(claude: Set<String>?, codex: Set<String>?, pi: Set<String>?) {
+        cacheLock.lock(); defer { cacheLock.unlock() }
+        if let claude, claudeCache.keys.contains(where: { !claude.contains($0) }) { claudeCache = claudeCache.filter { claude.contains($0.key) }; cacheDirty = true }
+        if let codex, codexCache.keys.contains(where: { !codex.contains($0) }) { codexCache = codexCache.filter { codex.contains($0.key) }; cacheDirty = true }
+        if let pi, piCache.keys.contains(where: { !pi.contains($0) }) { piCache = piCache.filter { pi.contains($0.key) }; cacheDirty = true }
+    }
+
+    private nonisolated(unsafe) static var lastDiskSave = Date.distantPast
+
     private static func saveDiskCache() {
         cacheLock.lock()
-        guard cacheDirty else { cacheLock.unlock(); return }
+        // A live session log changes every few seconds, and the cache is several MB of JSON: write it at most every 10 minutes.
+        guard cacheDirty, Date().timeIntervalSince(lastDiskSave) > 600 else { cacheLock.unlock(); return }
         cacheDirty = false
+        lastDiskSave = Date()
         var d = DiskCache()
         for (k, v) in claudeCache {
             d.claude[k] = .init(sig: v.sig, items: v.r.items.map { .init(id: $0.id, row: $0.row) }, title: v.r.title, cwd: v.r.cwd, sessionID: v.r.sessionID, first: v.r.first, last: v.r.last)
@@ -162,8 +174,11 @@ enum UsageParser {
         // Claude: one API message is logged once per content block, so dedupe by message id across files.
         var byID: [String: (row: UsageRow, file: Int)] = [:]
         var files: [(url: URL, r: FileResult)] = []
+        var liveClaude: Set<String>?, liveCodex: Set<String>?, livePi: Set<String>?   // nil: that tool wasn't scanned, keep its cache
         if ToolSettings.enabled("claude"), let walker = FileManager.default.enumerator(at: URL(fileURLWithPath: "\(home)/.claude/projects"), includingPropertiesForKeys: nil) {
+            liveClaude = []
             for case let url as URL in walker where url.pathExtension == "jsonl" {
+                liveClaude?.insert(url.path)
                 let sig = signature(url)
                 cacheLock.lock(); let hit = claudeCache[url.path]; cacheLock.unlock()
                 let r: FileResult
@@ -193,7 +208,9 @@ enum UsageParser {
         // Codex
         var newest: (Date, CodexLimits)?
         if ToolSettings.enabled("codex"), let walker = FileManager.default.enumerator(at: URL(fileURLWithPath: "\(home)/.codex/sessions"), includingPropertiesForKeys: nil) {
+            liveCodex = []
             for case let url as URL in walker where url.pathExtension == "jsonl" {
+                liveCodex?.insert(url.path)
                 let (rows, info, lim) = cached(url, &codexCache) { parseCodex(url, iso: iso) }
                 out.rows += rows
                 if let info { out.sessions.append(info) }
@@ -201,12 +218,15 @@ enum UsageParser {
             }
         }
         if ToolSettings.enabled("pi"), let walker = FileManager.default.enumerator(at: URL(fileURLWithPath: "\(home)/.pi/agent/sessions"), includingPropertiesForKeys: nil) {
+            livePi = []
             for case let url as URL in walker where url.pathExtension == "jsonl" {
+                livePi?.insert(url.path)
                 let (rows, info) = cached(url, &piCache) { parsePi(url) }
                 out.rows += rows
                 if let info { out.sessions.append(info) }
             }
         }
+        pruneCaches(claude: liveClaude, codex: liveCodex, pi: livePi)
         if let n = newest, n.1.primaryResets > .now || n.1.weeklyResets > .now { out.codex = n.1 }
         return out
     }
