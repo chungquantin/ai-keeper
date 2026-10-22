@@ -43,6 +43,9 @@ enum SessionPeek {
                 out[i].state = state(tail: tail(url, size: size), age: Date().timeIntervalSince(mtime), busy: agents[i].busyChildren || agents[i].cpu > 3)
             }
         }
+        // Drop cache entries for session files that no longer back a running agent's slot.
+        let keep = Set(out.compactMap(\.sessionFile))
+        lock.lock(); cache = cache.filter { keep.contains($0.key) || Date().timeIntervalSince($0.value.at) < 600 }; lock.unlock()
         return out
     }
 
@@ -91,6 +94,11 @@ enum SessionPeek {
 extension Store {
     /// Notify when an agent gets blocked on you, or finishes a long piece of work.
     func trackTransitions(_ list: [AgentProc]) {
+        // Forget agents that are gone: the maps would otherwise grow for as long as the app runs, and a new process that
+        // reuses a PID would inherit the old one's state and trigger a false notification.
+        let live = Set(list.map(\.pid))
+        agentStates = agentStates.filter { live.contains($0.key) }
+        workStarted = workStarted.filter { live.contains($0.key) }
         guard UserDefaults.standard.object(forKey: "notify.agents") as? Bool ?? true else { return }
         for a in list where a.kind == .claude {
             let prev = agentStates[a.pid]
@@ -197,16 +205,18 @@ struct SessionsView: View {
 enum Resume {
     /// Opens Terminal in the session's folder and resumes it. Uses a .command file so no automation permission is needed.
     static func open(_ s: SessionInfo) {
+        // The ID comes from a log file that any process can write, and ends up in a shell script: allow only what real IDs contain.
+        guard s.sessionID.range(of: #"^[A-Za-z0-9_-]{1,80}$"#, options: .regularExpression) != nil else { return }
         let cmd: String
         switch s.agent {
-        case .claude: cmd = "claude --resume \(s.sessionID)"
-        case .codex: cmd = "codex resume \(s.sessionID)"
+        case .claude: cmd = "claude --resume \(shellQuote(s.sessionID))"
+        case .codex: cmd = "codex resume \(shellQuote(s.sessionID))"
         case .pi: cmd = "pi --session \(shellQuote(s.file))"
         }
         let script = "#!/bin/zsh -l\ncd \(shellQuote(s.cwd)) && \(cmd)\n"
         let url = Persist.dir.appendingPathComponent("resume-\(s.sessionID.prefix(8)).command")
         try? script.write(to: url, atomically: true, encoding: .utf8)
-        try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.path)
+        try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.path)
         NSWorkspace.shared.open(url)
     }
     private static func shellQuote(_ s: String) -> String { "'" + s.replacingOccurrences(of: "'", with: "'\\''") + "'" }

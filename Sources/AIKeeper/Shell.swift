@@ -3,6 +3,12 @@ import Foundation
 enum Shell {
     @discardableResult
     static func run(_ exe: String, _ args: [String], cwd: String? = nil) -> (status: Int32, out: String) {
+        let r = runData(exe, args, cwd: cwd)
+        return (r.status, String(decoding: r.data, as: UTF8.self))
+    }
+
+    /// Same as `run`, but the output stays as bytes (a binary patch must not be pushed through UTF-8).
+    static func runData(_ exe: String, _ args: [String], cwd: String? = nil) -> (status: Int32, data: Data) {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: exe)
         p.arguments = args
@@ -16,14 +22,21 @@ enum Shell {
         p.standardOutput = pipe
         p.standardError = FileHandle.nullDevice
         p.standardInput = FileHandle.nullDevice
-        do { try p.run() } catch { return (-1, "") }
+        do { try p.run() } catch { return (-1, Data()) }
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         p.waitUntilExit()
-        return (p.terminationStatus, String(decoding: data, as: UTF8.self))
+        return (p.terminationStatus, data)
     }
 
+    /// Worktrees are written by agents, so never let their config run programs (core.fsmonitor) or hooks while we only read.
+    private static let gitSafety = ["-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null"]
+
     static func git(_ dir: String, _ args: [String]) -> (status: Int32, out: String) {
-        run("/usr/bin/git", ["-C", dir] + args)
+        run("/usr/bin/git", gitSafety + ["-C", dir] + args)
+    }
+
+    static func gitData(_ dir: String, _ args: [String]) -> (status: Int32, data: Data) {
+        runData("/usr/bin/git", gitSafety + ["-C", dir] + args)
     }
 
     /// Disk usage in bytes (allocated blocks), like `du -sk`.

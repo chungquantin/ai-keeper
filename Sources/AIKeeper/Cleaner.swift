@@ -84,7 +84,23 @@ enum FastDelete {
 enum Cleaner {
     struct Failure: LocalizedError { let message: String; var errorDescription: String? { message } }
 
+    /// Workspace records come from other tools' databases. A bad or tampered record must never turn into "delete my home folder".
+    static func checkRemovable(_ e: Entry) throws {
+        guard e.kind == .workspace else { return }
+        let p = URL(fileURLWithPath: e.path).standardizedFileURL.resolvingSymlinksInPath().path
+        let h = URL(fileURLWithPath: home).standardizedFileURL.resolvingSymlinksInPath().path
+        let depth = { (s: String) in s.split(separator: "/").count }
+        guard p.hasPrefix(h + "/"), depth(p) >= depth(h) + 2 else {
+            throw Failure(message: "\(e.name) is too close to your home folder to remove safely, so nothing was removed.")
+        }
+        var isDir: ObjCBool = false
+        if FileManager.default.fileExists(atPath: p + "/.git", isDirectory: &isDir), isDir.boolValue {
+            throw Failure(message: "\(e.name) looks like a main checkout, not a worktree, so nothing was removed.")
+        }
+    }
+
     static func remove(_ e: Entry, options: CleanupOptions, progress: CleanProgress) throws -> Int64 {
+        try checkRemovable(e)
         let freed = e.size ?? 0
         progress.setLabel(e.name)
         if options.vault, Vault.needsSnapshot(e) {

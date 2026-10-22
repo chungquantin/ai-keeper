@@ -108,14 +108,19 @@ enum Vault {
                              headSHA: Shell.git(e.path, ["rev-parse", "HEAD"]).out.trimmingCharacters(in: .whitespacesAndNewlines),
                              date: .now, hasBundle: false, hasPatch: false, hasUntracked: false, bytes: 0, notes: [])
 
+        // Anything the snapshot was supposed to hold but couldn't is a reason to stop: the caller deletes the folder next.
+        var problems: [String] = []
         let bundle = dir.appendingPathComponent("commits.bundle").path
         if Shell.git(e.path, ["bundle", "create", bundle, "HEAD", "--not", "--remotes"]).status == 0 {
-            if fileSize(bundle) > 500_000_000 { try? FileManager.default.removeItem(atPath: bundle); item.notes.append("Commit bundle over 500 MB, skipped") }
+            if fileSize(bundle) > 500_000_000 { try? FileManager.default.removeItem(atPath: bundle); problems.append("the unpushed commits are over 500 MB") }
             else { item.hasBundle = true }
+        } else if (e.git?.unpushed ?? 0) > 0 {
+            problems.append("the unpushed commits couldn't be bundled")
         }
-        let patch = Shell.git(e.path, ["diff", "HEAD", "--binary"]).out
-        if !patch.isEmpty {
-            try patch.write(to: dir.appendingPathComponent("changes.patch"), atomically: true, encoding: .utf8)
+        let diff = Shell.gitData(e.path, ["diff", "HEAD", "--binary"])
+        if diff.status != 0 { problems.append("the uncommitted changes couldn't be read") }
+        else if !diff.data.isEmpty {
+            try diff.data.write(to: dir.appendingPathComponent("changes.patch"), options: .atomic)   // bytes, not text: binary hunks must survive
             item.hasPatch = true
         }
         let untracked = Shell.git(e.path, ["ls-files", "--others", "--exclude-standard", "-z"]).out
@@ -124,10 +129,14 @@ enum Vault {
             try untracked.write(to: list, atomically: true, encoding: .utf8)
             let tgz = dir.appendingPathComponent("untracked.tgz").path
             if Shell.run("/usr/bin/tar", ["-czf", tgz, "-C", e.path, "--null", "-T", list.path]).status == 0 {
-                if fileSize(tgz) > 300_000_000 { try? FileManager.default.removeItem(atPath: tgz); item.notes.append("Untracked files over 300 MB, skipped") }
+                if fileSize(tgz) > 300_000_000 { try? FileManager.default.removeItem(atPath: tgz); problems.append("the untracked files are over 300 MB") }
                 else { item.hasUntracked = true }
-            }
+            } else { problems.append("the untracked files couldn't be archived") }
             try? FileManager.default.removeItem(at: list)
+        }
+        if !problems.isEmpty {
+            try? FileManager.default.removeItem(at: dir)
+            throw Cleaner.Failure(message: "Not everything could be saved (\(problems.joined(separator: "; "))). Turn off recovery snapshots to remove it anyway.")
         }
         guard item.hasBundle || item.hasPatch || item.hasUntracked else {
             try? FileManager.default.removeItem(at: dir)
@@ -139,11 +148,22 @@ enum Vault {
         return item
     }
 
+    /// ids name a folder inside the vault and a git ref, and meta.json is just a file: never trust it to point elsewhere.
+    static func validID(_ id: String, folder: String? = nil) -> Bool {
+        !id.isEmpty && !id.contains("/") && !id.contains("..") && id != "." && (folder == nil || folder == id)
+    }
+    private static func refName(_ id: String) -> String {
+        "refs/vault/" + String(id.map { $0.isLetter || $0.isNumber || "._-".contains($0) ? $0 : "-" })
+    }
+
     static func list() -> [VaultItem] {
         let dec = JSONDecoder(); dec.dateDecodingStrategy = .iso8601
         let dirs = (try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? []
-        return dirs.compactMap { try? dec.decode(VaultItem.self, from: Data(contentsOf: $0.appendingPathComponent("meta.json"))) }
-            .sorted { $0.date > $1.date }
+        return dirs.compactMap { d -> VaultItem? in
+            guard let item = try? dec.decode(VaultItem.self, from: Data(contentsOf: d.appendingPathComponent("meta.json"))),
+                  validID(item.id, folder: d.lastPathComponent) else { return nil }
+            return item
+        }.sorted { $0.date > $1.date }
     }
 
     static func purgeExpired(days: Int) {
@@ -151,14 +171,17 @@ enum Vault {
         for i in list() where i.date < cutoff { delete(i) }
     }
 
-    static func delete(_ i: VaultItem) { try? FileManager.default.removeItem(at: root.appendingPathComponent(i.id)) }
+    static func delete(_ i: VaultItem) { guard validID(i.id) else { return }; try? FileManager.default.removeItem(at: root.appendingPathComponent(i.id)) }
 
     static func restore(_ i: VaultItem) throws {
+        guard validID(i.id), i.headSHA.range(of: #"^[0-9a-f]{7,64}$"#, options: .regularExpression) != nil else {
+            throw VaultError(message: "This snapshot's record is damaged, so it can't be restored automatically.")
+        }
         let dir = root.appendingPathComponent(i.id)
         guard FileManager.default.fileExists(atPath: i.repoPath + "/.git") else { throw VaultError(message: "The repository \(i.repoPath) no longer exists.") }
         guard !FileManager.default.fileExists(atPath: i.path) else { throw VaultError(message: "\(i.path) already exists.") }
         if i.hasBundle {
-            let r = Shell.git(i.repoPath, ["fetch", dir.appendingPathComponent("commits.bundle").path, "HEAD:refs/vault/\(i.id)"])
+            let r = Shell.git(i.repoPath, ["fetch", dir.appendingPathComponent("commits.bundle").path, "HEAD:\(refName(i.id))"])
             guard r.status == 0 else { throw VaultError(message: "Couldn't import the saved commits.") }
         }
         guard Shell.git(i.repoPath, ["worktree", "add", "--detach", i.path, i.headSHA]).status == 0 else {

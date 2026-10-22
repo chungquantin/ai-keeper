@@ -110,10 +110,18 @@ enum Tools {
         guard confirm else {
             return (json(["dry_run": true, "would_free_gb": gb(total), "folders": list, "hint": "Call again with confirm=true (or --yes) to delete."]), false)
         }
+        // The scan may be hours old. Re-check what matters right before deleting: no agent is working in there, and each
+        // folder is still git-ignored (so it can't be source), and still really inside the workspace.
+        let busy = AgentScanner.scan().contains { $0.kind != .mcp && ($0.cwd == root || ($0.cwd?.hasPrefix(root + "/") ?? false)) }
+        guard !busy else { return (json(["error": "An agent is running in this workspace. Try again when it has finished.", "path": root]), true) }
+        let safe = targets.filter { t in
+            URL(fileURLWithPath: t.path).resolvingSymlinksInPath().path.hasPrefix(URL(fileURLWithPath: root).resolvingSymlinksInPath().path + "/")
+                && Shell.git(root, ["check-ignore", "-q", "--", t.path]).status == 0
+        }
         let progress = CleanProgress()
-        for t in targets { FastDelete.remove(t.path, progress: progress) }
+        for t in safe { FastDelete.remove(t.path, progress: progress) }
         log("clean-artifacts \(root) freed \(progress.freed)")
-        return (json(["freed_gb": gb(progress.freed), "folders_removed": targets.count, "error": progress.firstError as Any]), progress.firstError != nil)
+        return (json(["freed_gb": gb(progress.freed), "folders_removed": safe.count, "error": progress.firstError as Any]), progress.firstError != nil)
     }
 
     static func log(_ line: String) {

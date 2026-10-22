@@ -103,6 +103,20 @@ enum Dedup {
         return hasher.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
+    /// Byte-for-byte comparison, read again right before a file is replaced: it may have changed since the analysis.
+    private static func sameContent(_ a: String, _ b: String) -> Bool {
+        guard let fa = fopen(a, "rb"), let fb = fopen(b, "rb") else { return false }
+        defer { fclose(fa); fclose(fb) }
+        let n = 1 << 20
+        let ba = UnsafeMutablePointer<UInt8>.allocate(capacity: n), bb = UnsafeMutablePointer<UInt8>.allocate(capacity: n)
+        defer { ba.deallocate(); bb.deallocate() }
+        while true {
+            let ra = fread(ba, 1, n, fa), rb = fread(bb, 1, n, fb)
+            if ra != rb || memcmp(ba, bb, ra) != 0 { return false }
+            if ra == 0 { return true }
+        }
+    }
+
     /// Replace each duplicate with a clone of the first file in its group. Atomic per file (clone to temp, rename over).
     static func merge(_ report: DupReport, flag: DedupModel.CancelFlag, progress: @escaping @Sendable (Int, Int, Int64) -> Void) -> (freed: Int64, failed: Int) {
         var freed: Int64 = 0, failed = 0, done = 0
@@ -114,7 +128,7 @@ enum Dedup {
             for p in g.paths.dropFirst() {
                 let tmp = p + ".aikeeper-clone"
                 var a = stat(), b = stat()
-                guard lstat(master, &a) == 0, lstat(p, &b) == 0, a.st_size == b.st_size, a.st_dev == b.st_dev else { failed += 1; continue }
+                guard lstat(master, &a) == 0, lstat(p, &b) == 0, a.st_size == b.st_size, a.st_dev == b.st_dev, sameContent(master, p) else { failed += 1; continue }
                 if clonefile(master, tmp, 0) == 0 {
                     if rename(tmp, p) == 0 { freed += g.size; cloned.insert(p) } else { unlink(tmp); failed += 1 }
                 } else { failed += 1 }

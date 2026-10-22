@@ -288,7 +288,7 @@ struct DetailView: View {
                              color: pr.state == "OPEN" ? .gray : pr.state == "MERGED" ? Brand.merged : .gray)
                         Text("#\(pr.number)").fontWeight(.medium)
                         Spacer(minLength: 4)
-                        Button { if let u = URL(string: pr.url) { NSWorkspace.shared.open(u) } } label: { Label("GitHub", systemImage: "arrow.up.right.square") }
+                        Button { if let u = URL(string: pr.url), u.scheme == "https" { NSWorkspace.shared.open(u) } } label: { Label("GitHub", systemImage: "arrow.up.right.square") }
                             .controlSize(.small).fixedSize().help("Open pull request on GitHub")
                     }
                     Text(pr.title).font(.callout).frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)

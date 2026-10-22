@@ -8,14 +8,18 @@ enum Persist {
         let base = Demo.enabled ? FileManager.default.temporaryDirectory.appendingPathComponent("AIKeeperDemo", isDirectory: true)
                                 : FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         let u = Demo.enabled ? base : base.appendingPathComponent("AIKeeper", isDirectory: true)
-        try? FileManager.default.createDirectory(at: u, withIntermediateDirectories: true)
+        // Paths, session titles and recovery snapshots live here: readable by this user only.
+        try? FileManager.default.createDirectory(at: u, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+        try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: u.path)
         return u
     }()
 
     static func save<T: Encodable>(_ value: T, _ name: String) {
         let enc = JSONEncoder()
         enc.dateEncodingStrategy = .iso8601
-        try? enc.encode(value).write(to: dir.appendingPathComponent(name), options: .atomic)
+        let url = dir.appendingPathComponent(name)
+        try? enc.encode(value).write(to: url, options: .atomic)
+        try? FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
     }
 
     /// Seconds since a stored file was last written, or nil if it doesn't exist.

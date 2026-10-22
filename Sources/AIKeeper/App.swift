@@ -9,6 +9,7 @@ struct AIKeeperApp: App {
     init() {
         Migration.run()   // before anything reads settings
         if Headless.handle(CommandLine.arguments) { exit(0) }
+        #if DEBUG   // destructive developer tests never ship in the release binary
         if let i = CommandLine.arguments.firstIndex(of: "--deltest"), i + 1 < CommandLine.arguments.count {
             let path = CommandLine.arguments[i + 1]
             let p = CleanProgress(); let t0 = Date()
@@ -16,6 +17,8 @@ struct AIKeeperApp: App {
             print("DELTEST freed=\(p.freed.bytesString) in \(String(format: "%.2f", Date().timeIntervalSince(t0)))s exists=\(FileManager.default.fileExists(atPath: path)) err=\(p.firstError ?? "none") detail=\(p.detail)")
             exit(0)
         }
+        #endif
+        #if DEBUG   // destructive developer tests never ship in the release binary
         if let i = CommandLine.arguments.firstIndex(of: "--vaulttest"), i + 2 < CommandLine.arguments.count {
             let repo = CommandLine.arguments[i + 1], wt = CommandLine.arguments[i + 2]
             var e = Entry(id: "t", kind: .workspace, name: "vt", path: wt, repoPath: repo, repoName: "r", branch: "feat", sources: [.git])
@@ -30,6 +33,8 @@ struct AIKeeperApp: App {
             } catch { print("ERR \(error)") }
             exit(0)
         }
+        #endif
+        #if DEBUG   // destructive developer tests never ship in the release binary
         if let i = CommandLine.arguments.firstIndex(of: "--deduptest"), i + 2 < CommandLine.arguments.count {
             let roots = [CommandLine.arguments[i + 1], CommandLine.arguments[i + 2]]
             func free() -> Int64 { Int64((try? URL(fileURLWithPath: "/private/tmp").resourceValues(forKeys: [.volumeAvailableCapacityKey]).volumeAvailableCapacity) ?? 0) }
@@ -44,6 +49,7 @@ struct AIKeeperApp: App {
             print("AGAIN reclaim=\(r2.reclaim.bytesString)")
             exit(0)
         }
+        #endif
         if CommandLine.arguments.contains("--probe2") {
             let d = DockerCLI.usage(); print("DOCKER err=\(d.error ?? "none") rows=\(d.rows.map { "\($0.type) \($0.size) rec \($0.reclaimable)" })")
             let p = Procs.scanWithMemory(); print("MEM used=\(p.mem.used.bytesString)/\(p.mem.total.bytesString) swap=\(p.mem.swapUsed.bytesString) free=\(p.mem.freePercent)%")
@@ -94,6 +100,7 @@ struct AIKeeperApp: App {
             let h = Health.evaluate(s, topCPU: nil, topMemory: nil); print("HEALTH \(h.score) \(h.reason) tips=\(h.tips.map(\.text))")
             exit(0)
         }
+        #if DEBUG   // destructive developer tests never ship in the release binary
         if let i = CommandLine.arguments.firstIndex(of: "--jobtest"), i + 3 < CommandLine.arguments.count {
             let dirs = Array(CommandLine.arguments[(i + 1)...(i + 3)])
             Task { @MainActor in
@@ -119,6 +126,7 @@ struct AIKeeperApp: App {
                 exit(0)
             }
         }
+        #endif
         if let i = CommandLine.arguments.firstIndex(of: "--disktest"), i + 1 < CommandLine.arguments.count {
             let dir = CommandLine.arguments[i + 1]
             Task { @MainActor in
@@ -298,6 +306,7 @@ struct RootView: View {
         .task {
             if let dir = Screenshots.outDir { await Screenshots.run(store: store, dir: dir) }
             else if let dir = Recording.outDir { await Recording.run(store: store, dir: dir) }
+            else if let secs = Soak.seconds { await Soak.run(store: store, for: secs) }
         }
         .sheet(item: $store.plan) { CleanupSheet(plan: $0) }
         .sheet(isPresented: $store.needsOnboarding) { OnboardingView().environmentObject(store).interactiveDismissDisabled() }
