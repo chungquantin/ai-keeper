@@ -93,7 +93,7 @@ jobs:
             echo "Gatekeeper accepts this build on first launch." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "### Not notarized :warning:" >> "$GITHUB_STEP_SUMMARY"
-            echo "Users must right-click the app and choose Open the first time. Add signing secrets (docs/SIGNING.md) to fix this." >> "$GITHUB_STEP_SUMMARY"
+            echo "Browser downloads trigger a Gatekeeper warning (users click Open Anyway in System Settings > Privacy \& Security, or install with Homebrew or site/install.sh). Add signing secrets (docs/SIGNING.md) to fix this." >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Publish GitHub release

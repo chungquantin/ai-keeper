@@ -1,7 +1,8 @@
 # Signing and notarizing releases
 
-Without this, a downloaded copy of AI Keeper triggers a Gatekeeper warning and users must right-click the app and choose
-Open. (Homebrew installs avoid it because the cask clears the quarantine flag.) The fix is two things Apple requires:
+Without this, a downloaded copy of AI Keeper triggers a Gatekeeper warning and users must open System Settings, Privacy & Security
+and click Open Anyway (right-click, Open no longer works on current macOS). Homebrew installs and `site/install.sh` avoid it
+because they never quarantine the download. The fix is two things Apple requires:
 a **Developer ID signature** and **notarization**. Both need a paid Apple Developer Program membership (US$99 a year).
 Nothing in code can replace that, but once the credentials exist the release workflow does everything else.
 

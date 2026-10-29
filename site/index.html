@@ -210,7 +210,12 @@
 <span class="p">$ </span>brew install --cask ai-keeper</code>
       <button class="copy" type="button" data-copy="brew tap chungquantin/ai-keeper https://github.com/chungquantin/ai-keeper&#10;brew trust --tap chungquantin/ai-keeper&#10;brew install --cask ai-keeper">Copy</button>
     </div>
-    <p class="fine" style="margin-top:var(--s-4);max-width:40em">The app is not notarized yet. If you download the zip, right-click AI Keeper and choose Open the first time. Homebrew installs skip this step.</p>
+    <p class="fine" style="margin-top:var(--s-5);max-width:40em">Or install from Terminal, which also skips the macOS warning below:</p>
+    <div class="cmd" role="group" aria-label="Install from Terminal" style="margin-top:var(--s-3)">
+      <code><span class="p">$ </span>curl -fsSL https://chungquantin.github.io/ai-keeper/install.sh | bash</code>
+      <button class="copy" type="button" data-copy="curl -fsSL https://chungquantin.github.io/ai-keeper/install.sh | bash">Copy</button>
+    </div>
+    <p class="fine" style="margin-top:var(--s-4);max-width:40em">The app is not notarized yet, so macOS warns when you open a zip downloaded in a browser. To open it anyway, go to System Settings, Privacy &amp; Security, scroll down and click Open Anyway. Homebrew and the Terminal command don't trigger the warning.</p>
   </div>
 </section>
 

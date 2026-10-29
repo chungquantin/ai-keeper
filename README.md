@@ -29,7 +29,13 @@ brew install --cask ai-keeper
 ```
 
 **Download** the zip from [the website](https://chungquantin.github.io/ai-keeper/) or [Releases](https://github.com/chungquantin/ai-keeper/releases/latest) and drag AI Keeper to Applications.
-Releases are not notarized yet, so the first time, right-click the app and choose Open (Homebrew handles this for you).
+Releases are not notarized yet, so macOS warns when you open a zip downloaded in a browser. Either open System Settings, Privacy & Security and click **Open Anyway**, or install from Terminal, which is never quarantined:
+
+```bash
+curl -fsSL https://chungquantin.github.io/ai-keeper/install.sh | bash
+```
+
+Homebrew installs skip the warning too.
 
 Landing page: https://chungquantin.github.io/ai-keeper/
 
@@ -77,7 +83,7 @@ Push a tag: `git tag v0.2.0 && git push origin v0.2.0`. The release workflow bui
 `AI-Keeper-<version>.zip` with its checksum to GitHub Releases, and updates the cask.
 
 Releases are ad-hoc signed until Developer ID credentials are added. To sign and notarize them (so Gatekeeper accepts a
-download without the right-click workaround), follow [docs/SIGNING.md](docs/SIGNING.md), which ends with one script,
+download without the Open Anyway step), follow [docs/SIGNING.md](docs/SIGNING.md), which ends with one script,
 `scripts/setup-signing.sh`, that stores the credentials as repository secrets.
 
 ## Notes
