@@ -1,33 +1,6 @@
 import Foundation
 
-/// Command-line and MCP entry points. The same binary serves the GUI, `aikeeper <command>`, and `aikeeper mcp`.
-enum Headless {
-    static let commands: Set<String> = ["status", "workspaces", "clean-artifacts", "mcp", "help"]
-
-    /// Returns true if the arguments were a headless command (already handled; caller should exit).
-    static func handle(_ args: [String]) -> Bool {
-        guard args.count > 1, commands.contains(args[1]) else { return false }
-        let rest = Array(args.dropFirst(2))
-        switch args[1] {
-        case "mcp": MCPServer.run()
-        case "status": print(Tools.status(json: rest.contains("--json")))
-        case "workspaces": print(Tools.workspaces(deprecatedOnly: rest.contains("--deprecated"), limit: 50, json: rest.contains("--json")))
-        case "clean-artifacts":
-            guard let path = rest.first(where: { !$0.hasPrefix("--") }) else { print("usage: aikeeper clean-artifacts <workspace-path> [--yes]"); return true }
-            print(Tools.cleanArtifacts(path: path, confirm: rest.contains("--yes")).text)
-        default:
-            print("""
-            aikeeper status [--json]                      Disk, agents and spend at a glance
-            aikeeper workspaces [--deprecated] [--json]   Workspaces from the last scan, biggest first
-            aikeeper clean-artifacts <path> [--yes]       Delete build folders (target, node_modules…) of one workspace. Dry run without --yes
-            aikeeper mcp                                  Run as an MCP server over stdio
-
-            Add to Claude Code:  claude mcp add aikeeper -- \(Bundle.main.executablePath ?? "aikeeper") mcp
-            """)
-        }
-        return true
-    }
-}
+// The CLI lives in CLI/. This file holds what it shares with the MCP server: the data helpers and the server itself.
 
 /// The shared implementations behind the CLI and the MCP tools. Work from the saved scan so they answer instantly.
 enum Tools {
@@ -136,26 +109,6 @@ enum Tools {
         let d = try? JSONSerialization.data(withJSONObject: clean, options: [.prettyPrinted, .sortedKeys])
         return d.flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
     }
-
-    // MARK: Human-readable CLI output
-
-    static func status(json asJSON: Bool) -> String {
-        let d = diskStatus(), ag = agents()
-        let reclaim = entries().filter { $0.kind == .workspace || $0.kind == .repo }.reduce(Int64(0)) { $0 + $1.artifactBytes }
-        if asJSON { return json(["disk": d, "agents": ag, "rebuildable_gb": gb(reclaim), "scan_age_minutes": scanAgeMinutes() as Any]) }
-        var s = "Disk       \(d["free_gb"]!) GB free of \(d["total_gb"]!) GB\(d["low"] as? Bool == true ? "  (LOW)" : "")\n"
-        s += "Agents     \(ag.count) running, \(ag.filter { $0["state"] as? String == "needsInput" }.count) need you\n"
-        s += "Rebuildable \(gb(reclaim)) GB in build folders"
-        s += scanAgeMinutes().map { " (scan \($0) min old)" } ?? " (no scan yet: open AI Keeper once)"
-        return s
-    }
-
-    static func workspaces(deprecatedOnly: Bool, limit: Int, json asJSON: Bool) -> String {
-        let list = workspaceList(deprecatedOnly: deprecatedOnly, limit: limit)
-        if asJSON { return (try? JSONSerialization.data(withJSONObject: list, options: [.prettyPrinted, .sortedKeys])).flatMap { String(data: $0, encoding: .utf8) } ?? "[]" }
-        if list.isEmpty { return "No workspaces in the last scan. Open AI Keeper to scan." }
-        return list.map { String(format: "%8.1f GB  %-14@  %@  (%@)", ($0["size_gb"] as! NSDecimalNumber).doubleValue, $0["status"] as! String, $0["path"] as! String, $0["repo"] as! String) }.joined(separator: "\n")
-    }
 }
 
 /// Minimal MCP server: newline-delimited JSON-RPC 2.0 on stdin/stdout.
@@ -184,7 +137,7 @@ enum MCPServer {
             switch method {
             case "initialize":
                 msg["result"] = ["protocolVersion": params["protocolVersion"] as? String ?? "2024-11-05",
-                                 "capabilities": ["tools": [String: Any]()], "serverInfo": ["name": "ai-keeper", "version": "0.2.0"]]
+                                 "capabilities": ["tools": [String: Any]()], "serverInfo": ["name": "keeper", "version": CLI.version]]
             case "tools/list": msg["result"] = ["tools": tools]
             case "tools/call":
                 let (text, isErr) = call(params["name"] as? String ?? "", params["arguments"] as? [String: Any] ?? [:])
@@ -217,18 +170,22 @@ enum MCPServer {
 }
 
 enum CLIInstaller {
-    static var binary: String { Bundle.main.executablePath ?? "\(home)/Applications/AIKeeper.app/Contents/MacOS/AIKeeper" }
-    static var linkPath: String { "\(home)/.local/bin/aikeeper" }
-    static var mcpCommand: String { "claude mcp add aikeeper -- \(linkPath) mcp" }
+    static var binary: String { Bundle.main.executablePath ?? "/Applications/AI Keeper.app/Contents/MacOS/AIKeeper" }
+    static var linkPath: String { "\(home)/.local/bin/keeper" }
+    /// The command was called `aikeeper` before; the old name keeps working.
+    static var legacyLinkPath: String { "\(home)/.local/bin/aikeeper" }
+    static var mcpCommand: String { "claude mcp add keeper -- \(linkPath) mcp" }
 
     /// Symlinks the app binary into ~/.local/bin (user-writable, no admin prompt).
     static func install() -> String {
         let dir = (linkPath as NSString).deletingLastPathComponent
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
-        try? FileManager.default.removeItem(atPath: linkPath)
-        do { try FileManager.default.createSymbolicLink(atPath: linkPath, withDestinationPath: binary) }
-        catch { return "Couldn't create the link: \(error.localizedDescription)" }
+        for path in [linkPath, legacyLinkPath] {
+            try? FileManager.default.removeItem(atPath: path)
+            do { try FileManager.default.createSymbolicLink(atPath: path, withDestinationPath: binary) }
+            catch { return "Couldn't create the link: \(error.localizedDescription)" }
+        }
         let onPath = (ProcessInfo.processInfo.environment["PATH"] ?? "").contains(".local/bin")
-        return onPath ? "Installed. Try: aikeeper status" : "Installed at ~/.local/bin/aikeeper. Add ~/.local/bin to your PATH to run it by name."
+        return onPath ? "Installed. Try: keeper status" : "Installed at ~/.local/bin/keeper. Add ~/.local/bin to your PATH to run it by name."
     }
 }

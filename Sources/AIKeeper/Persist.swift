@@ -5,6 +5,12 @@ import UserNotifications
 enum Persist {
     static let dir: URL = {
         // Demo mode must never read or write the real caches.
+        // AIKEEPER_DATA points everything at another folder: how the tests run without touching your real scan or vault.
+        if let custom = ProcessInfo.processInfo.environment["AIKEEPER_DATA"], !custom.isEmpty {
+            let u = URL(fileURLWithPath: custom, isDirectory: true)
+            try? FileManager.default.createDirectory(at: u, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+            return u
+        }
         let base = Demo.enabled ? FileManager.default.temporaryDirectory.appendingPathComponent("AIKeeperDemo", isDirectory: true)
                                 : FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         let u = Demo.enabled ? base : base.appendingPathComponent("AIKeeper", isDirectory: true)

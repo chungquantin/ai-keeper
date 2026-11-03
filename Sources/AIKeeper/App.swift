@@ -8,7 +8,8 @@ struct AIKeeperApp: App {
 
     init() {
         Migration.run()   // before anything reads settings
-        if Headless.handle(CommandLine.arguments) { exit(0) }
+        var cliExit: Int32 = 0
+        if CLI.handle(CommandLine.arguments, exitCode: &cliExit) { exit(cliExit) }
         #if DEBUG   // destructive developer tests never ship in the release binary
         if let i = CommandLine.arguments.firstIndex(of: "--deltest"), i + 1 < CommandLine.arguments.count {
             let path = CommandLine.arguments[i + 1]
