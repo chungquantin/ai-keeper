@@ -171,7 +171,7 @@ enum MCPServer {
 }
 
 enum CLIInstaller {
-    static var binary: String { Bundle.main.executablePath ?? "/Applications/AI Keeper.app/Contents/MacOS/AIKeeper" }
+    static var binary: String { Runtime.executable.isEmpty ? "/Applications/AI Keeper.app/Contents/MacOS/AIKeeper" : Runtime.executable }
     static var linkPath: String { "\(home)/.local/bin/keeper" }
     /// The command was called `aikeeper` before; the old name keeps working.
     static var legacyLinkPath: String { "\(home)/.local/bin/aikeeper" }

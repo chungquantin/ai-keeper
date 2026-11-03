@@ -5,9 +5,10 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 BIN="${1:-.build/debug/AIKeeper}"
 [ -x "$BIN" ] || { echo "Build first (swift build); no binary at $BIN"; exit 1; }
+BIN="$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")"      # absolute: the test changes directory
 WORK="$(mktemp -d "$HOME/.keeper-cli-test.XXXXXX")"      # must live under $HOME: removal refuses paths outside it
 DATA="$(mktemp -d)"; BINDIR="$(mktemp -d)"
-ln -s "$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")" "$BINDIR/keeper"
+ln -s "$BIN" "$BINDIR/keeper"
 K="$BINDIR/keeper"; export AIKEEPER_DATA="$DATA" NO_COLOR=1
 trap 'rm -rf "$WORK" "$DATA" "$BINDIR"' EXIT
 pass=0; fail=0
@@ -133,5 +134,10 @@ check "tui removed the workspace"      '[ ! -d "$WORK/ws-tui" ]'
 check "tui kept the main checkout"     '[ -d "$WORK/repo" ]'
 check "snapshot frames render"         '"$K" ui --snapshot home --size 100x20 | grep -q "Workspaces" && "$K" ui --snapshot nope >/dev/null 2>&1; [ $? -ne 0 ] || true'
 
+# The version must be found when the command is a symlink into an app bundle (that is how Homebrew installs it).
+FAKE="$WORK/Fake.app/Contents"; mkdir -p "$FAKE/MacOS"; cp "$BIN" "$FAKE/MacOS/AIKeeper"
+printf '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>CFBundleShortVersionString</key><string>9.9.9</string></dict></plist>' > "$FAKE/Info.plist"
+ln -s "$FAKE/MacOS/AIKeeper" "$BINDIR/linked"; ln -s "$BINDIR/linked" "$BINDIR/keeper2"
+check "version found through symlinks" '[ "$("$BINDIR/keeper2" version)" = "keeper 9.9.9" ]'
 echo "keeper CLI: $pass passed, $fail failed"
 [ "$fail" = 0 ]

@@ -175,8 +175,28 @@ struct Command {
     let run: (Args) -> Int32
 }
 
+/// Where the running binary really is. `Bundle.main` is blind when the command is a symlink (`keeper` on your PATH),
+/// so the version and the app's own files are found from the resolved path instead.
+enum Runtime {
+    static let executable: String = {
+        var size = UInt32(MAXPATHLEN)
+        var buf = [CChar](repeating: 0, count: Int(size))
+        guard _NSGetExecutablePath(&buf, &size) == 0 else { return Bundle.main.executablePath ?? "" }
+        guard let real = realpath(buf, nil) else { return String(cString: buf) }
+        defer { free(real) }
+        return String(cString: real)
+    }()
+
+    /// `AI Keeper.app/Contents/Info.plist` next to the real binary, when it lives in an app bundle.
+    static var infoPlist: [String: Any]? {
+        let url = URL(fileURLWithPath: executable).deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent("Info.plist")
+        return NSDictionary(contentsOf: url) as? [String: Any]
+    }
+}
+
 enum CLI {
-    static let version: String = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String) ?? "dev"
+    static let version: String = (Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String)
+        ?? (Runtime.infoPlist?["CFBundleShortVersionString"] as? String) ?? "dev"
 
     static var all: [Command] {
         StatusCommands.all + WorkspaceCommands.all + CleanCommands.all + AgentCommands.all + UsageCommands.all
