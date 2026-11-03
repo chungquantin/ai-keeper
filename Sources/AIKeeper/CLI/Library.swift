@@ -117,6 +117,24 @@ enum Library {
 
     // MARK: Cleaning
 
+    /// The rules for what may be removed or cleaned, shared by every command and the interactive screens.
+    static func guardTargets(_ chosen: [Entry], mode: PlanMode, includeDanger: Bool, includeRunning: Bool) -> (targets: [Entry], skipped: [(String, String)]) {
+        let running = agents()
+        var targets: [Entry] = [], skipped: [(String, String)] = []
+        for e in chosen {
+            if e.kind == .repo, mode == .removeWorkspaces { skipped.append((e.name, "a main checkout is never removed (use `keeper clean` for its build folders)")); continue }
+            if !e.exists { skipped.append((e.name, "already gone")); continue }
+            if mode == .removeWorkspaces, e.safety == .danger, !includeDanger { skipped.append((e.name, "has work that exists nowhere else; add --danger to remove it anyway")); continue }
+            if mode == .purgeArtifacts, e.artifacts.isEmpty { continue }
+            let found = agents(in: e, from: running)
+            if !found.isEmpty, !includeRunning { skipped.append((e.name, "\(found.first!.kind.rawValue) is running in it (pid \(found.first!.pid))")); continue }
+            targets.append(e)
+        }
+        return (targets, skipped)
+    }
+
+    struct Progress { var index: Int; var count: Int; var name: String; var freed: Int64; var total: Int64; var detail: String }
+
     struct Outcome {
         var freed: Int64 = 0
         var done: [Entry] = []
@@ -124,7 +142,7 @@ enum Library {
     }
 
     /// Runs the deletion off the main thread and draws progress on stderr until it finishes. Ctrl-C stops after the current item.
-    static func execute(_ mode: PlanMode, _ targets: [Entry], options: CleanupOptions, all: inout [Entry]) -> Outcome {
+    static func execute(_ mode: PlanMode, _ targets: [Entry], options: CleanupOptions, all: inout [Entry], onProgress: ((Progress) -> Void)? = nil) -> Outcome {
         var outcome = Outcome()
         let prog = CleanProgress()
         signal(SIGINT, SIG_IGN)
@@ -144,8 +162,12 @@ enum Library {
                 finished.signal()
             }
             while finished.wait(timeout: .now() + 0.2) == .timedOut {
-                let detail = prog.detail.isEmpty ? "" : "  " + Fmt.tilde(prog.detail)
-                Out.status("[\(i + 1)/\(targets.count)] \(e.name)  \(Fmt.size(max(settled, prog.freed))) of \(Fmt.size(total))\(detail)")
+                if let onProgress {
+                    onProgress(Progress(index: i + 1, count: targets.count, name: e.name, freed: max(settled, prog.freed), total: total, detail: prog.detail))
+                } else {
+                    let detail = prog.detail.isEmpty ? "" : "  " + Fmt.tilde(prog.detail)
+                    Out.status("[\(i + 1)/\(targets.count)] \(e.name)  \(Fmt.size(max(settled, prog.freed))) of \(Fmt.size(total))\(detail)")
+                }
             }
             switch result {
             case .success(let freed) where !prog.isCancelled:
@@ -157,8 +179,8 @@ enum Library {
             case .failure(let err): outcome.failures.append((e.name, err.localizedDescription))
             }
         }
-        Out.endStatus()
-        if prog.isCancelled { Out.note("Stopped. What was already deleted stays deleted.") }
+        if onProgress == nil { Out.endStatus() }
+        if prog.isCancelled, onProgress == nil { Out.note("Stopped. What was already deleted stays deleted.") }
         save(all)
         return outcome
     }

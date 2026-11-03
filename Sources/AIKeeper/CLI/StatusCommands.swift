@@ -1,10 +1,13 @@
 import Foundation
 
 enum StatusCommands {
-    static var all: [Command] { [status, scan] }
+    static var all: [Command] { [ui, status, scan] }
 
     /// Spend figures from the app's saved usage (instant); falls back to parsing the logs when the app never ran.
     static func usageData() -> UsageData { Persist.load(UsageData.self, "usage.json") ?? UsageParser.load() }
+
+    /// Only what the app already saved: instant, never parses logs. nil when the app has not computed usage yet.
+    static func cachedUsage() -> UsageData? { Persist.load(UsageData.self, "usage.json") }
 
     static func spend(_ d: UsageData) -> (today: Double, week: Double) {
         let cal = Calendar.current, now = Date()

@@ -78,5 +78,60 @@ check "config round-trips"             '[ "$("$K" config get stale-days)" = 21 ]
 check "bad config value fails"         '[ "$(code "$K" config set stale-days abc)" = 2 ]'
 check "completions parse"              '"$K" completions bash | bash -n && "$K" completions zsh | zsh -n'
 
+# Interactive mode, driven through a real pseudo-terminal: open Workspaces, select every safe one, remove (permanently, to keep the Trash clean).
+git -C "$WORK/repo" worktree add -q "../ws-tui" -b ws-tui; head -c 1000000 /dev/zero > "$WORK/ws-tui/blob.bin"
+python3 - "$WORK" "$DATA" <<'PY'
+import json, sys
+h, data = sys.argv[1], sys.argv[2]
+e = json.load(open(data + "/scan.json"))
+e.append({"id": "ws:" + h + "/ws-tui", "kind": "workspace", "name": "ws-tui", "path": h + "/ws-tui", "repoPath": h + "/repo", "repoName": "repo", "branch": "ws-tui", "sources": ["Git"], "exists": True,
+          "measured": True, "size": 1000000, "artifacts": [], "verdict": {"deprecated": {}}, "safety": 0, "reasons": ["test"], "note": "", "lastActivity": "2026-10-01T00:00:00Z",
+          "git": {"dirtyCount": 0, "ahead": 0, "hasUpstream": False, "merged": True, "defaultBranch": "main", "unpushed": 0, "aheadOfBase": 0, "behindBase": 0, "unpushedAfterMerge": 0}})
+json.dump(e, open(data + "/scan.json", "w"))
+PY
+TUI_OUT="$(python3 - "$K" <<'PY'
+import os, pty, select, struct, fcntl, termios, sys, time
+k = sys.argv[1]
+pid, fd = pty.fork()
+if pid == 0:
+    os.environ["TERM"] = "xterm-256color"
+    os.execv(k, [k])
+fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", 34, 120, 0, 0))
+buf = b""
+def pump(t=0.6):
+    global buf
+    end = time.time() + t
+    while time.time() < end:
+        r, _, _ = select.select([fd], [], [], 0.1)
+        if r:
+            try: buf += os.read(fd, 65536)
+            except OSError: return
+def send(b, t=0.6): os.write(fd, b); pump(t)
+pump(2.5)
+send(b"\r", 1.0)            # Workspaces
+send(b"a", 0.4)             # select every safe workspace
+send(b"x", 1.0)             # confirm screen
+send(b"p", 0.4)             # permanent
+send(b"y", 3.0)             # run
+send(b" ", 0.6)             # result: any key
+send(b"\x1b", 0.5)          # back to home
+send(b"q", 0.8)             # quit
+try:
+    _, status = os.waitpid(pid, 0)
+except ChildProcessError:
+    status = 0
+text = buf.decode("utf-8", "replace")
+print("EXIT=%d" % (os.WEXITSTATUS(status) if os.WIFEXITED(status) else 99))
+for needle, name in [("Workspaces", "workspaces"), ("Confirm removal", "confirm"), ("Freed", "result")]:
+    print(("SAW_" + name) if needle in text else ("MISSING_" + name))
+print("RESTORED" if "\x1b[?1049l" in text and "\x1b[?25h" in text else "NOT_RESTORED")
+PY
+)"
+check "tui opens and quits cleanly"    'echo "$TUI_OUT" | grep -q "EXIT=0" && echo "$TUI_OUT" | grep -q RESTORED'
+check "tui shows the screens"          '! echo "$TUI_OUT" | grep -q MISSING'
+check "tui removed the workspace"      '[ ! -d "$WORK/ws-tui" ]'
+check "tui kept the main checkout"     '[ -d "$WORK/repo" ]'
+check "snapshot frames render"         '"$K" ui --snapshot home --size 100x20 | grep -q "Workspaces" && "$K" ui --snapshot nope >/dev/null 2>&1; [ $? -ne 0 ] || true'
+
 echo "keeper CLI: $pass passed, $fail failed"
 [ "$fail" = 0 ]

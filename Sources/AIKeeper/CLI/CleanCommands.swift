@@ -20,18 +20,7 @@ enum CleanCommands {
             Out.fail(everything ? "nothing to do." : "say what to clean: a name or path, or --all.")
             return nil
         }
-        let running = Library.agents()
-        var targets: [Entry] = [], skipped: [(String, String)] = []
-        for e in chosen {
-            if e.kind == .repo, mode == .removeWorkspaces { skipped.append((e.name, "a main checkout is never removed (use `keeper clean` for its build folders)")); continue }
-            if !e.exists { skipped.append((e.name, "already gone")); continue }
-            if mode == .removeWorkspaces, e.safety == .danger, !includeDanger { skipped.append((e.name, "has work that exists nowhere else; add --danger to remove it anyway")); continue }
-            if mode == .purgeArtifacts, e.artifacts.isEmpty { continue }
-            let agents = Library.agents(in: e, from: running)
-            if !agents.isEmpty, !includeRunning { skipped.append((e.name, "\(agents.first!.kind.rawValue) is running in it (pid \(agents.first!.pid))")); continue }
-            targets.append(e)
-        }
-        return (targets, skipped)
+        return Library.guardTargets(chosen, mode: mode, includeDanger: includeDanger, includeRunning: includeRunning)
     }
 
     private static func finish(_ a: Args, mode: PlanMode, targets: [Entry], skipped: [(String, String)], options: CleanupOptions, explicit: Bool, all: inout [Entry]) -> Int32 {

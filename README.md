@@ -49,7 +49,9 @@ swift build                 # debug build
 
 ## Command line: `keeper`
 
-Everything the app does is also a command. Every command takes `--json`, and anything that deletes is a **dry run until you add `--yes`**. It never opens the window.
+Run `keeper` in a terminal to open the **interactive dashboard**: arrow keys to move, space to select, enter to open, esc to go back, and the keys for each screen on the bottom line. Pick workspaces with the evidence beside them (git state, pull request, what a cleanup frees), confirm, and watch a live progress bar. It also has live Agents and System screens, spend charts, the disk map with a folder explorer, and the vault. `keeper ui --snapshot <screen>` prints a single frame for docs and tests.
+
+Everything the app does is also a plain command for scripts and agents. Every command takes `--json`, and anything that deletes is a **dry run until you add `--yes`**. It never opens the window.
 
 ```bash
 keeper status                              # disk, what you can get back, agents, spend

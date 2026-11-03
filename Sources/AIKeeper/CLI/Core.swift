@@ -77,12 +77,16 @@ enum Out {
     }
 
     /// Overwrites the current stderr line (when it is a terminal), otherwise stays quiet.
+    /// The interactive mode sets this to show progress on its own bottom line instead of writing to stderr.
+    nonisolated(unsafe) static var statusHook: ((String) -> Void)?
+
     static func status(_ s: String) {
+        if let hook = statusHook { hook(s); return }
         guard Term.errTTY else { return }
         let clipped = s.count > Term.width - 1 ? String(s.prefix(Term.width - 2)) + "…" : s
         FileHandle.standardError.write(Data("\r\u{1B}[2K\(clipped)".utf8))
     }
-    static func endStatus() { if Term.errTTY { FileHandle.standardError.write(Data("\r\u{1B}[2K".utf8)) } }
+    static func endStatus() { if statusHook == nil, Term.errTTY { FileHandle.standardError.write(Data("\r\u{1B}[2K".utf8)) } }
 
     struct Cell {
         var text: String
@@ -188,6 +192,7 @@ enum CLI {
     /// True when the arguments were a CLI invocation (already handled; the caller should exit with `exitCode`).
     static func handle(_ argv: [String], exitCode: inout Int32) -> Bool {
         let args = Array(argv.dropFirst())
+        if args.isEmpty, invokedAsCLI, TUILauncher.interactive { exitCode = TUILauncher.run(); return true }
         let wantsHelp = args.isEmpty ? invokedAsCLI : ["help", "--help", "-h"].contains(args[0])
         if wantsHelp {
             if args.count > 1, let c = find(args[1]) { printHelp(c); exitCode = 0 } else { printOverview(); exitCode = 0 }
