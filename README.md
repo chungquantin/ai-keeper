@@ -16,11 +16,11 @@ Built with SwiftUI and Swift Package Manager. macOS 14 or later.
 - **Agents and usage.** Running agents with live state ("needs you"), token and cost tracking for Claude, Codex and Pi,
   budgets, and a searchable session history.
 - **System.** Health score, CPU, memory, swap, disk I/O, battery and network, sampled only while the page is open.
-- **Agent access.** `aikeeper` CLI and an MCP server so agents can check disk space and clean their own build folders.
+- **Agent access.** A `keeper` command for everything the app does, and an MCP server so agents can check disk space and clean their own build folders.
 
 ## Install
 
-**Homebrew** 7 or later (also puts `aikeeper` on your PATH):
+**Homebrew** 7 or later (also puts `keeper` on your PATH):
 
 ```bash
 brew tap chungquantin/ai-keeper https://github.com/chungquantin/ai-keeper
@@ -47,17 +47,49 @@ swift build                 # debug build
 ./scripts/install.sh        # build and install to /Applications
 ```
 
-## Command line and MCP
+## Command line: `keeper`
+
+Everything the app does is also a command. Every command takes `--json`, and anything that deletes is a **dry run until you add `--yes`**. It never opens the window.
 
 ```bash
-aikeeper status
-aikeeper workspaces --deprecated
-aikeeper clean-artifacts <workspace-path>        # dry run
-aikeeper clean-artifacts <workspace-path> --yes
-claude mcp add aikeeper -- ~/.local/bin/aikeeper mcp
+keeper status                              # disk, what you can get back, agents, spend
+keeper scan                                # re-measure workspaces, git state and pull requests
+keeper workspaces --deprecated             # what is no longer needed, biggest first
+keeper workspace feat-search-index         # why it is flagged: git, PR, build folders
+keeper remove --all-safe                   # preview; add --yes to move them to the Trash
+keeper clean --all --yes                   # delete build folders, keep the workspaces
+keeper usage --days 7 --by model           # AI spend; `keeper usage budget --daily 40`
+keeper agents                              # running agents; `keeper agents stop <pid> --yes`
+keeper sessions --search "billing"         # past sessions; `keeper sessions resume <id>`
+keeper disk                                # where the space went; `disk explore`, `disk large`
+keeper system                              # CPU, memory, disk, network, heaviest apps
+keeper vault restore <id>                  # bring back a removed workspace's unsaved work
+keeper dedupe --merge --yes                # replace duplicate files with APFS clones
+keeper docker prune all-safe --yes         # build cache, unused images, stopped containers
+keeper tools                               # which agent tools are detected and enabled
 ```
 
-Settings → Agent access installs the command-line tool.
+| Section in the app | Command |
+|---|---|
+| Overview | `status`, `scan` |
+| All workspaces, Deprecated, By tool, inspector | `workspaces`, `workspace`, `remove`, `clean` |
+| Leftovers, Duplicates, Containers | `leftovers`, `dedupe`, `docker` |
+| Agents, Sessions, AI Usage | `agents`, `sessions`, `usage` |
+| Disk Analyzer, System | `disk`, `system` |
+| Recently removed | `vault` |
+| Tools, Settings | `tools`, `config` |
+
+`keeper help <command>` shows every option. Shell completions: `keeper completions zsh|bash|fish`. Exit codes: 0 done, 1 failed or everything you named was skipped, 2 wrong usage.
+
+The same safety rules as the app apply: unsaved work is saved to the vault first, workspaces with a running agent are skipped, main checkouts are never removed, and files go to the Trash unless you pass `--permanent`.
+
+### For agents
+
+```bash
+claude mcp add keeper -- ~/.local/bin/keeper mcp
+```
+
+Homebrew installs `keeper` (and `aikeeper`, the old name, as an alias). Installed the app by hand? Run `keeper install`, or use Settings → Agent access. `./scripts/test-cli.sh` runs the CLI end to end against a throwaway repo.
 
 ## Safety
 

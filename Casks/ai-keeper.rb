@@ -15,7 +15,8 @@ cask "ai-keeper" do
   depends_on macos: :sonoma
 
   app "AI Keeper.app"
-  # Puts the command-line tool and MCP server on your PATH as `aikeeper`.
+  # Puts the command-line tool and MCP server on your PATH as `keeper` (and `aikeeper`, its old name).
+  binary "#{appdir}/AI Keeper.app/Contents/MacOS/AIKeeper", target: "keeper"
   binary "#{appdir}/AI Keeper.app/Contents/MacOS/AIKeeper", target: "aikeeper"
 
   # Releases are not notarized yet, so clear the quarantine flag Homebrew sets on downloads.
