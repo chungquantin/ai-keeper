@@ -9,6 +9,7 @@ enum Tools {
     static func usd(_ v: Double) -> NSDecimalNumber { NSDecimalNumber(string: String(format: "%.2f", v)) }
 
     static func diskInfo() -> DiskInfo {
+        if Demo.enabled { return DiskInfo(total: 994_600_000_000, available: 612_400_000_000, purgeable: 3_100_000_000) }
         var d = DiskInfo()
         if let v = try? URL(fileURLWithPath: NSHomeDirectory()).resourceValues(forKeys: [.volumeTotalCapacityKey, .volumeAvailableCapacityKey, .volumeAvailableCapacityForImportantUsageKey]) {
             let important = v.volumeAvailableCapacityForImportantUsage ?? 0

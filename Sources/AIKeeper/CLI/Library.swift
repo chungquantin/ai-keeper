@@ -65,7 +65,11 @@ enum Library {
 
     // MARK: Agents
 
-    static func agents() -> [AgentProc] { SessionPeek.assign(AgentScanner.scan()) }
+    static func agents() -> [AgentProc] {
+        // Demo mode (screenshots, docs) shows the same fictional agents as the app.
+        if Demo.enabled { return MainActor.assumeIsolated { let s = Store(); s.loadDemo(); return s.agents } }
+        return SessionPeek.assign(AgentScanner.scan())
+    }
 
     static func agents(in e: Entry, from all: [AgentProc]) -> [AgentProc] {
         all.filter { $0.kind != .mcp && ($0.cwd == e.path || ($0.cwd?.hasPrefix(e.path + "/") ?? false)) }

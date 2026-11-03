@@ -1,10 +1,10 @@
 #!/bin/bash
 # Builds a release AIKeeper.app into ./dist.
-#   VERSION=1.2.3          marketing version written to Info.plist (default 0.1.0)
+#   VERSION=1.2.3          marketing version written to Info.plist (default 0.2.0)
 #   ARCHS="arm64 x86_64"   build a universal binary (default: this machine's architecture)
 set -euo pipefail
 cd "$(dirname "$0")/.."
-VERSION="${VERSION:-0.1.0}"
+VERSION="${VERSION:-0.2.0}"
 BUILD="${BUILD_NUMBER:-1}"
 
 # One build per architecture, joined with lipo. (SwiftPM's --arch with several values needs full Xcode; --triple does not.)

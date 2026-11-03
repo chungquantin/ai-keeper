@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AI Keeper: clean up after your coding agents on Mac</title>
-<meta name="description" content="AI Keeper is a free Mac app that finds the worktrees, build folders and caches Claude Code, Codex, Conductor and other coding agents leave behind, shows what is safe to delete, and clears it in the background.">
+<meta name="description" content="AI Keeper is a free Mac app and command line tool that finds the worktrees, build folders and caches Claude Code, Codex, Conductor and other coding agents leave behind, shows what is safe to delete, and clears it in the background.">
 <meta name="keywords" content="AI Keeper, Mac cleanup, Claude Code, Codex, Conductor, git worktree cleanup, free disk space, developer disk usage, node_modules, cargo target">
 <meta name="author" content="AI Keeper">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
@@ -79,6 +79,7 @@
     <nav class="nav-links" aria-label="Main">
       <a href="#demo">Demo</a>
       <a href="#disk">Features</a>
+      <a href="#cli">Command line</a>
       <a href="#safety">Safety</a>
       <a href="https://github.com/chungquantin/ai-keeper">GitHub</a>
       <a class="btn btn-primary btn-sm" href="https://github.com/chungquantin/ai-keeper/releases/download/v0.1.0/AI-Keeper-0.1.0.zip" data-download>Download</a>
@@ -179,6 +180,55 @@
       <div class="index-row"><h3>Recently removed</h3><p>Unsaved work is saved before a workspace is deleted, so you can restore it.</p></div>
       <div class="index-row"><h3>Background cleanup</h3><p>Cleanups run in the sidebar with progress while you keep working.</p></div>
       <div class="index-row"><h3>The keeper command, and MCP</h3><p>Every feature is a <code>keeper</code> command, with JSON output. Or let your agent ask what is safe to clean.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="cli">
+  <div class="wrap">
+    <div class="wide-head">
+      <h2>Everything the app does, from your terminal.</h2>
+      <p class="prose">Run <code>keeper</code> for an interactive dashboard, or use any command in a script. Every command can print JSON, and anything that deletes is a dry run until you add <code>--yes</code>. Homebrew installs it with the app.</p>
+    </div>
+    <!-- terminal:start -->
+<figure class="term-fig"><figcaption>Select what goes, with the reason beside it.</figcaption><div class="term term-lg" role="img" aria-label="The keeper dashboard on the Workspaces screen. Three safe workspaces are selected, and a preview on the right explains why the highlighted one can go."><div class="term-bar"><i></i><i></i><i></i><span>keeper</span></div><pre aria-hidden="true"> <span style="font-weight:700">AI Keeper</span><span style="color:rgb(138,147,161)">  ›  </span>Workspaces                                                                                            <span style="color:rgb(138,147,161)">keeper 0.2.0 </span>
+ <span style="color:rgb(138,147,161)"> Safe to remove </span> <span style="color:rgb(238,238,238);background:rgb(37,69,245)"> Deprecated </span> <span style="color:rgb(138,147,161)"> All </span><span style="color:rgb(138,147,161)">   sorted by size</span>
+ <span style="color:rgb(138,147,161);opacity:.55">──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</span>
+<span style="color:rgb(13,13,16);background:rgb(220,224,232)"> ▸ ●  11.4 GB  Safe to remove  api-server · refactor-auth              </span><span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="font-weight:700">refactor-auth</span>
+   <span style="color:rgb(116,146,255)">●</span>   8.6 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">api-server · </span>feat-search-index          <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">api-server · refactor-auth</span>
+   <span style="color:rgb(116,146,255)">●</span>   2.9 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">web-app · </span>experiment-graphql            <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
+   <span style="color:rgb(138,147,161)">○</span>   1.4 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">web-app · </span>chore-deps-update             <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(116,146,255)">Safe to remove</span><span style="color:rgb(138,147,161)">  ·  active 2 days ago</span>
+   <span style="color:rgb(138,147,161)">○</span>   1.1 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">web-app · </span>fix-pagination-bug            <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="font-weight:700">Not needed: PR #405 merged 3 days ago</span>
+   <span style="color:rgb(138,147,161)">○</span>   900 MB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">docs-site · </span>docs-search-polish          <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">The work is on main and nothing here is unsaved. Safe</span>
+   <span style="color:rgb(138,147,161)">○</span>   600 MB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">api-server · </span>hotfix-session-timeout     <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">to remove.</span>
+                                                                       <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
+                                                                       <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Working tree </span>clean
+                                                                       <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Not pushed   </span>nothing
+                                                                       <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Versus main  </span>6 ahead · 0 behind
+                                                                       <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Pull request </span>#405 merged
+                                                                       <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
+ <span style="color:rgb(138,147,161);opacity:.55">──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</span>
+ <span style="font-weight:700">3 selected</span><span style="color:rgb(138,147,161)"> · </span><span style="color:rgb(245,166,36);font-weight:700">22.9 GB</span><span style="color:rgb(138,147,161)"> can be freed   x remove · c clean build folders only · n clear</span>
+ <span style="font-weight:700">space</span><span style="color:rgb(138,147,161)"> select</span><span style="color:rgb(138,147,161)">   </span><span style="font-weight:700">a</span><span style="color:rgb(138,147,161)"> all safe</span><span style="color:rgb(138,147,161)">   </span><span style="font-weight:700">x</span><span style="color:rgb(138,147,161)"> remove</span><span style="color:rgb(138,147,161)">   </span><span style="font-weight:700">c</span><span style="color:rgb(138,147,161)"> clean builds</span><span style="color:rgb(138,147,161)">   </span><span style="font-weight:700">f</span><span style="color:rgb(138,147,161)"> filter</span><span style="color:rgb(138,147,161)">   </span><span style="font-weight:700">/</span><span style="color:rgb(138,147,161)"> search</span><span style="color:rgb(138,147,161)">   </span><span style="font-weight:700">esc</span><span style="color:rgb(138,147,161)"> back</span></pre></div></figure>
+<figure class="term-fig"><figcaption>Nothing happens until you confirm. Workspaces with an agent running in them are left alone.</figcaption><div class="term" role="img" aria-label="The confirmation screen listing three workspaces to remove, 22.9 GB in total."><div class="term-bar"><i></i><i></i><i></i><span>keeper</span></div><pre aria-hidden="true"> <span style="font-weight:700">AI Keeper</span><span style="color:rgb(138,147,161)">  ›  </span>Confirm removal                                                   <span style="color:rgb(138,147,161)">keeper 0.2.0 </span>
+
+  <span style="font-weight:700">These will be removed</span><span style="color:rgb(138,147,161)">   (3)</span>
+
+      11.4 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">api-server · </span>refactor-auth
+       8.6 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">api-server · </span>feat-search-index
+       2.9 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">web-app · </span>experiment-graphql
+
+    <span style="color:rgb(138,147,161)">Total</span>  <span style="color:rgb(245,166,36);font-weight:700">22.9 GB</span>
+
+  <span style="color:rgb(138,147,161)">Files move to the Trash.</span><span style="color:rgb(138,147,161)"> Unsaved work is saved to the vault first.</span>
+
+ <span style="font-weight:700">y</span><span style="color:rgb(138,147,161)"> do it</span><span style="color:rgb(138,147,161)">   </span><span style="font-weight:700">p</span><span style="color:rgb(138,147,161)"> permanent: off</span><span style="color:rgb(138,147,161)">   </span><span style="font-weight:700">s</span><span style="color:rgb(138,147,161)"> snapshot: on</span><span style="color:rgb(138,147,161)">   </span><span style="font-weight:700">esc</span><span style="color:rgb(138,147,161)"> cancel</span></pre></div></figure>
+<!-- terminal:end -->
+    <div class="cmd" style="margin-top:var(--s-6);max-width:none">
+      <code><span class="p">$ </span>keeper workspaces --deprecated     <span class="p"># what is no longer needed</span>
+<span class="p">$ </span>keeper remove --all-safe --yes     <span class="p"># to the Trash, unsaved work saved first</span>
+<span class="p">$ </span>keeper usage --days 7 --by model   <span class="p"># what the agents cost</span>
+<span class="p">$ </span>keeper agents stop 4182 --yes      <span class="p"># stop one that is stuck</span></code>
     </div>
   </div>
 </section>

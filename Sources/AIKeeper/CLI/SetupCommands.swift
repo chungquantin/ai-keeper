@@ -50,7 +50,7 @@ enum SafetyCommands {
 }
 
 enum SetupCommands {
-    static var all: [Command] { [tools, config, install, completions, mcp, cleanArtifacts] }
+    static var all: [Command] { [tools, config, install, completions, mcp, cleanArtifacts, demoExport] }
 
     static let tools = Command(
         name: "tools", aliases: ["integrations"], group: "Setup", summary: "Which agent tools AI Keeper looks at: detect, enable, disable",
@@ -160,5 +160,21 @@ enum SetupCommands {
             guard let p = a.positional.first else { Out.fail("usage: keeper clean-artifacts <workspace-path> [--yes]"); return 2 }
             let r = Tools.cleanArtifacts(path: p, confirm: a.yes)
             Out.line(r.text); return r.isError ? 1 : 0
+        })
+
+    /// Writes the fictional demo workspaces, usage and disk map into the data folder, so every screen and command can be shown
+    /// without real names. Only works with AIKEEPER_DEMO=1; use AIKEEPER_DATA to pick where.
+    static let demoExport = Command(
+        name: "demo-export", group: "Hidden", summary: "Write demo data for screenshots and docs",
+        usage: ["AIKEEPER_DEMO=1 AIKEEPER_DATA=<folder> keeper demo-export"],
+        run: { _ in
+            guard Demo.enabled else { Out.fail("set AIKEEPER_DEMO=1 first."); return 2 }
+            MainActor.assumeIsolated {
+                let s = Store(); s.loadDemo()
+                Library.save(s.entries)
+                if let m = s.map { Persist.save(m, "map.json") }
+                Persist.save(UsageData(rows: s.usage, sessions: s.sessions, codex: s.codexLimits), "usage.json")
+            }
+            Out.line("Wrote demo data to \(Persist.dir.path)"); return 0
         })
 }
