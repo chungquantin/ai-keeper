@@ -70,6 +70,7 @@ keeper vault restore <id>                  # bring back a removed workspace's un
 keeper dedupe --merge --yes                # replace duplicate files with APFS clones
 keeper docker prune all-safe --yes         # build cache, unused images, stopped containers
 keeper skills                              # every installed skill; `skills scan --all`, `skills show <name>`
+keeper skills remove --risk danger         # preview; --yes quarantines them, `skills restore <name>` undoes it
 keeper tools                               # which agent tools are detected and enabled
 ```
 
@@ -94,7 +95,8 @@ Skills run with your agent's trust, and plenty of them ship scripts. The **Skill
 
 - AI Keeper does not bundle SkillSpector. `keeper skills scanner install --yes` (or the button) installs the reviewed release `v2.13.4` with `uv`, after showing you the exact command.
 - Scans are static (`--no-llm`): nothing in a skill goes to a language model. SkillSpector does check the dependencies a skill lists against [OSV.dev](https://osv.dev), so those package names and versions leave your Mac.
-- The scanner runs with a bare environment (no API keys), on the skill's real folder (it refuses symlinks), and results are cached until a skill's files change. `keeper skills scan` exits 1 if any skill is rated do-not-install, so it can gate a script.
+- The scanner runs with a bare environment (no API keys), on the skill's real folder (it refuses symlinks), and results are cached until a skill's files change. `keeper skills scan` exits 1 if any skill is rated do-not-install, so it can gate a script. A full scan batches eight skills per process, stops cleanly on Ctrl-C (or Esc in the dashboard) keeping what finished, and drops to one at a time when the Mac is short of memory.
+- **Removing skills.** `keeper skills remove --risk danger` (dry run) lists every skill rated do-not-install; add `--yes` to take them out of use. In the dashboard, `space` selects, `a` selects every high-risk skill and `x` removes; in the app, "Select high risk" then "Remove…". Skills are moved to a **quarantine**, not deleted, and the symlinks other tools use are recorded, so `keeper skills restore <name>` (or `u` in the dashboard, "Removed" in the app) puts everything back exactly. Findings are heuristics, so check them first. Plugin and project skills are never touched: uninstall the plugin, or delete the folder in its repository.
 
 ### For agents
 

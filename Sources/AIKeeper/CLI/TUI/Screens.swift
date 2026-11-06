@@ -62,7 +62,7 @@ final class HomeScreen: Screen {
     var keys: [(String, String)] { [("↑↓", "move"), ("enter", "open"), ("r", "rescan"), ("q", "quit")] }
     private var summary: Summary
     private var cursor = 0
-    private let items: [(String, String)] = [("Workspaces", "w"), ("Leftovers", "l"), ("Agents", "a"), ("Skills", "k"), ("AI usage", "u"), ("Disk map", "d"), ("System", "s"), ("Recently removed", "v")]
+    private let items: [(String, String)] = [("Workspaces", "w"), ("Leftovers", "l"), ("Agents", "a"), ("Skills", "c"), ("AI usage", "u"), ("Disk map", "d"), ("System", "s"), ("Recently removed", "v")]
 
     init(summary: Summary = .load()) { self.summary = summary }
 

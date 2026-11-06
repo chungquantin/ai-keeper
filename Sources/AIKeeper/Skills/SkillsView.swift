@@ -11,7 +11,9 @@ struct SkillsView: View {
     @State private var query = ""
     @State private var tool = "All tools"
     @State private var filter = 0                 // 0 all · 1 worth a look · 2 not scanned
-    @State private var selection: String?
+    @State private var selection: Set<String> = []
+    @State private var pendingRemove: [SkillInfo]?
+    @State private var showRemoved = false
     @State private var confirmInstall = false
     @State private var notice: String?
 
@@ -28,7 +30,8 @@ struct SkillsView: View {
     }
 
     private var unscanned: [SkillInfo] { store.skills.filter { SkillScanner.current($0, in: store.skillScans) == nil } }
-    private var selected: SkillInfo? { store.skills.first { $0.id == selection } }
+    private var selected: SkillInfo? { selection.count == 1 ? store.skills.first { $0.id == selection.first } : nil }
+    private var chosen: [SkillInfo] { store.skills.filter { selection.contains($0.id) } }
 
     var body: some View {
         let rows = self.rows
@@ -37,7 +40,10 @@ struct SkillsView: View {
             Divider()
             if store.skillScanner == nil && store.skillsLoaded { scannerBanner; Divider() }
             HStack(spacing: 0) {
-                List(rows, selection: $selection) { s in SkillRow(skill: s, verdict: verdict(s), score: SkillScanner.current(s, in: store.skillScans)?.score).tag(s.id) }
+                List(rows, selection: $selection) { s in
+                    SkillRow(skill: s, verdict: verdict(s), score: SkillScanner.current(s, in: store.skillScans)?.score).tag(s.id)
+                        .contextMenu { Button("Move to quarantine…") { pendingRemove = selection.contains(s.id) ? chosen : [s] } }
+                }
                     .listStyle(.inset(alternatesRowBackgrounds: true))
                     .overlay {
                         if rows.isEmpty {
@@ -50,18 +56,25 @@ struct SkillsView: View {
                     SkillDetail(skill: s, confirmInstall: $confirmInstall).id(s.id).frame(width: 440)
                 }
             }
+            if !selection.isEmpty { Divider(); actionBar }
             footnote
         }
         .navigationTitle("Skills")
         .searchable(text: $query, prompt: "Search skills")
-        .task { await store.loadSkills(); if let r = store.requestedSkill { selection = r; store.requestedSkill = nil } }
-        .onChange(of: store.requestedSkill) { _, r in if let r { selection = r; store.requestedSkill = nil } }
+        .task { await store.loadSkills(); if let r = store.requestedSkill { selection = [r]; store.requestedSkill = nil } }
+        .onChange(of: store.requestedSkill) { _, r in if let r { selection = [r]; store.requestedSkill = nil } }
         .confirmationDialog("Install NVIDIA SkillSpector?", isPresented: $confirmInstall, titleVisibility: .visible) {
             Button("Install") { Task { notice = await store.installScanner() } }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This runs \(SkillScanner.installCommand). It downloads SkillSpector \(SkillScanner.pinnedRef) and its dependencies from the internet, and Python 3.12 if you don't have it. AI Keeper does not bundle it. Needs uv.")
         }
+        .confirmationDialog(removeTitle, isPresented: Binding(get: { pendingRemove != nil }, set: { if !$0 { pendingRemove = nil } }), titleVisibility: .visible) {
+            Button("Move to quarantine") { remove(permanent: false) }
+            Button("Delete permanently", role: .destructive) { remove(permanent: true) }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text(removeMessage) }
+        .sheet(isPresented: $showRemoved) { QuarantineSheet().environmentObject(store) }
         .alert("SkillSpector", isPresented: Binding(get: { notice != nil }, set: { if !$0 { notice = nil } })) { Button("OK") {} } message: { Text(notice ?? "") }
     }
 
@@ -70,10 +83,14 @@ struct SkillsView: View {
             Picker("", selection: $filter) { Text("All").tag(0); Text("Worth a look").tag(1); Text("Not scanned").tag(2) }
                 .pickerStyle(.segmented).frame(width: 290).labelsHidden()
             Picker("", selection: $tool) { ForEach(tools, id: \.self) { Text($0).tag($0) } }.frame(width: 140).labelsHidden()
+            Button("Select high risk") { selection = Set(rows.filter { verdict($0) == .danger }.map(\.id)) }
+                .disabled(!rows.contains { verdict($0) == .danger }).help("Selects every skill rated Do not install, so you can read them and remove them together")
             Spacer()
+            if !store.quarantinedSkills.isEmpty { Button("Removed (\(store.quarantinedSkills.count))") { showRemoved = true }.help("Skills you took out of use. You can restore them.") }
             if let p = store.skillScanProgress {
                 ProgressView(value: Double(p.done), total: Double(max(p.total, 1))).frame(width: 120)
                 Text("Scanning \(p.done) of \(p.total)").font(.callout).foregroundStyle(.secondary).monospacedDigit()
+                Button("Stop") { store.stopSkillScan() }.help("Stops the scan. Finished skills keep their result.")
             } else {
                 Text("\(count) skills").font(.callout).foregroundStyle(.secondary)
                 Button(unscanned.isEmpty ? "Rescan all" : "Scan \(unscanned.count) new") {
@@ -83,6 +100,34 @@ struct SkillsView: View {
                 .help(store.skillScanner == nil ? "Install SkillSpector first" : "Scans skills that are new or changed. Unchanged ones keep their result.")
             }
         }.padding(.horizontal, 16).padding(.vertical, 10)
+    }
+
+    private var actionBar: some View {
+        HStack(spacing: 12) {
+            Text("\(selection.count) selected").font(.callout.weight(.medium))
+            Button("Clear") { selection = [] }.controlSize(.small)
+            Spacer()
+            Text("Moves them to a quarantine you can restore from").font(.caption).foregroundStyle(.secondary)
+            Button("Remove…", role: .destructive) { pendingRemove = chosen }
+        }.padding(.horizontal, 16).padding(.vertical, 8).background(.quaternary.opacity(0.4))
+    }
+
+    private var removeTitle: String { let n = SkillRemoval.plan(pendingRemove ?? []).removable.count; return n == 0 ? "Nothing here can be removed" : "Remove \(n) skill\(n == 1 ? "" : "s")?" }
+
+    private var removeMessage: String {
+        let plan = SkillRemoval.plan(pendingRemove ?? [])
+        var m = plan.removable.prefix(6).map(\.name).joined(separator: ", ") + (plan.removable.count > 6 ? " and \(plan.removable.count - 6) more" : "")
+        m += ". They are moved to a quarantine, with the links other tools use, and Removed lets you restore them. Scanner findings are heuristics, so check the ones you are unsure about first."
+        if !plan.skipped.isEmpty { m += " Left alone: \(plan.skipped.count) (plugin or project skills, which are not removed from here)." }
+        return m
+    }
+
+    private func remove(permanent: Bool) {
+        guard let list = pendingRemove else { return }
+        let r = store.removeSkills(list, permanent: permanent)
+        selection = []
+        notice = r.failed == 0 ? "Removed \(r.done) skill\(r.done == 1 ? "" : "s")." + (permanent ? "" : " Restore them from Removed.") : "Removed \(r.done), \(r.failed) failed."
+        Task { await store.loadSkills() }
     }
 
     private var scannerBanner: some View {
@@ -231,5 +276,39 @@ struct IssueCard: View {
                 Text("\(issue.severity.capitalized) · \(issue.rule) · \(Int(issue.confidence * 100))%").font(.caption).foregroundStyle(.secondary).lineLimit(1)
             }
         }
+    }
+}
+
+struct QuarantineSheet: View {
+    @EnvironmentObject var store: Store
+    @Environment(\.dismiss) private var dismiss
+    @State private var error: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Removed skills").font(.title3.weight(.semibold))
+                    Text("Restoring puts the folder, and the links other tools use, back where they were.").font(.callout).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
+            }.padding(20)
+            Divider()
+            List(store.quarantinedSkills) { q in
+                HStack(spacing: 12) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(q.name)
+                        Text("Removed \(q.removedAt.formatted(.relative(presentation: .named)))" + (q.topFinding.map { " · \($0)" } ?? "")).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                    Spacer()
+                    Button("Restore") { error = store.restoreSkill(q); Task { await store.loadSkills() } }
+                    Button("Delete…", role: .destructive) { store.deleteQuarantined(q) }
+                }
+            }
+            .overlay { if store.quarantinedSkills.isEmpty { ContentUnavailableView("Nothing removed", systemImage: "checkmark.shield") } }
+            if let error { Text(error).font(.callout).foregroundStyle(.red).padding(12) }
+        }
+        .frame(width: 560, height: 420)
     }
 }

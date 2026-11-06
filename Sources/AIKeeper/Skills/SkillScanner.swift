@@ -24,6 +24,44 @@ enum SkillScanner {
     }
     static func uv() -> String? { search("uv") }
 
+    /// 1 normal, 2 warning, 4 critical: how hard the Mac is working to find memory.
+    static func memoryPressure() -> Int {
+        var level: Int32 = 0
+        var size = MemoryLayout<Int32>.size
+        return sysctlbyname("kern.memorystatus_vm_pressure_level", &level, &size, nil, 0) == 0 ? Int(level) : 1
+    }
+    /// Each scanner is a Python process of a few hundred MB. On a Mac that is already short of memory, two at once make it worse for everything.
+    static var lowMemory: Bool { memoryPressure() >= 2 }
+    static var suggestedConcurrency: Int { lowMemory ? 1 : 2 }
+    static let lowMemoryNote = "This Mac is short on memory, so scanning will be slow. Scanning one at a time. Finished results are kept if you stop."
+
+    // MARK: Stopping a scan
+
+    /// Lets a scan be stopped from outside: Esc in the dashboard, Ctrl-C, quitting the app. Stopping ends the scanner
+    /// processes too, so nothing keeps running in the background.
+    final class ScanToken: @unchecked Sendable {
+        private let lock = NSLock()
+        private var processes: [Process] = []
+        private var _cancelled = false
+        private var _current: [String] = []
+        var cancelled: Bool { lock.lock(); defer { lock.unlock() }; return _cancelled }
+        var current: [String] { get { lock.lock(); defer { lock.unlock() }; return _current } set { lock.lock(); _current = newValue; lock.unlock() } }
+        fileprivate func register(_ p: Process) -> Bool { lock.lock(); defer { lock.unlock() }; if _cancelled { return false }; processes.append(p); return true }
+        fileprivate func forget(_ p: Process) { lock.lock(); processes.removeAll { $0 === p }; lock.unlock() }
+        func cancel() {
+            lock.lock(); _cancelled = true; let running = processes; lock.unlock()
+            for p in running where p.isRunning { p.terminate() }
+            SkillScanner.forget(self)
+        }
+    }
+
+    private nonisolated(unsafe) static var tokens: [ScanToken] = []
+    private static let tokensLock = NSLock()
+    static func track(_ t: ScanToken) { tokensLock.lock(); tokens.append(t); tokensLock.unlock() }
+    fileprivate static func forget(_ t: ScanToken) { tokensLock.lock(); tokens.removeAll { $0 === t }; tokensLock.unlock() }
+    /// Called when the app or the dashboard exits.
+    static func cancelAll() { tokensLock.lock(); let all = tokens; tokensLock.unlock(); all.forEach { $0.cancel() } }
+
     // MARK: Running a process safely
 
     struct Result { var status: Int32; var out: Data; var err: String; var timedOut: Bool }
@@ -39,12 +77,14 @@ enum SkillScanner {
         return env
     }
 
-    static func run(_ exe: String, _ args: [String], timeout: TimeInterval, maxOutput: Int = 24 << 20) -> Result {
+    static func run(_ exe: String, _ args: [String], timeout: TimeInterval, maxOutput: Int = 24 << 20, token: ScanToken? = nil) -> Result {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: exe)
         p.arguments = args
         p.environment = cleanEnvironment(for: exe)
-        p.qualityOfService = .background
+        // Utility, not background: a scan is something you are waiting for. At background priority a busy Mac starves the
+        // scanner almost completely (throttled disk, near-zero CPU), which looks exactly like a freeze.
+        p.qualityOfService = .utility
         p.standardInput = FileHandle.nullDevice
         let out = Pipe(), err = Pipe()
         p.standardOutput = out; p.standardError = err
@@ -59,6 +99,8 @@ enum SkillScanner {
         let done = DispatchSemaphore(value: 0)
         p.terminationHandler = { _ in done.signal() }
         do { try p.run() } catch { return Result(status: -1, out: Data(), err: "Couldn't start: \(error.localizedDescription)", timedOut: false) }
+        if let token, !token.register(p) { p.terminate(); return Result(status: -1, out: Data(), err: "Stopped.", timedOut: false) }
+        defer { token?.forget(p) }
         var timedOut = false
         if done.wait(timeout: .now() + timeout) == .timedOut { timedOut = true; p.terminate(); _ = done.wait(timeout: .now() + 3); if p.isRunning { kill(p.processIdentifier, SIGKILL) } }
         out.fileHandleForReading.readabilityHandler = nil; err.fileHandleForReading.readabilityHandler = nil
@@ -85,8 +127,9 @@ enum SkillScanner {
     }
 
     /// Scans one skill folder. Always the real path: SkillSpector refuses symlinks on purpose.
-    static func scan(_ skill: SkillInfo, binary: String) -> Swift.Result<SkillScan, ScanError> {
-        let r = run(binary, ["scan", skill.realPath, "--no-llm", "--format", "json"], timeout: 240)
+    static func scan(_ skill: SkillInfo, binary: String, token: ScanToken? = nil) -> Swift.Result<SkillScan, ScanError> {
+        let r = run(binary, ["scan", skill.realPath, "--no-llm", "--format", "json"], timeout: 240, token: token)
+        if token?.cancelled == true { return .failure(.failed("Stopped.")) }
         if r.timedOut { return .failure(.failed("The scan took more than four minutes and was stopped.")) }
         // Exit 0 and 1 both mean the scan finished (1 = risky); 2 is an error.
         guard r.status == 0 || r.status == 1 else { return .failure(.failed(r.err.isEmpty ? "SkillSpector exited with \(r.status)." : r.err)) }
@@ -95,7 +138,12 @@ enum SkillScanner {
     }
 
     static func parse(_ data: Data, signature: String) -> SkillScan? {
-        guard let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any], let ra = o["risk_assessment"] as? [String: Any] else { return nil }
+        guard let o = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        return parse(object: o, signature: signature)
+    }
+
+    static func parse(object o: [String: Any], signature: String) -> SkillScan? {
+        guard let ra = o["risk_assessment"] as? [String: Any] else { return nil }
         let issues: [SkillIssue] = (o["issues"] as? [[String: Any]] ?? []).prefix(300).map { i in
             let loc = i["location"] as? [String: Any]
             return SkillIssue(rule: Sanitize.line(i["id"] as? String ?? "?", max: 24), category: Sanitize.line(i["category"] as? String ?? "", max: 80),
@@ -124,20 +172,81 @@ enum SkillScanner {
         return s
     }
 
-    /// Scans skills with a little parallelism, at low priority. `onResult` is called for each as it finishes.
-    static func scanAll(_ skills: [SkillInfo], binary: String, concurrency: Int = 3, onResult: @escaping (SkillInfo, Swift.Result<SkillScan, ScanError>, Int) -> Void) {
+    // MARK: Batches
+
+    /// Starting Python once per skill is most of a scan's cost. SkillSpector can scan a folder of skills in one process, so
+    /// small skills are copied into a temporary folder (symlinks stay symlinks) and scanned together. Anything that doesn't
+    /// come back cleanly is scanned on its own, so batching can only make a scan faster, never less complete.
+    private static let batchSize = 8
+    private static let maxBatchedBytes: Int64 = 30 << 20
+
+    private static func scanBatch(_ skills: [SkillInfo], binary: String, token: ScanToken) -> [String: SkillScan] {
+        let fm = FileManager.default
+        guard let stage = try? fm.url(for: .itemReplacementDirectory, in: .userDomainMask, appropriateFor: URL(fileURLWithPath: NSTemporaryDirectory()), create: true) else { return [:] }
+        defer { try? fm.removeItem(at: stage) }
+        var staged: [String: SkillInfo] = [:]
+        for (i, sk) in skills.enumerated() {
+            let name = String(format: "s%03d", i)
+            guard Skills.copy(sk.realPath, to: stage.appendingPathComponent(name).path) else { continue }
+            staged[name] = sk
+        }
+        guard staged.count > 1 else { return [:] }
+        let r = run(binary, ["scan", stage.path, "--recursive", "--max-skills", "\(max(staged.count, 2))", "--no-llm", "--format", "json"], timeout: 120 + Double(staged.count) * 30, token: token)
+        guard !token.cancelled, r.status == 0 || r.status == 1, !r.timedOut,
+              let o = try? JSONSerialization.jsonObject(with: r.out) as? [String: Any], let entries = o["skills"] as? [[String: Any]] else { return [:] }
+        var out: [String: SkillScan] = [:]
+        for e in entries {
+            guard let path = e["path"] as? String, let skill = staged[(path as NSString).lastPathComponent.trimmingCharacters(in: CharacterSet(charactersIn: "/"))] ?? staged[path.replacingOccurrences(of: "/", with: "")],
+                  let scan = parse(object: e, signature: skill.signature) else { continue }
+            out[skill.realPath] = scan
+        }
+        return out
+    }
+
+    /// Scans skills in the background at low priority. `onResult` is called for each as it finishes. Stop it with `token.cancel()`.
+    static func scanAll(_ skills: [SkillInfo], binary: String, concurrency: Int = SkillScanner.suggestedConcurrency, token: ScanToken = ScanToken(), onResult: @escaping (SkillInfo, Swift.Result<SkillScan, ScanError>, Int) -> Void) {
+        track(token)
+        defer { forget(token) }
         let queue = OperationQueue()
         queue.maxConcurrentOperationCount = max(1, concurrency)
-        queue.qualityOfService = .background
+        queue.qualityOfService = .utility
         let lock = NSLock()
         var done = 0
-        for s in skills {
+        func report(_ s: SkillInfo, _ r: Swift.Result<SkillScan, ScanError>) {
+            guard !token.cancelled else { return }
+            lock.lock(); done += 1; let n = done; lock.unlock()
+            onResult(s, r, n)
+        }
+        let small = skills.filter { $0.bytes <= maxBatchedBytes && $0.files <= 2000 }
+        let large = skills.filter { $0.bytes > maxBatchedBytes || $0.files > 2000 }
+        var groups: [[SkillInfo]] = stride(from: 0, to: small.count, by: batchSize).map { Array(small[$0..<min($0 + batchSize, small.count)]) }
+        groups += large.map { [$0] }
+        for group in groups {
             queue.addOperation {
-                let r = scan(s, binary: binary)
-                lock.lock(); done += 1; let n = done; lock.unlock()
-                onResult(s, r, n)
+                guard !token.cancelled else { return }
+                token.current = group.map(\.name)
+                var results = group.count > 1 ? scanBatch(group, binary: binary, token: token) : [:]
+                for s in group {
+                    guard !token.cancelled else { return }
+                    if let r = results.removeValue(forKey: s.realPath) { report(s, .success(r)) }
+                    else { token.current = [s.name]; report(s, scan(s, binary: binary, token: token)) }   // not in the batch report: scan it alone
+                }
             }
         }
         queue.waitUntilAllOperationsAreFinished()
+    }
+}
+
+/// Small file helpers for staging.
+enum Skills {
+    /// Copies a folder, keeping symlinks as symlinks (`ditto`), so a skill is scanned exactly as it is on disk.
+    static func copy(_ from: String, to: String) -> Bool {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+        p.arguments = [from, to]
+        p.standardOutput = FileHandle.nullDevice; p.standardError = FileHandle.nullDevice
+        do { try p.run() } catch { return false }
+        p.waitUntilExit()
+        return p.terminationStatus == 0
     }
 }

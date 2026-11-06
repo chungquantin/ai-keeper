@@ -82,7 +82,7 @@ enum TTY {
         tcsetattr(STDIN_FILENO, TCSANOW, &raw)
         write("\u{1B}[?1049h\u{1B}[?25l\u{1B}[2J")   // alternate screen, hide cursor
         active = true
-        for sig in [SIGINT, SIGTERM, SIGHUP] { signal(sig) { _ in TTY.leave(); exit(130) } }
+        for sig in [SIGINT, SIGTERM, SIGHUP] { signal(sig) { _ in SkillScanner.cancelAll(); TTY.leave(); exit(130) } }
     }
 
     static func leave() {

@@ -108,12 +108,20 @@ def pump(t=0.6):
             try: buf += os.read(fd, 65536)
             except OSError: return
 def send(b, t=0.6): os.write(fd, b); pump(t)
-pump(2.5)
-send(b"\r", 1.0)            # Workspaces
-send(b"a", 0.4)             # select every safe workspace
-send(b"x", 1.0)             # confirm screen
-send(b"p", 0.4)             # permanent
-send(b"y", 3.0)             # run
+def waitfor(needle, timeout=40):
+    # Wait for the screen itself rather than guessing a delay: a busy Mac starts slowly.
+    global buf
+    end = time.time() + timeout
+    while time.time() < end:
+        if needle.encode() in buf: return True
+        pump(0.2)
+    return False
+waitfor("Recently removed")
+send(b"\r", 0.3); waitfor("Deprecated")            # Workspaces
+send(b"a", 0.3)             # select every safe workspace
+send(b"x", 0.3); waitfor("Confirm removal")          # confirm screen
+send(b"p", 0.3)             # permanent
+send(b"y", 0.3); waitfor("Freed")                    # run
 send(b" ", 0.6)             # result: any key
 send(b"\x1b", 0.5)          # back to home
 send(b"q", 0.8)             # quit
@@ -167,7 +175,96 @@ check "unchanged skills are not rescanned" '[ "$(wc -l < "$WORK/scans.log" | tr 
 echo '# edited' >> "$SK/real/pdf-kit/SKILL.md"; "$K" skills scan pdf-kit >/dev/null 2>&1
 check "a changed skill is scanned again"   '[ "$(wc -l < "$WORK/scans.log" | tr -d " ")" = "$((N1 + 1))" ]'
 check "scanner install needs --yes"        '"$K" skills scanner install | grep -q "Dry run" || "$K" skills scanner install | grep -q "already installed"'
+
+# Removing skills: reversible by default, links included, and never outside the skills folders.
+"$K" skills scan --all >/dev/null 2>&1
+check "remove: a dry run changes nothing"   '"$K" skills remove --risk danger >/dev/null 2>&1; [ -d "$SK/real/shady" ] && [ -L "$SK/other/shady" ]'
+"$K" skills remove --risk danger --yes >/dev/null 2>&1
+check "remove: folder and links are gone"   '[ ! -e "$SK/real/shady" ] && [ ! -L "$SK/other/shady" ] && [ -d "$SK/real/pdf-kit" ]'
+check "remove: only the risky one went"     '"$K" skills --json | python3 -c "import sys,json; assert [x[\"name\"] for x in json.load(sys.stdin)] == [\"pdf-kit\"]"'
+check "remove: kept in quarantine"          '"$K" skills removed --json | python3 -c "import sys,json; d=json.load(sys.stdin); assert len(d) == 1 and d[0][\"name\"] == \"shady\" and d[0][\"verdict\"] == \"danger\""'
+"$K" skills restore shady >/dev/null 2>&1
+check "restore: folder and link are back"   '[ -d "$SK/real/shady" ] && [ -L "$SK/other/shady" ] && [ "$(readlink "$SK/other/shady")" = "$SK/real/shady" ]'
+check "restore: nothing left quarantined"   '"$K" skills removed --json | python3 -c "import sys,json; assert json.load(sys.stdin) == []"'
+check "remove: refuses what is not a skill" '[ "$(code "$K" skills remove /tmp --yes)" = 2 ] && [ -d /tmp ]'
+check "remove: needs something to remove"   '[ "$(code "$K" skills remove)" = 2 ]'
+"$K" skills remove shady --yes --permanent >/dev/null 2>&1
+check "remove --permanent deletes for good" '[ ! -e "$SK/real/shady" ] && "$K" skills removed --json | python3 -c "import sys,json; assert json.load(sys.stdin) == []"'
 unset AIKEEPER_SKILL_ROOTS AIKEEPER_SKILLSPECTOR OPENAI_API_KEY
+
+# A slow scan must not freeze the dashboard: it shows progress, keys keep working, Esc stops it, and no scanner is left running.
+SL="$WORK/slow"; mkdir -p "$SL/roots/a" "$SL/roots/b" "$SL/roots/c"
+for n in a b c; do printf -- '---\nname: slow-%s\ndescription: x\n---\n' "$n" > "$SL/roots/$n/SKILL.md"; done
+cat > "$SL/slowspector" <<'STUB'
+#!/bin/bash
+echo $$ >> "$(dirname "$0")/pids"
+sleep 60
+STUB
+chmod +x "$SL/slowspector"
+SLOW_OUT="$(AIKEEPER_SKILL_ROOTS="$SL/roots" AIKEEPER_SKILLSPECTOR="$SL/slowspector" python3 - "$K" <<'PY'
+import os, pty, select, struct, fcntl, termios, sys, time
+k = sys.argv[1]
+pid, fd = pty.fork()
+if pid == 0:
+    os.environ["TERM"] = "xterm-256color"
+    os.execv(k, [k])
+fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", 34, 120, 0, 0))
+buf = b""
+def pump(t=0.6):
+    global buf
+    end = time.time() + t
+    while time.time() < end:
+        r, _, _ = select.select([fd], [], [], 0.1)
+        if r:
+            try: buf += os.read(fd, 65536)
+            except OSError: return
+def send(b, t=0.6): os.write(fd, b); pump(t)
+def waitfor(needle, timeout=40):
+    # Wait for the screen itself rather than guessing a delay: a busy Mac starts slowly.
+    global buf
+    end = time.time() + timeout
+    while time.time() < end:
+        if needle.encode() in buf: return True
+        pump(0.2)
+    return False
+waitfor("Recently removed")
+send(b"c", 0.3); waitfor("Worth a look")      # Skills
+send(b"S", 0.3); waitfor("Scanning 0/3")      # scan every skill, in the background
+mark = len(buf)
+send(b"j", 1.0)          # keys must still work: this has to redraw
+redrew = len(buf) > mark
+send(b"\x1b", 0.3); waitfor("Stopping")       # Esc stops the scan
+pump(2.0)
+send(b"\x1b", 0.6)       # back to home
+send(b"q", 1.0)          # quit
+try: _, status = os.waitpid(pid, 0)
+except ChildProcessError: status = 0
+text = buf.decode("utf-8", "replace")
+print("EXIT=%d" % (os.WEXITSTATUS(status) if os.WIFEXITED(status) else 99))
+print("SAW_PROGRESS" if "Scanning 0/3" in text or "Scanning 1/3" in text else "NO_PROGRESS")
+print("RESPONSIVE" if redrew else "FROZEN")
+print("SAW_STOP" if ("Stopping" in text or "Stopped after" in text) else "NO_STOP")
+print("RESTORED" if "\x1b[?1049l" in text else "NOT_RESTORED")
+PY
+)"
+sleep 1
+ALIVE=0; for p in $(cat "$SL/pids" 2>/dev/null); do kill -0 "$p" 2>/dev/null && ALIVE=$((ALIVE + 1)); done
+check "scan: dashboard shows progress"     'echo "$SLOW_OUT" | grep -q SAW_PROGRESS'
+check "scan: keys work while scanning"     'echo "$SLOW_OUT" | grep -q RESPONSIVE'
+check "scan: esc stops it"                 'echo "$SLOW_OUT" | grep -q SAW_STOP'
+check "scan: dashboard exits cleanly"      'echo "$SLOW_OUT" | grep -q "EXIT=0" && echo "$SLOW_OUT" | grep -q RESTORED'
+check "scan: no scanner left running"      '[ -s "$SL/pids" ] && [ "$ALIVE" = 0 ]'
+
+# Ctrl-C on `keeper skills scan` stops the scanners and exits 130.
+: > "$SL/pids"; rm -f "$SL/exit"
+( AIKEEPER_SKILL_ROOTS="$SL/roots" AIKEEPER_SKILLSPECTOR="$SL/slowspector" "$K" skills scan --all >/dev/null 2>&1; echo $? > "$SL/exit" ) &
+for _ in $(seq 1 60); do [ -s "$SL/pids" ] && break; sleep 0.5; done
+pkill -INT -f "$BINDIR/keeper skills scan" 2>/dev/null
+for _ in $(seq 1 40); do [ -f "$SL/exit" ] && break; sleep 0.5; done
+sleep 1
+ALIVE2=0; for p in $(cat "$SL/pids" 2>/dev/null); do kill -0 "$p" 2>/dev/null && ALIVE2=$((ALIVE2 + 1)); done
+check "ctrl-c: exits 130"                  '[ "$(cat "$SL/exit" 2>/dev/null)" = 130 ]'
+check "ctrl-c: no scanner left running"    '[ -s "$SL/pids" ] && [ "$ALIVE2" = 0 ]'
 
 # The app's own binary name must open the window, not behave like the command. (Opening the app is what broke in 0.2.0 and 0.2.1.)
 cp "$BIN" "$BINDIR/AIKeeper"   # a case-insensitive disk would treat aikeeper and AIKeeper as one file; argv[0] keeps the case typed

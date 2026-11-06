@@ -152,6 +152,9 @@ enum Fmt {
     static func iso(_ d: Date?) -> String? { d.map { ISO8601DateFormatter().string(from: $0) } }
     static func tilde(_ p: String) -> String { p.hasPrefix(home) ? "~" + p.dropFirst(home.count) : p }
 
+    /// m:ss, for things you watch tick.
+    static func clock(_ t: TimeInterval) -> String { String(format: "%d:%02d", Int(t) / 60, Int(t) % 60) }
+
     static func duration(_ t: TimeInterval) -> String {
         let s = Int(t)
         if s >= 86_400 { return "\(s / 86_400)d \(s % 86_400 / 3600)h" }

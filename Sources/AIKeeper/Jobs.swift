@@ -348,6 +348,8 @@ struct JobMenuLine: View {
 // MARK: - Quit guard
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    func applicationWillTerminate(_ notification: Notification) { SkillScanner.cancelAll() }   // no scanner keeps running after the app quits
+
     /// Quitting mid-delete leaves a half-removed folder, so ask first.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard let store = Store.current else { return .terminateNow }

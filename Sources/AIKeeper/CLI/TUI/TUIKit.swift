@@ -41,7 +41,7 @@ final class TUI {
 
     func run() {
         TTY.enter()
-        defer { TTY.leave() }
+        defer { SkillScanner.cancelAll(); TTY.leave() }
         draw()
         var lastTick = Date(), lastSize = TTY.size
         while !quit, let screen = stack.last {

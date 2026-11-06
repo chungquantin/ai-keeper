@@ -84,6 +84,8 @@ final class Store: ObservableObject {
     @Published var skillsLoaded = false
     @Published var requestedSkill: String?
     @Published var skillInstalling = false
+    var skillScanToken: SkillScanner.ScanToken?
+    @Published var quarantinedSkills: [QuarantinedSkill] = []
     @Published var codexLimits: CodexLimits?
     var agentStates: [Int32: AgentState] = [:]
     var lastAgentKey: [String] = []
