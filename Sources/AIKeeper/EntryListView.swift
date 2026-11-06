@@ -16,7 +16,7 @@ struct EntryListView: View {
         case .deprecated: list = list.filter { $0.kind == .workspace && $0.verdict != .active }
         case .tool(let s): list = list.filter { ($0.kind == .workspace || $0.kind == .repo) && $0.sources.contains(s) }
         case .leftovers: list = list.filter { $0.kind != .workspace }
-        case .overview, .agents, .usage, .disk, .vault, .sessions, .dedupe, .containers, .memory, .integrations: break
+        case .overview, .agents, .usage, .disk, .vault, .sessions, .dedupe, .containers, .memory, .skills, .integrations: break
         }
         if !showStale { list = list.filter { $0.verdict != .dangling } }
         if !search.isEmpty {

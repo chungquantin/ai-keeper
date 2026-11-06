@@ -29,6 +29,7 @@ enum TUILauncher {
             var o = Library.Outcome(); o.freed = 11_400_000_000; o.done = Array(Library.entries().prefix(5))
             screen = ResultScreen(mode: .removeWorkspaces, outcome: o, count: 5, onClose: {})
         case "agents": screen = AgentsScreen()
+        case "skills": screen = SkillsScreen()
         case "system": screen = SystemScreen()
         case "usage": screen = UsageScreen()
         case "disk": screen = DiskScreen()
@@ -47,7 +48,7 @@ extension StatusCommands {
         usage: ["keeper ui", "keeper", "", "  Arrow keys or j/k to move, enter to open, space to select, esc to go back, q to quit.",
                 "  Every screen shows its keys on the bottom line.", "",
                 "  keeper ui --snapshot <screen> [--size 120x34] [--select N]   Print one frame and exit (for docs and tests)",
-                "  screens: home workspaces leftovers confirm progress result agents system usage disk vault"],
+                "  screens: home workspaces leftovers confirm progress result agents skills system usage disk vault"],
         valueOptions: ["snapshot", "size", "select"],
         run: { a in
             if let name = a.value("snapshot") {

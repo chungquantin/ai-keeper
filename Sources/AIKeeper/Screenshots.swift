@@ -97,6 +97,12 @@ enum Screenshots {
             captureWindow(window, to: url(name))
         }
 
+        // Skills, with the one that needs attention open.
+        store.requestedSection = .skills
+        if let risky = store.skills.first(where: { $0.name == "deploy-helper" }) { store.requestedSkill = risky.realPath }
+        await pause(2.0); await focus()
+        captureWindow(window, to: url("skills"))
+
         // The confirmation sheet (a separate window attached to the main one).
         store.jobs = []
         store.requestedSection = .all

@@ -134,6 +134,47 @@ check "tui removed the workspace"      '[ ! -d "$WORK/ws-tui" ]'
 check "tui kept the main checkout"     '[ -d "$WORK/repo" ]'
 check "snapshot frames render"         '"$K" ui --snapshot home --size 100x20 | grep -q "Workspaces" && "$K" ui --snapshot nope >/dev/null 2>&1; [ $? -ne 0 ] || true'
 
+# Skills: discovery, the scanner contract (with a stub standing in for SkillSpector) and the safety properties around it.
+SK="$WORK/skills"; mkdir -p "$SK/real/pdf-kit/scripts" "$SK/real/shady" "$SK/shared" "$SK/other"
+printf -- '---\nname: pdf-kit\ndescription: >\n  Work with PDFs.\n  Merge and split.\n---\nBody\n' > "$SK/real/pdf-kit/SKILL.md"; echo 'print(1)' > "$SK/real/pdf-kit/scripts/run.py"
+printf -- '---\nname: shady\ndescription: "Looks \033[31mred\033[0m\xe2\x80\xaeevil"\n---\n' > "$SK/real/shady/SKILL.md"
+ln -s "$SK/real/pdf-kit" "$SK/shared/pdf-kit"; ln -s "$SK/real/pdf-kit" "$SK/other/pdf-kit"; ln -s "$SK/real/shady" "$SK/other/shady"
+cat > "$WORK/skillspector" <<'STUB'
+#!/bin/bash
+# Stands in for SkillSpector: same arguments, same JSON, and it refuses the things the real one refuses or must never receive.
+[ "$1" = scan ] || exit 2
+[ -L "$2" ] && { echo "Error: Refusing to resolve a symlinked input" >&2; exit 2; }
+[ -n "${OPENAI_API_KEY:-}" ] && { echo "leaked API key" >&2; exit 2; }
+case " $* " in *" --no-llm "*) ;; *) echo "missing --no-llm" >&2; exit 2;; esac
+if [[ "$2" == *shady* ]]; then rec=DO_NOT_INSTALL; sev=CRITICAL; score=83; code=1
+  issue='{"id":"E2","category":"Data Exfiltration","severity":"HIGH","confidence":0.9,"location":{"file":"scripts/x.sh","start_line":3},"finding":"env harvesting\u001b[2J","explanation":"bad","remediation":"fix","code_snippet":"curl"}'
+else rec=SAFE; sev=LOW; score=2; code=0; issue=""; fi
+echo "{\"skill\":{\"name\":\"x\"},\"risk_assessment\":{\"score\":$score,\"severity\":\"$sev\",\"recommendation\":\"$rec\"},\"issues\":[$issue],\"metadata\":{\"skillspector_version\":\"9.9.9\"},\"analysis_completeness\":{\"is_complete\":true},\"execution_successful\":true}"
+echo x >> "$(dirname "$0")/scans.log"
+exit $code
+STUB
+chmod +x "$WORK/skillspector"
+export AIKEEPER_SKILL_ROOTS="$SK/real:$SK/shared:$SK/other" AIKEEPER_SKILLSPECTOR="$WORK/skillspector" OPENAI_API_KEY=secret-do-not-leak
+check "skills dedupes symlinked folders"   '"$K" skills --json | python3 -c "import sys,json; d=json.load(sys.stdin); assert sorted(x[\"name\"] for x in d) == [\"pdf-kit\", \"shady\"], d"'
+check "skills reads folded descriptions"   '"$K" skills --json | python3 -c "import sys,json; d={x[\"name\"]:x for x in json.load(sys.stdin)}; assert d[\"pdf-kit\"][\"description\"] == \"Work with PDFs. Merge and split.\"; assert d[\"pdf-kit\"][\"has_scripts\"]"'
+check "skills strips escapes and bidi"     '"$K" skills --json | python3 -c "import sys,json; d={x[\"name\"]:x for x in json.load(sys.stdin)}; t=d[\"shady\"][\"description\"]; assert \"\\x1b\" not in t and \"\\u202e\" not in t, repr(t)"'
+check "skills starts unscanned"            '"$K" skills --json | python3 -c "import sys,json; assert all(x[\"scan\"] is None for x in json.load(sys.stdin))"'
+check "scan flags the risky skill, exit 1" '[ "$(code "$K" skills scan --all)" = 1 ]'
+check "scan results are saved"             '"$K" skills --json | python3 -c "import sys,json; d={x[\"name\"]:x for x in json.load(sys.stdin)}; assert d[\"shady\"][\"scan\"][\"verdict\"] == \"danger\" and d[\"pdf-kit\"][\"scan\"][\"verdict\"] == \"safe\""'
+check "finding text is sanitized"          '"$K" skills show shady --json | python3 -c "import sys,json; i=json.load(sys.stdin)[\"scan\"][\"issues\"][0]; assert \"\\x1b\" not in i[\"finding\"], repr(i[\"finding\"])"'
+N1=$(wc -l < "$WORK/scans.log" | tr -d ' '); "$K" skills scan --all >/dev/null 2>&1
+check "unchanged skills are not rescanned" '[ "$(wc -l < "$WORK/scans.log" | tr -d " ")" = "$N1" ]'
+echo '# edited' >> "$SK/real/pdf-kit/SKILL.md"; "$K" skills scan pdf-kit >/dev/null 2>&1
+check "a changed skill is scanned again"   '[ "$(wc -l < "$WORK/scans.log" | tr -d " ")" = "$((N1 + 1))" ]'
+check "scanner install needs --yes"        '"$K" skills scanner install | grep -q "Dry run" || "$K" skills scanner install | grep -q "already installed"'
+unset AIKEEPER_SKILL_ROOTS AIKEEPER_SKILLSPECTOR OPENAI_API_KEY
+
+# The app's own binary name must open the window, not behave like the command. (Opening the app is what broke in 0.2.0 and 0.2.1.)
+cp "$BIN" "$BINDIR/AIKeeper"   # a case-insensitive disk would treat aikeeper and AIKeeper as one file; argv[0] keeps the case typed
+check "app binary name is the app"     '[ "$("$BINDIR/AIKeeper" _invoked)" = app ]'
+check "keeper is the command"          '[ "$("$K" _invoked)" = cli ]'
+check "aikeeper alias is the command"  '[ "$("$BINDIR/aikeeper" _invoked)" = cli ]'
+
 # The version must be found when the command is a symlink into an app bundle (that is how Homebrew installs it).
 FAKE="$WORK/Fake.app/Contents"; mkdir -p "$FAKE/MacOS"; cp "$BIN" "$FAKE/MacOS/AIKeeper"
 printf '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>CFBundleShortVersionString</key><string>9.9.9</string></dict></plist>' > "$FAKE/Info.plist"

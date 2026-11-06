@@ -34,6 +34,7 @@ struct Summary {
     var scanDate: Date?
     var vaultCount = 0
     var health: Int?
+    var skillCount = 0, skillsScanned = 0, skillsToReview = 0
 
     static func load(withAgents: Bool = true) -> Summary {
         var s = Summary()
@@ -44,6 +45,11 @@ struct Summary {
         if withAgents { s.agents = Library.agents().filter { $0.kind != .mcp } }
         (s.today, s.week) = StatusCommands.spend(StatusCommands.cachedUsage() ?? UsageData())
         s.vaultCount = Vault.list().count
+        let skills = SkillLibrary.skills(), cache = SkillScanner.loadCache()
+        s.skillCount = skills.count
+        let verdicts = skills.map { SkillLibrary.verdict($0, cache) }
+        s.skillsScanned = verdicts.filter { $0 != .unscanned }.count
+        s.skillsToReview = verdicts.filter { $0 == .caution || $0 == .danger }.count
         return s
     }
 }
@@ -56,7 +62,7 @@ final class HomeScreen: Screen {
     var keys: [(String, String)] { [("↑↓", "move"), ("enter", "open"), ("r", "rescan"), ("q", "quit")] }
     private var summary: Summary
     private var cursor = 0
-    private let items: [(String, String)] = [("Workspaces", "w"), ("Leftovers", "l"), ("Agents", "a"), ("AI usage", "u"), ("Disk map", "d"), ("System", "s"), ("Recently removed", "v")]
+    private let items: [(String, String)] = [("Workspaces", "w"), ("Leftovers", "l"), ("Agents", "a"), ("Skills", "k"), ("AI usage", "u"), ("Disk map", "d"), ("System", "s"), ("Recently removed", "v")]
 
     init(summary: Summary = .load()) { self.summary = summary }
 
@@ -70,9 +76,12 @@ final class HomeScreen: Screen {
         case 0: return st.removable.isEmpty ? "Nothing is waiting to be removed" : "\(st.removable.count) safe to remove · " + A.paint(Fmt.size(removable), A.amber)
         case 1: return leftovers > 0 ? A.paint(Fmt.size(leftovers), A.amber) + " of old chat history and caches" : "Nothing left behind"
         case 2: let n = summary.agents.filter { $0.state == .needsInput }.count; return "\(summary.agents.count) running" + (n > 0 ? " · " + A.paint("\(n) need you", A.violet) : "")
-        case 3: return "\(Fmt.usd(summary.today)) today · \(Fmt.usd(summary.week)) this week"
-        case 4: return "Where the space went, and the biggest folders"
-        case 5: return "CPU, memory, disk and the heaviest apps"
+        case 3:
+            let n = summary.skillCount, bad = summary.skillsToReview
+            return n == 0 ? "No skills found" : "\(n) installed" + (summary.skillsScanned == 0 ? " · not scanned yet" : bad > 0 ? " · " + A.paint("\(bad) worth a look", A.violet) : " · all scanned look safe")
+        case 4: return "\(Fmt.usd(summary.today)) today · \(Fmt.usd(summary.week)) this week"
+        case 5: return "Where the space went, and the biggest folders"
+        case 6: return "CPU, memory, disk and the heaviest apps"
         default: return summary.vaultCount == 0 ? "Nothing saved" : "\(summary.vaultCount) snapshots you can bring back"
         }
     }
@@ -120,9 +129,10 @@ final class HomeScreen: Screen {
         case 0: ui.push(WorkspacesScreen(onChange: { [weak self] in self?.summary = .load() }))
         case 1: ui.push(LeftoversScreen(onChange: { [weak self] in self?.summary = .load() }))
         case 2: ui.push(AgentsScreen())
-        case 3: ui.push(UsageScreen())
-        case 4: ui.push(DiskScreen())
-        case 5: ui.push(SystemScreen())
+        case 3: ui.push(SkillsScreen())
+        case 4: ui.push(UsageScreen())
+        case 5: ui.push(DiskScreen())
+        case 6: ui.push(SystemScreen())
         default: ui.push(VaultScreen(onChange: { [weak self] in self?.summary = .load() }))
         }
     }

@@ -226,7 +226,7 @@ struct AIKeeperApp: App {
 }
 
 enum Section: Hashable {
-    case overview, all, deprecated, tool(Source), leftovers, agents, usage, disk, vault, sessions, dedupe, containers, memory, integrations
+    case overview, all, deprecated, tool(Source), leftovers, agents, usage, disk, vault, sessions, dedupe, containers, memory, skills, integrations
 
     var title: String {
         switch self {
@@ -243,6 +243,7 @@ enum Section: Hashable {
         case .dedupe: "Duplicates"
         case .containers: "Containers"
         case .memory: "System"
+        case .skills: "Skills"
         case .integrations: "Tools"
         }
     }
@@ -261,6 +262,7 @@ enum Section: Hashable {
         case .dedupe: "square.on.square"
         case .containers: "shippingbox"
         case .memory: "gauge.with.dots.needle.67percent"
+        case .skills: "checkmark.shield"
         case .integrations: "puzzlepiece.extension"
         }
     }
@@ -287,6 +289,7 @@ struct RootView: View {
             case .dedupe: DedupView(model: store.dedup)
             case .containers: DockerView()
             case .memory: SystemView()
+            case .skills: SkillsView()
             case .integrations: ToolsView()
             case let s: EntryListView(section: s).id(s)
             }
@@ -386,10 +389,17 @@ struct SidebarView: View {
                 row(.vault, badge: store.vault.isEmpty ? nil : "\(store.vault.count)")
             }
             SwiftUI.Section("Setup") {
+                row(.skills, badge: skillsBadge)
                 row(.integrations, badge: "\(store.enabledTools.count) on")
             }
         }
         .listStyle(.sidebar)
+    }
+
+    private var skillsBadge: String? {
+        guard !store.skills.isEmpty else { return nil }
+        let review = store.skills.filter { let v = SkillLibrary.verdict($0, store.skillScans); return v == .caution || v == .danger }.count
+        return review > 0 ? "\(review) to review" : "\(store.skills.count)"
     }
 
     private func row(_ s: Section, badge: String?, accent: Bool = false) -> some View {

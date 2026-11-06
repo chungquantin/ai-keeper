@@ -50,7 +50,7 @@ enum SafetyCommands {
 }
 
 enum SetupCommands {
-    static var all: [Command] { [tools, config, install, completions, mcp, cleanArtifacts, demoExport] }
+    static var all: [Command] { [tools, config, install, completions, mcp, cleanArtifacts, demoExport, invoked] }
 
     static let tools = Command(
         name: "tools", aliases: ["integrations"], group: "Setup", summary: "Which agent tools AI Keeper looks at: detect, enable, disable",
@@ -177,4 +177,9 @@ enum SetupCommands {
             }
             Out.line("Wrote demo data to \(Persist.dir.path)"); return 0
         })
+
+    /// Prints whether this binary was started under a command name. The tests use it to prove that the app's own name opens the window.
+    static let invoked = Command(
+        name: "_invoked", group: "Hidden", summary: "Test helper", usage: ["keeper _invoked"],
+        run: { _ in Out.line(CLI.invokedAsCLI ? "cli" : "app"); return 0 })
 }

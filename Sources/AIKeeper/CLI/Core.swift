@@ -200,14 +200,16 @@ enum CLI {
 
     static var all: [Command] {
         StatusCommands.all + WorkspaceCommands.all + CleanCommands.all + AgentCommands.all + UsageCommands.all
-            + DiskCommands.all + SystemCommands.all + SafetyCommands.all + SetupCommands.all
+            + SkillCommands.all + DiskCommands.all + SystemCommands.all + SafetyCommands.all + SetupCommands.all
     }
 
     /// The same binary is the app, `keeper` and `aikeeper`. Run by the command names it is linked as, it never opens the window.
-    static var invokedAsCLI: Bool {
-        let n = ((CommandLine.arguments.first ?? "") as NSString).lastPathComponent.lowercased()
+    /// The comparison is case-sensitive on purpose: the app's own binary is `AIKeeper`, and it must open the window.
+    static func isCLIName(_ argv0: String) -> Bool {
+        let n = (argv0 as NSString).lastPathComponent
         return n == "keeper" || n == "aikeeper"
     }
+    static var invokedAsCLI: Bool { isCLIName(CommandLine.arguments.first ?? "") }
 
     /// True when the arguments were a CLI invocation (already handled; the caller should exit with `exitCode`).
     static func handle(_ argv: [String], exitCode: inout Int32) -> Bool {
@@ -243,7 +245,7 @@ enum CLI {
 
     static func printOverview() {
         var s = Term.bold("keeper") + "  Clean up after your coding agents. Everything the AI Keeper app does, from the terminal.\n"
-        let groups = ["Overview", "Workspaces", "Clean up", "Agents and usage", "Disk and system", "Safety nets", "Setup"]
+        let groups = ["Overview", "Workspaces", "Clean up", "Agents and usage", "Skills", "Disk and system", "Safety nets", "Setup"]
         for g in groups {
             let cmds = all.filter { $0.group == g }
             guard !cmds.isEmpty else { continue }

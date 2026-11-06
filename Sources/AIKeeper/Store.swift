@@ -76,6 +76,14 @@ final class Store: ObservableObject {
     @Published var alert: GuardAlert?
     @Published var vault: [VaultItem] = []
     @Published var sessions: [SessionInfo] = []
+    @Published var skills: [SkillInfo] = []
+    @Published var skillScans: [String: SkillScan] = [:]
+    @Published var skillErrors: [String: String] = [:]
+    @Published var skillScanner: String?
+    @Published var skillScanProgress: (done: Int, total: Int, current: String)?
+    @Published var skillsLoaded = false
+    @Published var requestedSkill: String?
+    @Published var skillInstalling = false
     @Published var codexLimits: CodexLimits?
     var agentStates: [Int32: AgentState] = [:]
     var lastAgentKey: [String] = []

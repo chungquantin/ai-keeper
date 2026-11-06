@@ -82,6 +82,8 @@ jobs:
           unzip -q "dist/AI-Keeper-${{ steps.meta.outputs.version }}.zip" -d "$RUNNER_TEMP/check"
           "$RUNNER_TEMP/check/AI Keeper.app/Contents/MacOS/AIKeeper" help
           lipo -archs "$RUNNER_TEMP/check/AI Keeper.app/Contents/MacOS/AIKeeper"
+          # It must also open: run with no arguments, as a double-click does, and check it stays running.
+          ./scripts/test-launch.sh "$RUNNER_TEMP/check/AI Keeper.app/Contents/MacOS/AIKeeper"
 
       - name: Report signing status
         run: |

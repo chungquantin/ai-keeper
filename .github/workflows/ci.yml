@@ -45,3 +45,4 @@ jobs:
           dist/AIKeeper.app/Contents/MacOS/AIKeeper help
           dist/AIKeeper.app/Contents/MacOS/AIKeeper status
           ./scripts/test-cli.sh dist/AIKeeper.app/Contents/MacOS/AIKeeper
+          ./scripts/test-launch.sh dist/AIKeeper.app/Contents/MacOS/AIKeeper

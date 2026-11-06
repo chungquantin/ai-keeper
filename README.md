@@ -16,6 +16,7 @@ Built with SwiftUI and Swift Package Manager. macOS 14 or later.
 - **Agents and usage.** Running agents with live state ("needs you"), token and cost tracking for Claude, Codex and Pi,
   budgets, and a searchable session history.
 - **System.** Health score, CPU, memory, swap, disk I/O, battery and network, sampled only while the page is open.
+- **Skills.** Every skill your agents can load (Claude Code, plugins, the shared `~/.agents` folder, Codex, Pi and more) in one list, scanned for prompt injection, data exfiltration and risky scripts with [NVIDIA SkillSpector](https://github.com/NVIDIA/SkillSpector).
 - **Agent access.** A `keeper` command for everything the app does, and an MCP server so agents can check disk space and clean their own build folders.
 
 ## Install
@@ -68,6 +69,7 @@ keeper system                              # CPU, memory, disk, network, heavies
 keeper vault restore <id>                  # bring back a removed workspace's unsaved work
 keeper dedupe --merge --yes                # replace duplicate files with APFS clones
 keeper docker prune all-safe --yes         # build cache, unused images, stopped containers
+keeper skills                              # every installed skill; `skills scan --all`, `skills show <name>`
 keeper tools                               # which agent tools are detected and enabled
 ```
 
@@ -79,11 +81,20 @@ keeper tools                               # which agent tools are detected and 
 | Agents, Sessions, AI Usage | `agents`, `sessions`, `usage` |
 | Disk Analyzer, System | `disk`, `system` |
 | Recently removed | `vault` |
+| Skills | `skills` |
 | Tools, Settings | `tools`, `config` |
 
 `keeper help <command>` shows every option. Shell completions: `keeper completions zsh|bash|fish`. Exit codes: 0 done, 1 failed or everything you named was skipped, 2 wrong usage.
 
 The same safety rules as the app apply: unsaved work is saved to the vault first, workspaces with a running agent are skipped, main checkouts are never removed, and files go to the Trash unless you pass `--permanent`.
+
+### Skills and SkillSpector
+
+Skills run with your agent's trust, and plenty of them ship scripts. The **Skills** page (and `keeper skills`) lists every skill your agents can load and scans them with NVIDIA's open-source [SkillSpector](https://github.com/NVIDIA/SkillSpector) (Apache-2.0). Each finding comes with the lines it points at, because a scanner reads a security denylist as an attack as readily as an attack: findings are heuristics, not verdicts.
+
+- AI Keeper does not bundle SkillSpector. `keeper skills scanner install --yes` (or the button) installs the reviewed release `v2.13.4` with `uv`, after showing you the exact command.
+- Scans are static (`--no-llm`): nothing in a skill goes to a language model. SkillSpector does check the dependencies a skill lists against [OSV.dev](https://osv.dev), so those package names and versions leave your Mac.
+- The scanner runs with a bare environment (no API keys), on the skill's real folder (it refuses symlinks), and results are cached until a skill's files change. `keeper skills scan` exits 1 if any skill is rated do-not-install, so it can gate a script.
 
 ### For agents
 
