@@ -94,7 +94,7 @@
   <div class="wrap hero-head">
     <h1>Your coding agents leave gigabytes behind.</h1>
     <div class="hero-side">
-      <p class="lead">AI Keeper shows which worktrees, build folders and caches Claude, Codex, Conductor and other agents left on your Mac, which are safe to delete, and clears them in the background.</p>
+      <p class="lead">AI Keeper shows which worktrees, build folders and caches Claude, Codex, Conductor and other agents left on your Mac, which are safe to delete, and clears them in the background. Use the Mac app, or the <code>keeper</code> command in your terminal.</p>
       <div class="hero-actions">
         <a class="btn btn-primary" href="https://github.com/chungquantin/ai-keeper/releases/download/v0.2.1/AI-Keeper-0.2.1.zip" data-download>Download for macOS</a>
         <a class="link" href="#install">Install with Homebrew</a>
@@ -103,8 +103,31 @@
     </div>
   </div>
   <div class="stage">
-    <div class="wrap">
+    <div class="wrap duo">
       <div class="win win-lg rise"><img src="assets/overview.webp" width="1800" height="1297" alt="The AI Keeper overview: 108 GB you can get back, a bar showing where disk space goes, and the biggest folders with Clean buttons."></div>
+      <!-- terminal-hero:start -->
+<div class="term term-hero" role="img" aria-label="The keeper dashboard: 107.9 GB you can get back drawn as large numerals, where it comes from, and a numbered menu."><div class="term-bar"><span>home</span></div><pre aria-hidden="true"> <span style="color:rgb(238,238,238);background:rgb(37,69,245);font-weight:700"> keeper </span><span style="color:rgb(138,147,161)">  </span>                                        <span style="font-weight:700">612.4 GB</span><span style="color:rgb(138,147,161)"> free </span><span style="color:rgb(116,146,255)">━━━━</span><span style="color:rgb(138,147,161);opacity:.55">──────</span> 
+
+   <span style="color:rgb(245,166,36)">▄█  █▀█ ▀▀█     █▀█ </span>
+   <span style="color:rgb(245,166,36)"> █  █ █  ▄▀     ▀▀█ </span>  <span style="font-weight:700">GB</span>
+   <span style="color:rgb(245,166,36)">▄█▄ █▄█  █   ▄  ▄▄█ </span>  <span style="color:rgb(138,147,161)">you can get back</span>
+   <span style="color:rgb(138,147,161)">scanned just now</span>
+
+   <span style="color:rgb(138,147,161);opacity:.55">──</span><span style="font-weight:700"> where it comes from </span><span style="color:rgb(138,147,161);opacity:.55">───────────────────────────────────────────────</span>
+   build folders  <span style="color:rgb(245,166,36)">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>    63.7 GB
+   workspaces     <span style="color:rgb(245,166,36)">━━━━━━━━━━━━━</span><span style="color:rgb(138,147,161);opacity:.55">─────────────────</span>    26.9 GB<span style="color:rgb(138,147,161)">  7 safe to remov</span>
+   leftovers      <span style="color:rgb(245,166,36)">━━━━━━━━</span><span style="color:rgb(138,147,161);opacity:.55">──────────────────────</span>    17.3 GB
+
+   <span style="color:rgb(138,147,161);opacity:.55">──</span><span style="font-weight:700"> go to </span><span style="color:rgb(138,147,161);opacity:.55">─────────────────────────────────────────────────────────────</span>
+<span style="background:rgb(36,40,52)">   </span><span style="color:rgb(138,147,161);background:rgb(36,40,52)">1</span><span style="background:rgb(36,40,52)">  </span><span style="background:rgb(36,40,52);font-weight:700">Workspaces        </span><span style="background:rgb(36,40,52)">7 safe to remove, </span><span style="color:rgb(245,166,36);background:rgb(36,40,52)">26.9 GB</span><span style="background:rgb(36,40,52)">                         </span>
+   <span style="color:rgb(138,147,161)">2</span>  Leftovers         <span style="color:rgb(245,166,36)">17.3 GB</span> of old chat history and caches
+   <span style="color:rgb(138,147,161)">3</span>  Agents            5 running, <span style="font-weight:700">1 waiting for you</span>
+   <span style="color:rgb(138,147,161)">4</span>  Skills            10 installed, <span style="font-weight:700">3 worth a look</span>
+   <span style="color:rgb(138,147,161)">5</span>  AI usage          $6.32 today, $168.24 this week
+   <span style="color:rgb(138,147,161)">6</span>  Disk map          where the space went
+   <span style="color:rgb(138,147,161)">7</span>  System            cpu, memory, disk, the heaviest apps
+ <span style="color:rgb(116,146,255)">↑↓</span><span style="color:rgb(138,147,161)"> move</span>   <span style="color:rgb(116,146,255)">enter</span><span style="color:rgb(138,147,161)"> open</span>   <span style="color:rgb(116,146,255)">r</span><span style="color:rgb(138,147,161)"> rescan</span>   <span style="color:rgb(116,146,255)">q</span><span style="color:rgb(138,147,161)"> quit</span></pre></div>
+<!-- terminal-hero:end -->
     </div>
   </div>
 </section>
@@ -190,47 +213,86 @@
   <div class="wrap">
     <div class="wide-head">
       <h2>Everything the app does, from your terminal.</h2>
-      <p class="prose">Run <code>keeper</code> for an interactive dashboard, or use any command in a script. Every command can print JSON, and anything that deletes is a dry run until you add <code>--yes</code>. Homebrew installs it with the app.</p>
+      <p class="prose">Run <code>keeper</code> for the dashboard, or use any command in a script. Anything that deletes is a preview until you add <code>--yes</code>, and files go to the Trash. Homebrew installs it with the app.</p>
     </div>
+    <dl class="cmds">
+      <div><dt>keeper status</dt><dd>Disk, what you can reclaim, running agents, spend.</dd></div>
+      <div><dt>keeper workspaces --deprecated</dt><dd>What is no longer needed, biggest first.</dd></div>
+      <div><dt>keeper remove --all-safe</dt><dd>Preview, then add --yes. Unsaved work is saved first.</dd></div>
+      <div><dt>keeper skills scan --all</dt><dd>Check every skill your agents can load, with NVIDIA SkillSpector.</dd></div>
+      <div><dt>keeper skills remove --risk danger</dt><dd>Quarantine the risky ones. Restore any of them later.</dd></div>
+      <div><dt>keeper agents</dt><dd>What is running, what it costs, and stop one.</dd></div>
+      <div><dt>keeper usage --by model</dt><dd>Spend by model, tool, day or project.</dd></div>
+      <div><dt>keeper disk explore ~/Library</dt><dd>See what is inside any folder, biggest first.</dd></div>
+    </dl>
     <!-- terminal:start -->
-<figure class="term-fig"><figcaption>Select what goes, with the reason beside it.</figcaption><div class="term term-lg" role="img" aria-label="The keeper dashboard on the Workspaces screen. Three safe workspaces are selected, and a preview on the right explains why the highlighted one can go."><div class="term-bar"><i></i><i></i><i></i><span>keeper</span></div><pre aria-hidden="true"> <span style="font-weight:700">AI Keeper</span><span style="color:rgb(138,147,161)">  ›  </span>Workspaces                                                                                            <span style="color:rgb(138,147,161)">keeper 0.2.2 </span>
- <span style="color:rgb(138,147,161)"> Safe to remove </span> <span style="color:rgb(238,238,238);background:rgb(37,69,245)"> Deprecated </span> <span style="color:rgb(138,147,161)"> All </span><span style="color:rgb(138,147,161)">   sorted by size</span>
- <span style="color:rgb(138,147,161);opacity:.55">──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</span>
-<span style="color:rgb(13,13,16);background:rgb(220,224,232)"> ▸ ●  11.4 GB  Safe to remove  api-server · refactor-auth              </span><span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="font-weight:700">refactor-auth</span>
-   <span style="color:rgb(116,146,255)">●</span>   8.6 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">api-server · </span>feat-search-index          <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">api-server · refactor-auth</span>
-   <span style="color:rgb(116,146,255)">●</span>   2.9 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">web-app · </span>experiment-graphql            <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
-   <span style="color:rgb(138,147,161)">○</span>   1.4 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">web-app · </span>chore-deps-update             <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(116,146,255)">Safe to remove</span><span style="color:rgb(138,147,161)">  ·  active 2 days ago</span>
-   <span style="color:rgb(138,147,161)">○</span>   1.1 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">web-app · </span>fix-pagination-bug            <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="font-weight:700">Not needed: PR #405 merged 3 days ago</span>
-   <span style="color:rgb(138,147,161)">○</span>   900 MB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">docs-site · </span>docs-search-polish          <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">The work is on main and nothing here is unsaved. Safe</span>
-   <span style="color:rgb(138,147,161)">○</span>   600 MB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">api-server · </span>hotfix-session-timeout     <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">to remove.</span>
-                                                                       <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
-                                                                       <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Working tree </span>clean
-                                                                       <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Not pushed   </span>nothing
-                                                                       <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Versus main  </span>6 ahead · 0 behind
-                                                                       <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Pull request </span>#405 merged
-                                                                       <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
- <span style="color:rgb(138,147,161);opacity:.55">──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</span>
+<figure class="term-fig"><figcaption>Pick what goes, with the reason beside it.</figcaption><div class="term term-lg" role="img" aria-label="The keeper workspace picker. Three safe workspaces are selected, and a preview explains why the highlighted one can go."><div class="term-bar"><span>workspaces</span></div><pre aria-hidden="true"> <span style="color:rgb(238,238,238);background:rgb(37,69,245);font-weight:700"> keeper </span><span style="color:rgb(138,147,161)">  workspaces</span>                                                                              <span style="font-weight:700">612.4 GB</span><span style="color:rgb(138,147,161)"> free </span><span style="color:rgb(116,146,255)">━━━━</span><span style="color:rgb(138,147,161);opacity:.55">──────</span> 
+ <span style="color:rgb(138,147,161)">Safe to remove</span>    <span style="font-weight:700">Deprecated</span>    <span style="color:rgb(138,147,161)">All</span><span style="color:rgb(138,147,161)">   sorted by size</span>
+ <span style="color:rgb(138,147,161);opacity:.55">──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</span>
+<span style="color:rgb(116,146,255);background:rgb(36,40,52)">▌</span><span style="background:rgb(36,40,52)"> </span><span style="color:rgb(245,166,36);background:rgb(36,40,52);font-weight:700"> 11.4 GB</span><span style="background:rgb(36,40,52)"> </span><span style="color:rgb(245,166,36);background:rgb(36,40,52)">━━━━━</span><span style="background:rgb(36,40,52)">  </span><span style="color:rgb(116,146,255);background:rgb(36,40,52)">safe to remove  </span><span style="color:rgb(138,147,161);background:rgb(36,40,52)">api-server/</span><span style="background:rgb(36,40,52);font-weight:700">refactor-auth</span><span style="background:rgb(36,40,52)">           </span><span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="font-weight:700">refactor-auth</span>
+<span style="color:rgb(116,146,255)">▌</span> <span style="color:rgb(245,166,36);font-weight:700">  8.6 GB</span> <span style="color:rgb(245,166,36)">━━━━</span><span style="color:rgb(138,147,161);opacity:.55">─</span>  <span style="color:rgb(116,146,255)">safe to remove  </span><span style="color:rgb(138,147,161)">api-server/</span>feat-search-index       <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">api-server · refactor-auth</span>
+<span style="color:rgb(116,146,255)">▌</span> <span style="color:rgb(245,166,36);font-weight:700">  2.9 GB</span> <span style="color:rgb(245,166,36)">━</span><span style="color:rgb(138,147,161);opacity:.55">────</span>  <span style="color:rgb(116,146,255)">safe to remove  </span><span style="color:rgb(138,147,161)">web-app/</span>experiment-graphql         <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
+    1.4 GB <span style="color:rgb(245,166,36)">━</span><span style="color:rgb(138,147,161);opacity:.55">────</span>  <span style="color:rgb(116,146,255)">safe to remove  </span><span style="color:rgb(138,147,161)">web-app/</span>chore-deps-update          <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(116,146,255)">Safe to remove</span><span style="color:rgb(138,147,161)">  ·  active 2 days ago</span>
+    1.1 GB <span style="color:rgb(245,166,36)">━</span><span style="color:rgb(138,147,161);opacity:.55">────</span>  <span style="color:rgb(116,146,255)">safe to remove  </span><span style="color:rgb(138,147,161)">web-app/</span>fix-pagination-bug         <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="font-weight:700">Not needed: PR #405 merged 3 days ago</span>
+    900 MB <span style="color:rgb(245,166,36)">━</span><span style="color:rgb(138,147,161);opacity:.55">────</span>  <span style="color:rgb(116,146,255)">safe to remove  </span><span style="color:rgb(138,147,161)">docs-site/</span>docs-search-polish       <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">The work is on main and nothing here is unsaved.</span>
+    600 MB <span style="color:rgb(245,166,36)">━</span><span style="color:rgb(138,147,161);opacity:.55">────</span>  <span style="color:rgb(116,146,255)">safe to remove  </span><span style="color:rgb(138,147,161)">api-server/</span>hotfix-session-time…    <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Safe to remove.</span>
+                                                                     <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
+                                                                     <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Working tree </span>clean
+                                                                     <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Not pushed   </span>nothing
+                                                                     <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Versus main  </span>6 ahead · 0 behind
+                                                                     <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Pull request </span>#405 merged
+                                                                     <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
+ <span style="color:rgb(138,147,161);opacity:.55">──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</span>
  <span style="font-weight:700">3 selected</span><span style="color:rgb(138,147,161)"> · </span><span style="color:rgb(245,166,36);font-weight:700">22.9 GB</span><span style="color:rgb(138,147,161)"> can be freed   x remove · c clean build folders only · n clear</span>
- <span style="font-weight:700">space</span><span style="color:rgb(138,147,161)"> select</span><span style="color:rgb(138,147,161)">   </span><span style="font-weight:700">a</span><span style="color:rgb(138,147,161)"> all safe</span><span style="color:rgb(138,147,161)">   </span><span style="font-weight:700">x</span><span style="color:rgb(138,147,161)"> remove</span><span style="color:rgb(138,147,161)">   </span><span style="font-weight:700">c</span><span style="color:rgb(138,147,161)"> clean builds</span><span style="color:rgb(138,147,161)">   </span><span style="font-weight:700">f</span><span style="color:rgb(138,147,161)"> filter</span><span style="color:rgb(138,147,161)">   </span><span style="font-weight:700">/</span><span style="color:rgb(138,147,161)"> search</span><span style="color:rgb(138,147,161)">   </span><span style="font-weight:700">esc</span><span style="color:rgb(138,147,161)"> back</span></pre></div></figure>
-<figure class="term-fig"><figcaption>Nothing happens until you confirm. Workspaces with an agent running in them are left alone.</figcaption><div class="term" role="img" aria-label="The confirmation screen listing three workspaces to remove, 22.9 GB in total."><div class="term-bar"><i></i><i></i><i></i><span>keeper</span></div><pre aria-hidden="true"> <span style="font-weight:700">AI Keeper</span><span style="color:rgb(138,147,161)">  ›  </span>Confirm removal                                                   <span style="color:rgb(138,147,161)">keeper 0.2.2 </span>
+ <span style="color:rgb(116,146,255)">space</span><span style="color:rgb(138,147,161)"> select</span>   <span style="color:rgb(116,146,255)">a</span><span style="color:rgb(138,147,161)"> all safe</span>   <span style="color:rgb(116,146,255)">x</span><span style="color:rgb(138,147,161)"> remove</span>   <span style="color:rgb(116,146,255)">c</span><span style="color:rgb(138,147,161)"> clean builds</span>   <span style="color:rgb(116,146,255)">f</span><span style="color:rgb(138,147,161)"> filter</span>   <span style="color:rgb(116,146,255)">/</span><span style="color:rgb(138,147,161)"> search</span>   <span style="color:rgb(116,146,255)">esc</span><span style="color:rgb(138,147,161)"> back</span></pre></div></figure>
+<div class="term-pair">
+<figure class="term-fig"><figcaption>Check every skill your agents can load.</figcaption><div class="term" role="img" aria-label="The keeper skills screen: ten skills with risk ratings from NVIDIA SkillSpector, and the findings for the highlighted one."><div class="term-bar"><span>skills</span></div><pre aria-hidden="true"> <span style="color:rgb(238,238,238);background:rgb(37,69,245);font-weight:700"> keeper </span><span style="color:rgb(138,147,161)">  skills</span>                                                                                  <span style="font-weight:700">612.4 GB</span><span style="color:rgb(138,147,161)"> free </span><span style="color:rgb(116,146,255)">━━━━</span><span style="color:rgb(138,147,161);opacity:.55">──────</span> 
+ <span style="font-weight:700">All 10</span>    <span style="color:rgb(138,147,161)">Worth a look 3</span>    <span style="color:rgb(138,147,161)">Not scanned 2</span>   <span style="color:rgb(138,147,161)">Scanned with NVIDIA SkillSpector</span>
+ <span style="color:rgb(138,147,161);opacity:.55">──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</span>
+<span style="background:rgb(36,40,52)">  </span><span style="color:rgb(240,96,96);background:rgb(36,40,52);font-weight:700">do not install </span><span style="color:rgb(138,147,161);background:rgb(36,40,52)">  78</span><span style="background:rgb(36,40,52)">  </span><span style="background:rgb(36,40,52);font-weight:700">deploy-helper                 </span><span style="color:rgb(245,166,36);background:rgb(36,40,52)"> scripts</span><span style="background:rgb(36,40,52)"> </span><span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="font-weight:700">deploy-helper</span>
+  <span style="font-weight:700">review         </span><span style="color:rgb(138,147,161)">  32</span>  db-migrations                 <span style="color:rgb(245,166,36)"> scripts</span> <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Claude Code · plugin ship-it@marketplace</span>
+  <span style="font-weight:700">review         </span><span style="color:rgb(138,147,161)">  41</span>  figma-sync                    <span style="color:rgb(245,166,36)"> scripts</span> <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
+  <span style="color:rgb(116,146,255)">looks safe     </span><span style="color:rgb(138,147,161)">   0</span>  code-review                            <span style="color:rgb(138,147,161);opacity:.55"> │ </span>Build the current branch and ship it to the staging
+  <span style="color:rgb(116,146,255)">looks safe     </span><span style="color:rgb(138,147,161)">   6</span>  commit-style                           <span style="color:rgb(138,147,161);opacity:.55"> │ </span>environment.
+  <span style="color:rgb(116,146,255)">looks safe     </span><span style="color:rgb(138,147,161)">   4</span>  pdf-toolkit                   <span style="color:rgb(245,166,36)"> scripts</span> <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
+  <span style="color:rgb(116,146,255)">looks safe     </span><span style="color:rgb(138,147,161)">   0</span>  release-notes                          <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Where        </span><span style="color:rgb(138,147,161)">/Users/alex/.claude/plugins/cache/ship-it@ma</span>…
+  <span style="color:rgb(116,146,255)">looks safe     </span><span style="color:rgb(138,147,161)">   0</span>  test-writer                            <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Contents     </span>7 files, 42 KB<span style="color:rgb(245,166,36)">  has scripts</span>
+  <span style="color:rgb(138,147,161)">not scanned    </span><span style="color:rgb(138,147,161)">    </span>  docs-writer                            <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
+  <span style="color:rgb(138,147,161)">not scanned    </span><span style="color:rgb(138,147,161)">    </span>  slack-digest                  <span style="color:rgb(245,166,36)"> scripts</span> <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(240,96,96);font-weight:700">Do not install</span><span style="color:rgb(138,147,161)">  score 78/100 · 2 findings · 3 hr ago</span>
+                                                              <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
+ <span style="color:rgb(138,147,161);opacity:.55">──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</span>
+ <span style="color:rgb(138,147,161)">Findings are heuristics, not verdicts. Read the lines they point at before deciding.</span>
+ <span style="color:rgb(116,146,255)">space</span><span style="color:rgb(138,147,161)"> select</span>   <span style="color:rgb(116,146,255)">a</span><span style="color:rgb(138,147,161)"> all high risk</span>   <span style="color:rgb(116,146,255)">x</span><span style="color:rgb(138,147,161)"> remove</span>   <span style="color:rgb(116,146,255)">enter</span><span style="color:rgb(138,147,161)"> findings</span>   <span style="color:rgb(116,146,255)">s</span><span style="color:rgb(138,147,161)"> scan</span>   <span style="color:rgb(116,146,255)">S</span><span style="color:rgb(138,147,161)"> scan new</span>   <span style="color:rgb(116,146,255)">u</span><span style="color:rgb(138,147,161)"> removed</span>   <span style="color:rgb(116,146,255)">f</span><span style="color:rgb(138,147,161)"> filter</span>   <span style="color:rgb(116,146,255)">esc</span><span style="color:rgb(138,147,161)"> back</span></pre></div></figure>
+<figure class="term-fig"><figcaption>Nothing happens until you confirm.</figcaption><div class="term" role="img" aria-label="The confirmation screen listing three workspaces to remove, 22.9 GB in total."><div class="term-bar"><span>confirm</span></div><pre aria-hidden="true"> <span style="color:rgb(238,238,238);background:rgb(37,69,245);font-weight:700"> keeper </span><span style="color:rgb(138,147,161)">  confirm removal</span>                                         <span style="font-weight:700">612.4 GB</span><span style="color:rgb(138,147,161)"> free </span><span style="color:rgb(116,146,255)">━━━━</span><span style="color:rgb(138,147,161);opacity:.55">──────</span> 
 
   <span style="font-weight:700">These will be removed</span><span style="color:rgb(138,147,161)">   (3)</span>
 
-      11.4 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">api-server · </span>refactor-auth
-       8.6 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">api-server · </span>feat-search-index
-       2.9 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">web-app · </span>experiment-graphql
+      11.4 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">api-server/</span>refactor-auth
+       8.6 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">api-server/</span>feat-search-index
+       2.9 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">web-app/</span>experiment-graphql
 
     <span style="color:rgb(138,147,161)">Total</span>  <span style="color:rgb(245,166,36);font-weight:700">22.9 GB</span>
 
   <span style="color:rgb(138,147,161)">Files move to the Trash.</span><span style="color:rgb(138,147,161)"> Unsaved work is saved to the vault first.</span>
 
- <span style="font-weight:700">y</span><span style="color:rgb(138,147,161)"> do it</span><span style="color:rgb(138,147,161)">   </span><span style="font-weight:700">p</span><span style="color:rgb(138,147,161)"> permanent: off</span><span style="color:rgb(138,147,161)">   </span><span style="font-weight:700">s</span><span style="color:rgb(138,147,161)"> snapshot: on</span><span style="color:rgb(138,147,161)">   </span><span style="font-weight:700">esc</span><span style="color:rgb(138,147,161)"> cancel</span></pre></div></figure>
+ <span style="color:rgb(116,146,255)">y</span><span style="color:rgb(138,147,161)"> do it</span>   <span style="color:rgb(116,146,255)">p</span><span style="color:rgb(138,147,161)"> permanent: off</span>   <span style="color:rgb(116,146,255)">s</span><span style="color:rgb(138,147,161)"> snapshot: on</span>   <span style="color:rgb(116,146,255)">esc</span><span style="color:rgb(138,147,161)"> cancel</span></pre></div></figure>
+</div>
 <!-- terminal:end -->
-    <div class="cmd" style="margin-top:var(--s-6);max-width:none">
-      <code><span class="p">$ </span>keeper workspaces --deprecated     <span class="p"># what is no longer needed</span>
-<span class="p">$ </span>keeper remove --all-safe --yes     <span class="p"># to the Trash, unsaved work saved first</span>
-<span class="p">$ </span>keeper usage --days 7 --by model   <span class="p"># what the agents cost</span>
-<span class="p">$ </span>keeper agents stop 4182 --yes      <span class="p"># stop one that is stuck</span></code>
+    <div class="scripts">
+      <div>
+        <h3>For scripts and agents</h3>
+        <p class="prose">Every command takes <code>--json</code>. Exit codes mean something: 0 done, 1 failed or everything you named was skipped, 2 wrong usage. <code>keeper skills scan</code> exits 1 when a skill is rated do-not-install, so it can gate an install.</p>
+        <p class="prose">An MCP server lets an agent check free space and clean its own build folders.</p>
+      </div>
+      <div class="cmd" style="max-width:none">
+        <code><span class="p">$ </span>keeper status --json
+{
+  "disk": { "free_bytes": 612400000000, "low": false },
+  "reclaimable": { "total_bytes": 107900000000 },
+  "agents": { "running": 5, "need_you": 1 }
+}
+<span class="p">$ </span>claude mcp add keeper -- keeper mcp</code>
+      </div>
     </div>
   </div>
 </section>

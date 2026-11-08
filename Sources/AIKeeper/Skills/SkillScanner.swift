@@ -19,6 +19,7 @@ enum SkillScanner {
     }
 
     static func locate() -> String? {
+        if Demo.enabled { return "/opt/homebrew/bin/skillspector" }
         if let custom = ProcessInfo.processInfo.environment["AIKEEPER_SKILLSPECTOR"], FileManager.default.isExecutableFile(atPath: custom) { return custom }
         return search("skillspector")
     }
@@ -163,7 +164,10 @@ enum SkillScanner {
     // MARK: Results on disk
 
     private static let cacheLock = NSLock()
-    static func loadCache() -> [String: SkillScan] { Persist.load([String: SkillScan].self, "skill-scans.json") ?? [:] }
+    static func loadCache() -> [String: SkillScan] {
+        if Demo.enabled { return MainActor.assumeIsolated { let s = Store(); s.loadDemo(); return s.skillScans } }
+        return Persist.load([String: SkillScan].self, "skill-scans.json") ?? [:]
+    }
     static func saveCache(_ c: [String: SkillScan]) { cacheLock.lock(); Persist.save(c, "skill-scans.json"); cacheLock.unlock() }
 
     /// A saved result only counts while the skill's files are unchanged.

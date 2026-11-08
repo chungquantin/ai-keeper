@@ -3,7 +3,10 @@ import Foundation
 enum SkillLibrary {
     /// Main checkouts from the last scan: where project skills can live.
     static func projects() -> [String] { Library.entries().filter { $0.kind == .repo && $0.exists }.map(\.path) }
-    static func skills() -> [SkillInfo] { SkillCatalog.discover(projects: projects()) }
+    static func skills() -> [SkillInfo] {
+        if Demo.enabled { return MainActor.assumeIsolated { let s = Store(); s.loadDemo(); return s.skills } }   // fictional skills for screenshots
+        return SkillCatalog.discover(projects: projects())
+    }
 
     static func verdict(_ s: SkillInfo, _ cache: [String: SkillScan]) -> SkillVerdict { SkillScanner.current(s, in: cache)?.verdict ?? .unscanned }
 

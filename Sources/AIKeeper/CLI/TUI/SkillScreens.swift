@@ -66,10 +66,10 @@ final class SkillsScreen: Screen {
         for i in 0..<shown {
             let idx = list.offset + i, s = rows[idx], cur = idx == list.cursor, v = verdict(s)
             let score = SkillScanner.current(s, in: cache).map { "\($0.score)" } ?? ""
-            let mark = selected.contains(s.realPath) ? A.paint("●", A.blue) : A.paint("○", A.gray)
-            let line = " \(cur ? A.paint("▸", A.blue) : " ") \(mark) " + A.paint(Ansi.pad(v.label, 15), color(v)) + Ansi.pad(score, 4, right: true) + "  "
+            let sel = selected.contains(s.realPath)
+            let line = (sel ? A.paint("▌", A.blue) : " ") + " " + A.paint(Ansi.pad(v.label.lowercased(), 15), color(v) + (v == .danger ? A.bold : "")) + A.paint(Ansi.pad(score, 4, right: true), A.gray) + "  "
                 + (cur ? A.paint(Ansi.pad(s.name, 30), A.bold) : Ansi.pad(s.name, 30)) + A.paint(s.hasScripts ? " scripts" : "", A.amber)
-            let left = cur ? "\u{1B}[7m" + Ansi.pad(Self.plain(line), lw) + A.reset : Ansi.pad(line, lw)
+            let left = cur ? Widget.band(line, lw) : Ansi.pad(line, lw)
             out.append(split ? left + A.paint(" │ ", A.gray + A.dim) + (i < preview.count ? preview[i] : "") : left)
         }
         if split { let end = min(bodyH, preview.count); if shown < end { for i in shown..<end { out.append(Ansi.pad("", lw) + A.paint(" │ ", A.gray + A.dim) + preview[i]) } } }
@@ -308,7 +308,8 @@ final class SkillQuarantineScreen: Screen {
         list.clamp(count: items.count, visible: vis)
         for i in 0..<min(vis, max(0, items.count - list.offset)) {
             let idx = list.offset + i, q = items[idx], cur = idx == list.cursor
-            out.append("  " + (cur ? A.paint(" ▸ ", A.blue) : "   ") + A.paint(Ansi.pad(Fmt.ago(q.removedAt), 12), A.gray) + Ansi.pad(q.verdict ?? "", 9) + (cur ? A.paint(Ansi.pad(q.name, 28), A.bold) : Ansi.pad(q.name, 28)) + A.paint(q.topFinding ?? "", A.gray))
+            let row = "  " + A.paint(Ansi.pad(Fmt.ago(q.removedAt), 12), A.gray) + Ansi.pad(q.verdict ?? "", 9) + (cur ? A.paint(Ansi.pad(q.name, 28), A.bold) : Ansi.pad(q.name, 28)) + A.paint(q.topFinding ?? "", A.gray)
+            out.append(cur ? Widget.band(row, w - 2) : row)
         }
         if let a = ask { out.append(""); out.append("  " + A.paint(a.0 + "  (y/n)", A.bold + A.amber)) }
         return out

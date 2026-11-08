@@ -18,13 +18,18 @@ enum A {
 
     static var bold: String { "\u{1B}[1m" }
     static var dim: String { "\u{1B}[2m" }
-    static var blue: String { fg(116, 146, 255, 111) }       // links, safe, selection marks
+    static var underline: String { "\u{1B}[4m" }
+
+    // Four colors, each with one job. Everything else is weight and position.
+    static var blue: String { fg(116, 146, 255, 111) }      // cobalt: what you can act on
+    static var amber: String { fg(245, 166, 36, 214) }      // space you can get back
+    static var red: String { fg(240, 96, 96, 203) }         // data that would be lost
+    static var gray: String { fg(138, 147, 161, 245) }      // everything that is only context
+    static var violet: String { "\u{1B}[1m" }              // "needs a look": bold ink, no hue
+    static var sky: String { fg(116, 146, 255, 111) }
     static var cobaltBg: String { bg(37, 69, 245, 27) + "\u{1B}[38;5;255m" }
-    static var amber: String { fg(245, 166, 36, 214) }       // reclaimable space, and nothing else
-    static var red: String { fg(240, 96, 96, 203) }
-    static var gray: String { fg(138, 147, 161, 245) }
-    static var violet: String { fg(167, 139, 250, 141) }
-    static var sky: String { fg(125, 190, 250, 117) }
+    /// The row under the cursor: a faint band, not reverse video.
+    static var band: String { bg(36, 40, 52, 236) }
 
     static func paint(_ s: String, _ style: String) -> String { style + s + reset }
 }

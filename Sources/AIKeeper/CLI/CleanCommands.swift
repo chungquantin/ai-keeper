@@ -34,7 +34,7 @@ enum CleanCommands {
             if targets.isEmpty { for s in skipped { Out.note(Term.yellow("Skipped ") + s.0 + ": " + s.1) }; Out.line("Nothing to do."); return explicit && !skipped.isEmpty ? 1 : 0 }
             let rows = targets.map { e -> [Out.Cell] in
                 [Out.Cell(Fmt.size(bytes(e))), Out.Cell(mode == .removeWorkspaces ? Library.statusText(e) : "\(e.artifacts.count) folder\(e.artifacts.count == 1 ? "" : "s")", Term.dim),
-                 Out.Cell("\(e.repoName) · \(e.name)")]
+                 Out.Cell("\(e.repoName)/\(e.name)")]
             }
             Library.printPlan(title: mode == .removeWorkspaces ? "Would remove" : "Would clean build folders in", rows: rows,
                               headers: ["SIZE", mode == .removeWorkspaces ? "STATUS" : "FOLDERS", "WORKSPACE"], total: total, skipped: skipped, yes: false)

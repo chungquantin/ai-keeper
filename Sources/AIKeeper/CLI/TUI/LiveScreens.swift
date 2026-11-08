@@ -28,9 +28,9 @@ final class AgentsScreen: Screen {
             let idx = list.offset + i, a = rows[idx], cur = idx == list.cursor
             let (state, color): (String, String) = a.orphaned ? ("orphaned", A.red) : a.state == .working ? ("working", A.blue) : a.state == .needsInput ? ("needs you", A.violet) : a.state == .idle ? ("idle", A.gray) : ("running", A.gray)
             let task = a.title ?? a.cwd.map(Fmt.tilde) ?? ""
-            let line = (cur ? A.paint(" ▸ ", A.blue) : "   ") + Ansi.pad(a.kind.rawValue, 13) + A.paint(Ansi.pad("● " + state, 11), color) + Ansi.pad(String(format: "%.0f%%", a.cpu), 6, right: true)
+            let line = "  " + Ansi.pad(a.kind.rawValue, 13) + A.paint(Ansi.pad(state, 11), color) + Ansi.pad(String(format: "%.0f%%", a.cpu), 6, right: true)
                 + Ansi.pad(Fmt.size(a.rssBytes), 10, right: true) + Ansi.pad(a.cost.map(Fmt.usd) ?? "", 9, right: true) + Ansi.pad(Fmt.duration(a.elapsed), 8, right: true) + "   " + A.paint(task, cur ? "" : A.gray)
-            out.append("  " + (cur ? "\u{1B}[7m" + Ansi.pad(stripEsc(line), w - 4) + A.reset : line))
+            out.append("  " + (cur ? Widget.band(line, w - 4) : line))
         }
         out.append("")
         let needs = rows.filter { $0.state == .needsInput }.count
@@ -198,11 +198,11 @@ final class DiskScreen: Screen {
         let d = Tools.diskInfo()
         var out = ["", "  " + A.paint(Fmt.size(d.used), A.bold) + A.paint(" used  ·  \(Fmt.size(d.available)) free  ·  measured \(Fmt.ago(measured))", A.gray), ""]
         let bw = min(w - 6, 100)
-        out.append("  " + Widget.segments(m.groups.enumerated().map { (Double($1.size), colors[$0 % colors.count]) }, width: bw))
+        out.append("  " + A.paint(Widget.segments(m.groups.enumerated().map { (Double($1.size), "") }, width: bw), A.blue))
         out.append("")
         let total = max(1, m.groups.reduce(Int64(0)) { $0 + $1.size })
         for (i, g) in m.groups.enumerated() {
-            out.append("  " + A.paint("■ ", colors[i % colors.count]) + Ansi.pad(g.name, 14) + Ansi.pad(Fmt.size(g.size), 9, right: true) + A.paint(Ansi.pad(Fmt.pct(Double(g.size) / Double(total)), 6, right: true) + "   " + g.detail, A.gray))
+            out.append("  " + Widget.texture(i) + Widget.texture(i) + " " + Ansi.pad(g.name, 14) + Ansi.pad(Fmt.size(g.size), 9, right: true) + A.paint(Ansi.pad(Fmt.pct(Double(g.size) / Double(total)), 6, right: true) + "   " + g.detail, A.gray))
         }
         out.append("")
         out.append("  " + A.paint("Biggest folders", A.bold))
@@ -210,8 +210,8 @@ final class DiskScreen: Screen {
         list.clamp(count: rows.count, visible: vis)
         for i in 0..<min(vis, max(0, rows.count - list.offset)) {
             let idx = list.offset + i, hs = rows[idx], cur = idx == list.cursor
-            let line = (cur ? A.paint(" ▸ ", A.blue) : "   ") + Ansi.pad(Fmt.size(hs.size), 9, right: true) + "  " + A.paint(Ansi.pad(hs.cleanable ? "safe" : "", 6), A.blue) + Fmt.tilde(hs.path) + A.paint(hs.hint.map { "  \($0)" } ?? "", A.gray)
-            out.append("  " + (cur ? "\u{1B}[7m" + Ansi.pad(strip(line), w - 4) + A.reset : line))
+            let line = "  " + Ansi.pad(Fmt.size(hs.size), 9, right: true) + "  " + A.paint(Ansi.pad(hs.cleanable ? "safe" : "", 6), A.blue) + Fmt.tilde(hs.path) + A.paint(hs.hint.map { "  \($0)" } ?? "", A.gray)
+            out.append("  " + (cur ? Widget.band(line, w - 4) : line))
         }
         return out
     }
@@ -293,8 +293,8 @@ final class ExploreScreen: Screen {
         for i in 0..<min(vis, max(0, items.count - list.offset)) {
             let idx = list.offset + i, n = items[idx], cur = idx == list.cursor
             let size = n.size.map { Fmt.size($0) } ?? "…"
-            let line = (cur ? A.paint(" ▸ ", A.blue) : "   ") + Ansi.pad(size, 9, right: true) + "  " + Widget.bar(Double(n.size ?? 0) / mx, width: 14, color: n.hint != nil ? A.amber : A.blue) + "  " + (n.isDir ? A.paint(n.name + "/", cur ? A.bold : "") : n.name) + A.paint(n.hint.map { "   \($0)" } ?? "", A.gray)
-            out.append("  " + line)
+            let line = "  " + Ansi.pad(size, 9, right: true) + "  " + Widget.bar(Double(n.size ?? 0) / mx, width: 14, color: n.hint != nil ? A.amber : A.blue) + "  " + (n.isDir ? A.paint(n.name + "/", cur ? A.bold : "") : n.name) + A.paint(n.hint.map { "   \($0)" } ?? "", A.gray)
+            out.append("  " + (cur ? Widget.band(line, w - 4) : line))
         }
         return out
     }
@@ -334,7 +334,8 @@ final class VaultScreen: Screen {
         for i in 0..<min(vis, max(0, items.count - list.offset)) {
             let idx = list.offset + i, v = items[idx], cur = idx == list.cursor
             let holds = [v.hasBundle ? "commits" : nil, v.hasPatch ? "changes" : nil, v.hasUntracked ? "untracked" : nil].compactMap { $0 }.joined(separator: ", ")
-            out.append("  " + (cur ? A.paint(" ▸ ", A.blue) : "   ") + A.paint(Ansi.pad(Fmt.ago(v.date), 12), A.gray) + Ansi.pad(Fmt.size(v.bytes), 9, right: true) + "  " + A.paint(Ansi.pad(holds, 28), A.gray) + (cur ? A.paint(v.name, A.bold) : v.name))
+            let row = "  " + A.paint(Ansi.pad(Fmt.ago(v.date), 12), A.gray) + Ansi.pad(Fmt.size(v.bytes), 9, right: true) + "  " + A.paint(Ansi.pad(holds, 28), A.gray) + (cur ? A.paint(v.name, A.bold) : v.name)
+            out.append(cur ? Widget.band(row, w - 2) : row)
         }
         if let q = ask { out.append(""); out.append("  " + A.paint(q.0 + "  (y/n)", A.bold + A.amber)) }
         return out

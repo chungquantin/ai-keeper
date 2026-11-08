@@ -73,40 +73,53 @@ final class HomeScreen: Screen {
         let removable = st.removable.reduce(Int64(0)) { $0 + ($1.size ?? 0) }
         let leftovers = (st.orphans + st.caches).reduce(Int64(0)) { $0 + max($1.size ?? 0, 0) }
         switch i {
-        case 0: return st.removable.isEmpty ? "Nothing is waiting to be removed" : "\(st.removable.count) safe to remove · " + A.paint(Fmt.size(removable), A.amber)
-        case 1: return leftovers > 0 ? A.paint(Fmt.size(leftovers), A.amber) + " of old chat history and caches" : "Nothing left behind"
-        case 2: let n = summary.agents.filter { $0.state == .needsInput }.count; return "\(summary.agents.count) running" + (n > 0 ? " · " + A.paint("\(n) need you", A.violet) : "")
+        case 0: return st.removable.isEmpty ? "nothing is waiting to be removed" : "\(st.removable.count) safe to remove, " + A.paint(Fmt.size(removable), A.amber)
+        case 1: return leftovers > 0 ? A.paint(Fmt.size(leftovers), A.amber) + " of old chat history and caches" : "nothing left behind"
+        case 2: let n = summary.agents.filter { $0.state == .needsInput }.count; return "\(summary.agents.count) running" + (n > 0 ? ", " + A.paint("\(n) waiting for you", A.bold) : "")
         case 3:
             let n = summary.skillCount, bad = summary.skillsToReview
-            return n == 0 ? "No skills found" : "\(n) installed" + (summary.skillsScanned == 0 ? " · not scanned yet" : bad > 0 ? " · " + A.paint("\(bad) worth a look", A.violet) : " · all scanned look safe")
-        case 4: return "\(Fmt.usd(summary.today)) today · \(Fmt.usd(summary.week)) this week"
-        case 5: return "Where the space went, and the biggest folders"
-        case 6: return "CPU, memory, disk and the heaviest apps"
-        default: return summary.vaultCount == 0 ? "Nothing saved" : "\(summary.vaultCount) snapshots you can bring back"
+            return n == 0 ? "none found" : "\(n) installed" + (summary.skillsScanned == 0 ? ", not scanned yet" : bad > 0 ? ", " + A.paint("\(bad) worth a look", A.bold) : ", all scanned look safe")
+        case 4: return "\(Fmt.usd(summary.today)) today, \(Fmt.usd(summary.week)) this week"
+        case 5: return "where the space went"
+        case 6: return "cpu, memory, disk, the heaviest apps"
+        default: return summary.vaultCount == 0 ? "nothing saved" : "\(summary.vaultCount) snapshots you can bring back"
         }
     }
 
     func render(_ w: Int, _ h: Int) -> [String] {
-        let d = summary.disk, st = summary.stats
-        let inner = min(w - 4, 100)
-        var out = [""]
-        let free = d.total > 0 ? Double(d.available) / Double(d.total) : 0
-        out.append("  " + UI.label("Disk") + Widget.bar(1 - free, width: min(36, inner - 40), color: free < 0.1 ? A.red : A.blue) + "  " + "\(Fmt.size(d.available)) free" + A.paint(" of \(Fmt.size(d.total))", A.gray))
+        let st = summary.stats
+        let inner = min(w - 6, 96)
         let kept = st.keptArtifactBytes, removable = st.removable.reduce(Int64(0)) { $0 + ($1.size ?? 0) }
         let left = (st.orphans + st.caches).reduce(Int64(0)) { $0 + max($1.size ?? 0, 0) }
-        out.append("  " + UI.label("Reclaimable") + A.paint(Fmt.size(st.reclaimable), A.bold + A.amber)
-                   + A.paint("   \(Fmt.size(kept)) build folders · \(Fmt.size(removable)) in \(st.removable.count) workspaces · \(Fmt.size(left)) leftovers", A.gray))
-        out.append("  " + UI.label("Scanned") + A.paint(summary.scanDate.map { Fmt.ago($0) } ?? "never. Press r to scan", A.gray))
-        out.append("")
-        out.append("  " + Chrome.rule(min(w - 4, 100)))
-        out.append("")
-        for (i, item) in items.enumerated() {
-            let sel = i == cursor
-            let head = (sel ? A.paint(" ▸ ", A.blue) : "   ") + A.paint(item.0.padding(toLength: 18, withPad: " ", startingAt: 0), sel ? A.bold : "")
-            out.append("  " + head + subtitle(i))
+        var out = [""]
+
+        // The one big thing: how much you can get back.
+        let (num, unit) = Fmt.size(st.reclaimable).split(separator: " ").map(String.init).count == 2 ? (Fmt.size(st.reclaimable).split(separator: " ").map(String.init)[0], Fmt.size(st.reclaimable).split(separator: " ").map(String.init)[1]) : ("0", "B")
+        let big = Widget.bigNumber(num)
+        for (i, row) in big.enumerated() {
+            let tail = i == 1 ? "  " + A.paint(unit, A.bold) : i == 2 ? "  " + A.paint("you can get back", A.gray) : ""
+            out.append("   " + A.paint(row, A.amber) + tail)
         }
+        out.append("   " + A.paint(summary.scanDate.map { "scanned \(Fmt.ago($0))" } ?? "not scanned yet, press r", A.gray))
         out.append("")
-        if let d = summary.scanDate, Date().timeIntervalSince(d) > 6 * 3600 { out.append("  " + A.paint("The scan is \(Fmt.ago(d)). Press r to refresh it.", A.violet)) }
+
+        // Where it comes from, as line weights drawn to the same scale.
+        out.append("   " + Chrome.titled("where it comes from", inner))
+        let mx = Double(max(kept, removable, left, 1))
+        func ledger(_ name: String, _ bytes: Int64, _ note: String = "") {
+            out.append("   " + Ansi.pad(name, 15) + Widget.bar(Double(bytes) / mx, width: min(30, inner - 40), color: A.amber) + "  " + Ansi.pad(Fmt.size(bytes), 9, right: true) + A.paint(note.isEmpty ? "" : "  " + note, A.gray))
+        }
+        ledger("build folders", kept)
+        ledger("workspaces", removable, "\(st.removable.count) safe to remove")
+        ledger("leftovers", left)
+        out.append("")
+
+        out.append("   " + Chrome.titled("go to", inner))
+        for (i, item) in items.enumerated() {
+            let row = "   " + A.paint(String(i + 1), A.gray) + "  " + A.paint(Ansi.pad(item.0, 18), i == cursor ? A.bold : "") + subtitle(i)
+            out.append(i == cursor ? Widget.band(row, inner + 4) : row)
+        }
+        if let d = summary.scanDate, Date().timeIntervalSince(d) > 6 * 3600 { out.append(""); out.append("   " + A.paint("the scan is \(Fmt.ago(d)): press r to refresh it", A.bold)) }
         return out
     }
 
@@ -208,6 +221,7 @@ final class WorkspacesScreen: Screen {
                    + (searching || !query.isEmpty ? "   " + A.paint("/ " + query + (searching ? "▏" : ""), A.blue) : ""))
         out.append(" " + Chrome.rule(w - 2))
         let bodyH = max(3, h - 4)
+        let heaviest = rows.compactMap(\.size).max() ?? 1
         list.clamp(count: rows.count, visible: bodyH)
         let split = w >= 110
         let lw = split ? Int(Double(w) * 0.56) : w - 1
@@ -216,12 +230,13 @@ final class WorkspacesScreen: Screen {
         for i in 0..<(rows.isEmpty ? 0 : min(bodyH, rows.count - list.offset)) {
             let idx = list.offset + i, e = rows[idx]
             let isCursor = idx == list.cursor, isSel = selected.contains(e.id)
-            let mark = isSel ? A.paint("●", A.blue) : A.paint("○", A.gray)
+            let gutter = isSel ? A.paint("▌", A.blue) : " "                       // a selected row has a cobalt bar in the margin
             let danger = e.safety == .danger && !allowDanger
-            let status = A.paint(Ansi.pad(Library.statusText(e), 15), danger ? A.gray + A.dim : UI.statusStyle(e))
-            let line = " \(isCursor ? A.paint("▸", A.blue) : " ") \(e.kind == .repo ? " " : mark) " + Ansi.pad(Fmt.size(e.size ?? 0), 8, right: true) + "  " + status + " "
-                + Ansi.fit(A.paint(e.repoName + " · ", A.gray) + (isCursor ? A.paint(e.name, A.bold) : e.name), lw - 31)
-            let left = isCursor ? "\u{1B}[7m" + Ansi.pad(stripStyle(line), lw) + A.reset : Ansi.pad(line, lw)
+            let status = A.paint(Ansi.pad(Library.statusText(e).lowercased(), 16), danger ? A.gray + A.dim : UI.statusStyle(e))
+            let weight = Widget.bar(Double(e.size ?? 0) / Double(max(heaviest, 1)), width: 5, color: A.amber)   // size drawn to the scale of this list
+            let line = gutter + " " + A.paint(Ansi.pad(Fmt.size(e.size ?? 0), 8, right: true), isSel ? A.bold + A.amber : "") + " " + weight + "  " + status
+                + Ansi.fit(A.paint(e.repoName + "/", A.gray) + (isCursor ? A.paint(e.name, A.bold) : e.name), lw - 38)
+            let left = isCursor ? Widget.band(line, lw) : Ansi.pad(line, lw)
             out.append(split ? left + A.paint(" │ ", A.gray + A.dim) + (i < preview.count ? preview[i] : "") : left)
         }
         if split {   // the preview can be taller than the list when few rows match
@@ -336,9 +351,10 @@ final class LeftoversScreen: Screen {
         if items.isEmpty { out.append("  " + A.paint("Nothing left behind.", A.gray)) }
         for i in 0..<min(max(3, h - 7), max(0, items.count - list.offset)) {
             let idx = list.offset + i, e = items[idx], cur = idx == list.cursor
-            let line = " \(cur ? A.paint("▸", A.blue) : " ") " + (selected.contains(e.id) ? A.paint("●", A.blue) : A.paint("○", A.gray)) + "  " + Ansi.pad(Fmt.size(e.size ?? 0), 8, right: true) + "  "
-                + A.paint(Ansi.pad(e.kind == .cache ? "cache" : "history", 8), A.gray) + (cur ? A.paint(e.name, A.bold) : e.name) + A.paint("   " + e.note, A.gray)
-            out.append("  " + line)
+            let sel = selected.contains(e.id)
+            let line = (sel ? A.paint("▌", A.blue) : " ") + " " + A.paint(Ansi.pad(Fmt.size(e.size ?? 0), 8, right: true), sel ? A.bold + A.amber : "") + "  "
+                + A.paint(Ansi.pad(e.kind == .cache ? "cache" : "history", 9), A.gray) + (cur ? A.paint(e.name, A.bold) : e.name) + A.paint("   " + e.note, A.gray)
+            out.append("  " + (cur ? Widget.band(line, w - 4) : line))
         }
         out.append("")
         let n = selected.count, b = items.filter { selected.contains($0.id) }.reduce(Int64(0)) { $0 + ($1.size ?? 0) }
@@ -399,7 +415,7 @@ final class ConfirmScreen: Screen {
             out.append("")
             let room = max(3, h - 14 - plan.skipped.count)
             for e in plan.targets.prefix(room) {
-                out.append("    " + Ansi.pad(Fmt.size(bytes(e)), 9, right: true) + "  " + A.paint(Ansi.pad(mode == .removeWorkspaces ? Library.statusText(e) : "\(e.artifacts.count) folders", 15), UI.statusStyle(e)) + " " + A.paint(e.repoName + " · ", A.gray) + e.name)
+                out.append("    " + Ansi.pad(Fmt.size(bytes(e)), 9, right: true) + "  " + A.paint(Ansi.pad(mode == .removeWorkspaces ? Library.statusText(e) : "\(e.artifacts.count) folders", 15), UI.statusStyle(e)) + " " + A.paint(e.repoName + "/", A.gray) + e.name)
             }
             if plan.targets.count > room { out.append("    " + A.paint("and \(plan.targets.count - room) more", A.gray)) }
             out.append("")

@@ -62,6 +62,7 @@ enum Term {
     static func dim(_ s: String) -> String { sgr("2", s) }
     static func red(_ s: String) -> String { sgr("31", s) }
     static func yellow(_ s: String) -> String { sgr("33", s) }
+    static func amber(_ s: String) -> String { color ? "\u{1B}[38;2;245;166;36m\(s)\u{1B}[0m" : s }
     static func blue(_ s: String) -> String { sgr("34", s) }
 }
 
@@ -109,7 +110,7 @@ enum Out {
             let fill = String(repeating: " ", count: max(0, w - t.count))
             return rightAlign ? fill + t : t + fill
         }
-        var lines = [Term.dim(headers.enumerated().map { pad($1, widths[$0], rightAlign: right.contains($0)) }.joined(separator: String(repeating: " ", count: gap)))]
+        var lines = [Term.dim(headers.enumerated().map { pad($1.lowercased(), widths[$0], rightAlign: right.contains($0)) }.joined(separator: String(repeating: " ", count: gap)))]
         for r in rows {
             let cells = r.enumerated().map { i, c -> String in
                 let padded = pad(c.text, widths[min(i, last)], rightAlign: right.contains(i))

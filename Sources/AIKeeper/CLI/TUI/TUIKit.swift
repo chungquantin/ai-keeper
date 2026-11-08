@@ -60,33 +60,49 @@ final class TUI {
 }
 
 enum Chrome {
+    nonisolated(unsafe) private static var cachedDisk: (at: Date, info: DiskInfo)?
+
+    private static func disk() -> DiskInfo {
+        if let c = cachedDisk, Date().timeIntervalSince(c.at) < 5 { return c.info }
+        let d = Tools.diskInfo(); cachedDisk = (Date(), d); return d
+    }
+
+    /// `keeper / workspaces` on the left, and on every screen the number that matters most: how much disk is free.
     static func header(_ title: String, _ w: Int) -> String {
-        let left = " " + A.paint("AI Keeper", A.bold) + A.paint("  ›  ", A.gray) + title
-        let right = A.paint("keeper \(CLI.version) ", A.gray)
+        let path = title.lowercased().replacingOccurrences(of: "  ›  ", with: " / ")
+        let left = " " + A.paint(" keeper ", A.cobaltBg + A.bold) + A.paint("  " + (path == "overview" ? "" : path), A.gray)
+        let d = disk()
+        let used = d.total > 0 ? Double(d.total - d.available) / Double(d.total) : 0
+        let low = d.total > 0 && Double(d.available) / Double(d.total) < 0.1
+        let right = A.paint(Fmt.size(d.available), low ? A.red + A.bold : A.bold) + A.paint(" free ", A.gray) + Widget.bar(used, width: 10, color: low ? A.red : A.blue) + " "
         return left + String(repeating: " ", count: max(1, w - Ansi.width(left) - Ansi.width(right))) + right
     }
 
     static func footer(_ keys: [(String, String)], _ w: Int) -> String {
-        " " + keys.map { A.paint($0.0, A.bold) + A.paint(" " + $0.1, A.gray) }.joined(separator: A.paint("   ", A.gray))
+        " " + keys.map { A.paint($0.0, A.blue) + A.paint(" " + $0.1, A.gray) }.joined(separator: "   ")
     }
 
     static func rule(_ w: Int) -> String { A.paint(String(repeating: "─", count: max(0, w)), A.gray + A.dim) }
+
+    /// `── Biggest folders ─────────`: a rule that names the section it opens.
+    static func titled(_ title: String, _ w: Int) -> String {
+        let label = " " + title + " "
+        return A.paint("──", A.gray + A.dim) + A.paint(label, A.bold) + A.paint(String(repeating: "─", count: max(0, w - Ansi.width(label) - 2)), A.gray + A.dim)
+    }
 }
 
 enum Widget {
-    /// A horizontal gauge. The filled part carries the color, the rest is a quiet track.
+    /// A gauge drawn as line weight: `━━━━────`. The heavy part is the amount, the light part is what is left.
     static func bar(_ fraction: Double, width: Int, color: String = A.blue) -> String {
         let f = min(1, max(0, fraction.isFinite ? fraction : 0))
-        let full = Int((Double(width) * f).rounded(.down))
-        let partial = Int(((Double(width) * f) - Double(full)) * 8)
-        let eighths = ["", "▏", "▎", "▍", "▌", "▋", "▊", "▉"]
-        var s = String(repeating: "█", count: full)
-        if full < width, partial > 0 { s += eighths[partial] }
-        let used = Ansi.width(s)
-        return A.paint(s, color) + A.paint(String(repeating: "░", count: max(0, width - used)), A.gray + A.dim)
+        let full = f > 0 ? max(1, Int((Double(width) * f).rounded())) : 0
+        return A.paint(String(repeating: "━", count: min(full, width)), color) + A.paint(String(repeating: "─", count: max(0, width - full)), A.gray + A.dim)
     }
 
-    /// Stacked segments for a whole-disk map.
+    /// Halftone density, so categories differ by texture rather than by hue.
+    static let textures = ["█", "▓", "▒", "░", "·"]
+    static func texture(_ i: Int) -> String { textures[min(i, textures.count - 1)] }
+
     static func segments(_ parts: [(Double, String)], width: Int) -> String {
         let total = max(parts.reduce(0) { $0 + $1.0 }, 1)
         var out = "", used = 0
@@ -94,7 +110,7 @@ enum Widget {
             var n = Int((p.0 / total * Double(width)).rounded())
             if i == parts.count - 1 { n = width - used }
             n = max(0, min(n, width - used))
-            out += A.paint(String(repeating: "█", count: n), p.1); used += n
+            out += String(repeating: texture(i), count: n); used += n
         }
         return out
     }
@@ -104,8 +120,41 @@ enum Widget {
         return values.map { String(bars[min(7, Int($0 / top * 7.999))]) }.joined()
     }
 
+    /// Filters as plain words: the active one is underlined, the rest recede.
     static func chips(_ labels: [String], selected: Int) -> String {
-        labels.enumerated().map { i, l in i == selected ? A.paint(" \(l) ", A.cobaltBg) : A.paint(" \(l) ", A.gray) }.joined(separator: " ")
+        labels.enumerated().map { i, l in i == selected ? A.paint(l, A.bold + A.underline) : A.paint(l, A.gray) }.joined(separator: "    ")
+    }
+
+    /// A row under the cursor: the faint band holds its colors, because every reset re-applies it.
+    static func band(_ line: String, _ width: Int) -> String {
+        let fitted = Ansi.pad(line, width)
+        return A.band + fitted.replacingOccurrences(of: A.reset, with: A.reset + A.band) + A.reset
+    }
+
+    // A compact 3-row numeral from half blocks: each glyph is 3 wide by 6 pixels tall.
+    private static let glyphs: [Character: [String]] = [
+        "0": ["###", "#.#", "#.#", "#.#", "#.#", "###"], "1": [".#.", "##.", ".#.", ".#.", ".#.", "###"],
+        "2": ["###", "..#", "###", "#..", "#..", "###"], "3": ["###", "..#", ".##", "..#", "..#", "###"],
+        "4": ["#.#", "#.#", "###", "..#", "..#", "..#"], "5": ["###", "#..", "###", "..#", "..#", "###"],
+        "6": ["###", "#..", "###", "#.#", "#.#", "###"], "7": ["###", "..#", "..#", ".#.", ".#.", ".#."],
+        "8": ["###", "#.#", "###", "#.#", "#.#", "###"], "9": ["###", "#.#", "###", "..#", "..#", "###"],
+        ".": ["...", "...", "...", "...", "...", ".#."], " ": ["...", "...", "...", "...", "...", "..."],
+    ]
+
+    static func bigNumber(_ text: String) -> [String] {
+        var rows = ["", "", ""]
+        for ch in text {
+            let g = glyphs[ch] ?? glyphs[" "]!
+            for r in 0..<3 {
+                var cells = ""
+                for x in 0..<3 {
+                    let top = Array(g[r * 2])[x] == "#", bottom = Array(g[r * 2 + 1])[x] == "#"
+                    cells += top && bottom ? "█" : top ? "▀" : bottom ? "▄" : " "
+                }
+                rows[r] += cells + " "
+            }
+        }
+        return rows
     }
 }
 

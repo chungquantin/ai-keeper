@@ -119,7 +119,7 @@ def waitfor(needle, timeout=40):
 waitfor("Recently removed")
 send(b"\r", 0.3); waitfor("Deprecated")            # Workspaces
 send(b"a", 0.3)             # select every safe workspace
-send(b"x", 0.3); waitfor("Confirm removal")          # confirm screen
+send(b"x", 0.3); waitfor("confirm removal")          # confirm screen
 send(b"p", 0.3)             # permanent
 send(b"y", 0.3); waitfor("Freed")                    # run
 send(b" ", 0.6)             # result: any key
@@ -131,7 +131,7 @@ except ChildProcessError:
     status = 0
 text = buf.decode("utf-8", "replace")
 print("EXIT=%d" % (os.WEXITSTATUS(status) if os.WIFEXITED(status) else 99))
-for needle, name in [("Workspaces", "workspaces"), ("Confirm removal", "confirm"), ("Freed", "result")]:
+for needle, name in [("Workspaces", "workspaces"), ("confirm removal", "confirm"), ("Freed", "result")]:
     print(("SAW_" + name) if needle in text else ("MISSING_" + name))
 print("RESTORED" if "\x1b[?1049l" in text and "\x1b[?25h" in text else "NOT_RESTORED")
 PY

@@ -15,6 +15,12 @@ enum StatusCommands {
         return (d.rows.filter { cal.isDateInToday($0.day) }.reduce(0) { $0 + $1.cost }, d.rows.filter { $0.day >= weekStart }.reduce(0) { $0 + $1.cost })
     }
 
+    /// Line-weight gauge, the same one the dashboard draws.
+    static func gauge(_ f: Double, _ width: Int, _ style: (String) -> String) -> String {
+        let full = f > 0 ? max(1, Int((Double(width) * min(1, f)).rounded())) : 0
+        return style(String(repeating: "━", count: full)) + Term.dim(String(repeating: "─", count: max(0, width - full)))
+    }
+
     static let status = Command(
         name: "status", group: "Overview", summary: "Disk, what you can get back, agents and spend at a glance",
         usage: ["keeper status [--json]"],
@@ -44,17 +50,20 @@ enum StatusCommands {
                           "alerts": alerts, "scan_age_minutes": Library.scanDate.map { Int(Date().timeIntervalSince($0) / 60) } as Any] as [String: Any])
                 return 0
             }
-            let pctFree = disk.total > 0 ? Fmt.pct(Double(disk.available) / Double(disk.total)) : "-"
-            func row(_ k: String, _ v: String) { Out.line(Term.dim(k.padding(toLength: 12, withPad: " ", startingAt: 0)) + v) }
-            row("Disk", "\(Fmt.size(disk.available)) free of \(Fmt.size(disk.total)) (\(pctFree))" + (lowDisk ? "  " + Term.red("LOW") : ""))
-            if entries.isEmpty { row("Reclaimable", Term.dim("no scan yet, run `keeper scan`")) }
+            let usedFraction = disk.total > 0 ? Double(disk.total - disk.available) / Double(disk.total) : 0
+            func row(_ k: String, _ v: String) { Out.line(Term.dim(k.padding(toLength: 13, withPad: " ", startingAt: 0)) + v) }
+            row("disk", Term.bold(Fmt.size(disk.available)) + Term.dim(" free of \(Fmt.size(disk.total))   ") + gauge(usedFraction, 14, lowDisk ? Term.red : Term.blue) + (lowDisk ? "  " + Term.red("low") : ""))
+            if entries.isEmpty { row("reclaimable", Term.dim("no scan yet, run `keeper scan`")) }
             else {
-                row("Reclaimable", Term.bold(Fmt.size(st.reclaimable)))
-                row("", Term.dim("\(Fmt.size(st.keptArtifactBytes)) build folders · \(Fmt.size(deprecatedBytes)) in \(st.removable.count) deprecated workspaces · \(Fmt.size(leftovers)) leftovers"))
+                row("reclaimable", Term.bold(Term.amber(Fmt.size(st.reclaimable))))
+                let top = Double(max(st.keptArtifactBytes, deprecatedBytes, leftovers, 1))
+                for (name, bytes, note) in [("build folders", st.keptArtifactBytes, ""), ("workspaces", deprecatedBytes, "\(st.removable.count) safe to remove"), ("leftovers", leftovers, "")] {
+                    Out.line(String(repeating: " ", count: 13) + Term.dim(name.padding(toLength: 15, withPad: " ", startingAt: 0)) + gauge(Double(bytes) / top, 20, Term.amber) + "  " + Fmt.size(bytes) + Term.dim(note.isEmpty ? "" : "  " + note))
+                }
             }
-            row("Agents", "\(agents.count) running" + (needYou > 0 ? ", " + Term.yellow("\(needYou) need you") : ""))
-            row("Spend", "\(Fmt.usd(today)) today · \(Fmt.usd(week)) this week")
-            row("Scan", Library.scanDate.map { Fmt.ago($0) } ?? "never")
+            row("agents", "\(agents.count) running" + (needYou > 0 ? ", " + Term.bold("\(needYou) waiting for you") : ""))
+            row("spend", "\(Fmt.usd(today)) today, \(Fmt.usd(week)) this week")
+            row("scanned", Term.dim(Library.scanDate.map { Fmt.ago($0) } ?? "never"))
             for al in alerts { Out.line(); Out.line(Term.yellow("! ") + al) }
             return 0
         })
@@ -112,7 +121,7 @@ enum WorkspaceCommands {
                 return [Out.Cell(Fmt.size(e.size ?? 0)), Out.Cell(Fmt.size(e.artifactBytes), Term.dim), Out.Cell(status, style),
                         Out.Cell(e.pr.map { "#\($0.number) \($0.state.lowercased())" } ?? e.gitSummary?.text ?? "", Term.dim),
                         Out.Cell(Fmt.ago(e.lastActivity), Term.dim),
-                        Out.Cell(showPaths ? Fmt.tilde(e.path) : "\(e.repoName) · \(e.name)")]
+                        Out.Cell(showPaths ? Fmt.tilde(e.path) : "\(e.repoName)/\(e.name)")]
             }
             Out.line(Out.table(["SIZE", "BUILD", "STATUS", "GIT / PR", "ACTIVE", showPaths ? "PATH" : "WORKSPACE"], rows, right: [0, 1]))
             Out.line(Term.dim("\n\(list.count) shown · \(Fmt.size(total)) · `keeper workspace <name>` for details"))
