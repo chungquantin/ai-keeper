@@ -8,7 +8,7 @@
 <meta name="keywords" content="AI Keeper, Mac cleanup, Claude Code, Codex, Conductor, git worktree cleanup, free disk space, developer disk usage, node_modules, cargo target">
 <meta name="author" content="AI Keeper">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#0f1760">
 <meta name="color-scheme" content="light">
 <link rel="canonical" href="https://chungquantin.github.io/ai-keeper/">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -40,11 +40,9 @@
       "description": "A Mac app that finds the worktrees, build folders and caches that AI coding agents leave behind, shows what is safe to delete, and cleans it up in the background.",
       "applicationCategory": "DeveloperApplication",
       "operatingSystem": "macOS 14 or later",
-      "softwareVersion": "0.2.1",
-      "url": "https://chungquantin.github.io/ai-keeper/",
-      "downloadUrl": "https://github.com/chungquantin/ai-keeper/releases/download/v0.2.1/AI-Keeper-0.2.1.zip",
+            "url": "https://chungquantin.github.io/ai-keeper/",
+      "downloadUrl": "https://github.com/chungquantin/ai-keeper/releases/latest",
       "image": "https://chungquantin.github.io/ai-keeper/og.png",
-      "screenshot": "https://chungquantin.github.io/ai-keeper/assets/overview.webp",
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
       "codeRepository": "https://github.com/chungquantin/ai-keeper"
     },
@@ -68,317 +66,717 @@
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..700&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;500&family=Pixelify+Sans:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --night:#0f1760; --deep:#1a2a9a; --cobalt:#2f45ff; --sky:#7f93f7; --mist:#dfe5ff; --paper:#f4f6ff; --white:#fff;
+  --ink:#0c1240; --text:#2a3160; --muted:#656c93; --amber:#ffb020; --amber-d:#c27a00; --red:#ff5c5c; --line:#d5dbff;
+  --px:4px;
+  --display:"Bricolage Grotesque",system-ui,sans-serif; --pixel:"Pixelify Sans","Bricolage Grotesque",monospace; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--text);font:400 18px/1.55 var(--display);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--amber);outline-offset:3px}
+.wrap{width:min(1120px,100% - 40px);margin-inline:auto}
 
+/* pixel-notched corners: the one shape the whole system uses */
+.notch{clip-path:polygon(0 var(--px),var(--px) var(--px),var(--px) 0,calc(100% - var(--px)) 0,calc(100% - var(--px)) var(--px),100% var(--px),100% calc(100% - var(--px)),calc(100% - var(--px)) calc(100% - var(--px)),calc(100% - var(--px)) 100%,var(--px) 100%,var(--px) calc(100% - var(--px)),0 calc(100% - var(--px)))}
+.lift{filter:drop-shadow(0 6px 0 rgba(15,23,96,.14))}
+
+.btn{display:inline-flex;align-items:center;gap:10px;padding:14px 26px;font:600 17px/1 var(--display);text-decoration:none;border:0;cursor:pointer;background:var(--white);color:var(--night);--px:4px;transition:transform .12s steps(2)}
+.btn:hover{transform:translateY(-2px)}
+.btn:active{transform:translateY(1px)}
+.btn.primary{background:var(--cobalt);color:#fff}
+.btn.amber{background:var(--amber);color:var(--ink)}
+.btn.ghost{background:rgba(13,20,92,.82);color:#fff}
+
+/* ---------- nav ---------- */
+.nav{position:absolute;inset:0 0 auto;z-index:5;padding:22px 0}
+.nav .wrap{display:flex;align-items:center;gap:32px}
+.brand{display:flex;align-items:center;gap:12px;font:700 25px/1 var(--display);letter-spacing:-.02em;color:#fff;text-decoration:none}
+.brand img{width:40px;height:40px;image-rendering:pixelated}
+.nav nav{margin-left:auto;display:flex;align-items:center;gap:30px;color:#e6eaff;font-size:16px}
+.nav nav a{text-decoration:none;opacity:.9}.nav nav a:hover{opacity:1;text-decoration:underline;text-underline-offset:5px}
+
+/* ---------- hero ---------- */
+.hero{position:relative;min-height:max(1000px,100svh);overflow:hidden;background:var(--night);color:#fff}
+.hero canvas{position:absolute;left:0;top:0;image-rendering:pixelated;image-rendering:crisp-edges;image-rendering:pixelated}
+.tags{position:absolute;left:0;top:0;pointer-events:none;z-index:4}
+.tag{position:absolute;transform:translate(-50%,-100%);font:500 12px/1 var(--pixel);white-space:nowrap;background:rgba(255,255,255,.94);color:var(--ink);padding:5px 7px;--px:3px;transition:opacity .25s}
+.tag b{color:var(--amber-d);font-weight:600}
+.tag.busy{background:var(--amber)}.tag.busy b{color:var(--ink)}
+.pop{position:absolute;transform:translate(-50%,-100%);font:600 15px/1 var(--pixel);color:#fff;text-shadow:0 2px 0 var(--ink);animation:pop 1.3s steps(9) forwards}
+@keyframes pop{to{transform:translate(-50%,-190%);opacity:0}}
+.shade{position:absolute;inset:0;z-index:2;pointer-events:none;background:linear-gradient(90deg,rgba(8,13,70,.9) 0,rgba(8,13,70,.72) 34%,rgba(8,13,70,.28) 62%,transparent 80%),linear-gradient(180deg,rgba(8,13,70,.55) 0,rgba(8,13,70,.35) 45%,transparent 70%);-webkit-mask-image:linear-gradient(180deg,#000 0,#000 58%,transparent 74%);mask-image:linear-gradient(180deg,#000 0,#000 58%,transparent 74%)}
+.hero-inner{position:relative;z-index:3;padding-top:104px;pointer-events:none}
+.hero-inner>*{pointer-events:auto}
+h1{font:800 clamp(38px,4.8vw,66px)/.98 var(--display);letter-spacing:-.04em;max-width:13.5em;text-wrap:balance;text-shadow:0 2px 24px rgba(8,13,70,.55)}
+.lead{margin-top:18px;max-width:34em;font-size:clamp(16px,1.25vw,18px);color:#eef1ff;text-shadow:0 1px 14px rgba(8,13,70,.7)}
+.lead code{font:500 .86em var(--mono);background:rgba(255,255,255,.14);padding:2px 7px}
+.install{margin-top:22px;max-width:640px}
+.tabs{display:flex;gap:2px}
+.tabs button{font:500 14px/1 var(--mono);padding:13px 17px;border:0;background:transparent;color:#aebaff;cursor:pointer}
+.tabs button[aria-selected=true]{background:rgba(13,20,92,.9);color:#fff}
+.code{display:flex;align-items:flex-start;gap:16px;background:rgba(13,20,92,.9);padding:14px 18px;font:400 13px/1.65 var(--mono);color:#fff;min-height:64px}
+.code pre{flex:1;white-space:pre-wrap;word-break:break-all;font:inherit;margin:0}
+.code .p{color:#7f93f7;user-select:none}
+.code button,.code a.get{flex:none;font:500 13px/1 var(--mono);color:#aebaff;background:transparent;border:0;cursor:pointer;padding:6px;text-decoration:none}
+.code button:hover,.code a.get:hover{color:#fff}
+.fine{margin-top:12px;font-size:13.5px;color:#dfe5ff;display:inline-block;background:rgba(13,20,92,.78);padding:8px 12px}
+.hud{position:absolute;right:max(20px,calc((100% - 1120px)/2));bottom:88px;z-index:5;white-space:nowrap;display:flex;align-items:center;gap:12px;font:500 14px/1 var(--pixel);background:rgba(255,255,255,.94);color:var(--ink);padding:10px 14px;--px:4px}
+.hint{position:absolute;left:max(20px,calc((100% - 1120px)/2));bottom:88px;z-index:3;font:500 13px/1 var(--pixel);background:var(--amber);color:var(--ink);padding:9px 12px;--px:4px;animation:nudge 1.6s steps(2) infinite;pointer-events:none}
+@keyframes nudge{50%{transform:translateY(-3px)}}
+.hero canvas{cursor:pointer}
+.tag.wait{background:#dfe5ff}
+.tag.wait::before{content:'#' attr(data-q) ' ';color:var(--cobalt);font-weight:600}
+.hud i{display:block;width:96px;height:10px;background:var(--mist);position:relative}
+.hud i b{position:absolute;inset:0 auto 0 0;background:var(--cobalt);width:50%;transition:width .3s steps(8)}
+.hud strong{font-weight:600;min-width:5.2em}
+.hud em{font-style:normal;color:var(--amber-d)}
+
+/* ---------- sections ---------- */
+section{position:relative}
+.sec{padding:120px 0}
+.sec h2{font:800 clamp(34px,4.4vw,58px)/1 var(--display);letter-spacing:-.035em;max-width:13em;text-wrap:balance;color:var(--ink)}
+.sec .sub{margin-top:20px;max-width:32em;color:var(--text)}
+.split{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:64px;align-items:start}
+.works{padding:44px 0 0;font-size:17px;color:var(--muted)}
+.works b{font-weight:600;color:var(--ink)}
+.dither{height:24px;--c:var(--night);background-repeat:repeat-x;background-size:8px 8px;
+  background-image:conic-gradient(var(--c) 25%,transparent 0),conic-gradient(var(--c) 25%,transparent 0 50%,var(--c) 0 75%,transparent 0),conic-gradient(transparent 25%,var(--c) 0);
+  background-position:0 0,0 8px,0 16px}
+.dither.up{transform:scaleY(-1)}
+
+/* picker */
+.picker{background:var(--white);padding:26px 26px 22px;--px:6px}
+.picker h3{font:600 15px/1 var(--pixel);color:var(--muted);margin-bottom:12px;display:flex;justify-content:space-between}
+.row{display:grid;grid-template-columns:28px 78px minmax(0,1fr) 150px;gap:14px;align-items:center;padding:14px 4px;border-top:2px solid var(--paper);cursor:pointer}
+.row:first-of-type{border-top:0}
+.row .box{width:22px;height:22px;border:3px solid var(--ink);background:#fff;display:grid;place-items:center}
+.row[aria-checked=true] .box{background:var(--cobalt)}
+.row[aria-checked=true] .box::after{content:"";width:8px;height:8px;background:#fff}
+.row.locked{cursor:not-allowed;opacity:.62}
+.row.locked .box{border-color:var(--muted);background:var(--paper)}
+.row .sz{font:600 17px/1 var(--pixel);color:var(--ink);text-align:right}
+.row .nm{min-width:0}
+.row .nm strong{display:block;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .nm span{font-size:14.5px;color:var(--muted);display:block}
+.row .bar{height:10px;background:var(--mist);position:relative}
+.row .bar i{position:absolute;inset:0 auto 0 0;background:var(--amber)}
+.row.locked .bar i{background:var(--red)}
+.row.gone{animation:gone .7s steps(7) forwards;pointer-events:none}
+@keyframes gone{40%{opacity:.8;filter:contrast(1.8)}100%{opacity:0;transform:translateX(26px);height:0;padding:0;border:0}}
+.pbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:14px;padding-top:18px;border-top:2px solid var(--paper)}
+.pbar .tot{font:600 24px/1 var(--pixel);color:var(--ink)}
+.pbar .tot small{display:block;font:500 13px/1 var(--display);color:var(--muted);margin-bottom:6px}
+.pbar .tot.done{color:var(--cobalt)}
+.pbar button.btn[disabled]{opacity:.4;cursor:not-allowed;transform:none}
+.undo{background:none;border:0;font:500 15px/1 var(--display);color:var(--cobalt);text-decoration:underline;text-underline-offset:4px;cursor:pointer;margin-left:12px}
+
+/* terminal */
+.dark{background:var(--night);color:#e6eaff}
+.dark h2{color:#fff}.dark .sub{color:#c3ccff}
+.term-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.term-tabs button{font:500 14px/1 var(--mono);padding:11px 15px;border:0;color:#c3ccff;background:rgba(255,255,255,.08);cursor:pointer;--px:3px}
+.term-tabs button[aria-selected=true]{background:var(--amber);color:var(--ink)}
+.term{background:#090f3f;--px:6px}
+.term .bar{display:flex;gap:6px;padding:12px 16px;background:#141f7a}
+.term .bar i{width:10px;height:10px;background:#3f55e8}
+.term .bar span{margin-left:8px;font:500 12px/10px var(--mono);color:#aebaff}
+.term pre{font:400 14px/1.55 var(--mono);color:#dfe5ff;padding:20px 22px 26px;min-height:360px;overflow-x:auto;white-space:pre}
+.term .c{color:#7f93f7}.term .a{color:var(--amber)}.term .g{color:#7d86bd}.term .r{color:#ff8484}.term .b{font-weight:500;color:#fff}.term .u{color:var(--amber);font-weight:500}
+.caret{display:inline-block;width:.6em;height:1.1em;background:var(--amber);vertical-align:-.18em;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.cmds{margin-top:34px;display:grid;grid-template-columns:1fr 1fr;gap:6px 36px;font-size:16px}
+.cmds div{padding:12px 0;border-top:1px solid rgba(255,255,255,.14)}
+.cmds dt{font:500 14px/1.4 var(--mono);color:#fff}
+.cmds dd{color:#aebaff;margin-top:3px;font-size:15px}
+.scriptnote{margin-top:26px;font-size:16px;color:#aebaff;max-width:44em}
+.scriptnote code{font:500 .86em var(--mono);color:#fff;background:rgba(255,255,255,.1);padding:2px 7px}
+
+/* history */
+.chart{background:#fff;padding:28px 28px 22px;margin-top:44px;--px:6px}
+.chart .head{display:flex;align-items:baseline;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.chart .total{font:700 46px/1 var(--pixel);color:var(--ink)}
+.chart .total small{font:500 18px/1 var(--display);color:var(--muted);margin-left:10px}
+.months,.grid{display:grid;grid-auto-flow:column;gap:3px}
+.months{margin-top:22px;height:18px;font:500 12px/18px var(--pixel);color:var(--muted)}
+.months span{overflow:visible;white-space:nowrap}
+.grid{grid-template-rows:repeat(7,1fr);margin-top:4px}
+.grid i{aspect-ratio:1;background:#e3e7ff;display:block}
+.grid i.l1{background:#ffe2a0}.grid i.l2{background:#ffc95c}.grid i.l3{background:#ffb020}.grid i.l4{background:#d98600}
+.grid i.f{background:transparent}
+.grid i:not(.f):hover{outline:2px solid var(--ink);outline-offset:1px}
+.legend{display:flex;align-items:center;gap:5px;font-size:14px;color:var(--muted)}
+.legend i{width:12px;height:12px;display:block}
+.facts{display:flex;gap:44px;flex-wrap:wrap;margin-top:20px;padding-top:18px;border-top:2px solid var(--paper)}
+.facts div{font-size:15px;color:var(--muted)}.facts b{display:block;font:600 20px/1.2 var(--pixel);color:var(--ink)}
+.tip{position:fixed;z-index:50;background:var(--ink);color:#fff;font:500 13px/1 var(--pixel);padding:7px 9px;pointer-events:none;transform:translate(-50%,-130%);display:none;--px:3px}
+
+/* skills */
+.skills{background:var(--white);padding:22px 24px;--px:6px}
+.sk{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:13px 0;border-top:2px solid var(--paper)}
+.sk:first-child{border-top:0}
+.sk strong{font-weight:600;color:var(--ink)}.sk small{display:block;color:var(--muted);font-size:14px}
+.verdict{font:600 14px/1 var(--pixel);padding:8px 11px;min-width:128px;text-align:center;--px:3px;background:var(--paper);color:var(--muted)}
+.verdict.scan::after{content:"";display:inline-block;width:8px;height:8px;background:var(--cobalt);animation:spin .5s steps(4) infinite}
+@keyframes spin{0%{transform:translate(-5px,-5px)}25%{transform:translate(5px,-5px)}50%{transform:translate(5px,5px)}75%{transform:translate(-5px,5px)}}
+.verdict.ok{background:var(--mist);color:var(--deep)}.verdict.rev{background:#ffe2a0;color:#7a4a00}.verdict.bad{background:var(--red);color:var(--ink)}
+.rules{margin-top:36px;display:grid;gap:14px;max-width:34em}
+.rules p{padding-left:22px;position:relative}
+.rules p::before{content:"";position:absolute;left:0;top:.6em;width:8px;height:8px;background:var(--cobalt)}
+
+/* safety */
+.trio{display:grid;grid-template-columns:repeat(3,1fr);gap:56px;margin-top:56px}
+.trio svg{display:block;width:auto;height:64px;margin-bottom:22px;shape-rendering:crispEdges}
+.trio h3{font:700 24px/1.15 var(--display);letter-spacing:-.02em;color:var(--ink)}
+.trio p{margin-top:10px;color:var(--text);font-size:17px}
+
+/* final */
+.final{position:relative;background:var(--night);color:#fff;overflow:hidden;min-height:700px;display:flex;align-items:center}
+.final canvas{position:absolute;left:0;top:0;image-rendering:pixelated}
+.final .wrap{position:relative;z-index:2;padding:100px 0 300px}
+.final h2{font:800 clamp(44px,6vw,84px)/.96 var(--display);letter-spacing:-.04em;color:#fff;max-width:10em}
+.final p{margin-top:20px;max-width:30em;color:#fff;text-shadow:0 1px 0 rgba(12,18,64,.6)}
+.final .cta{margin-top:30px;display:flex;gap:12px;flex-wrap:wrap}
+footer{background:var(--paper);padding:30px 0 40px;color:var(--muted);font-size:15px}
+footer .wrap{display:flex;gap:26px;flex-wrap:wrap}
+footer a{text-decoration:none}footer a:hover{text-decoration:underline}
+footer span:first-child{margin-right:auto}
+
+@media (max-width:900px){
+  .split{grid-template-columns:1fr;gap:40px}
+  .trio{grid-template-columns:1fr;gap:38px}
+  .cmds{grid-template-columns:1fr}
+  .nav nav a:not(.btn){display:none}
+  .hud{bottom:70px}
+}
+@media (max-width:620px){
+  .sec{padding:84px 0}
+  .row{grid-template-columns:26px 64px minmax(0,1fr);}
+  .row .bar{display:none}
+  .hero-inner{padding-top:110px;padding-bottom:300px}
+  .code pre{white-space:pre;overflow-x:auto;word-break:normal;font-size:12.5px}
+  .fine{font-size:14px}
+  .hud i{display:none}
+  .chart{padding:18px 14px}.chart .total{font-size:34px}
+  .term pre{font-size:12.5px}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}html{scroll-behavior:auto}}
+</style>
 </head>
 <body>
 
-<header class="nav">
-  <div class="wrap">
-    <a class="brand" href="#top"><img src="favicon.svg" alt="" width="32" height="32">AI Keeper</a>
-    <nav class="nav-links" aria-label="Main">
-      <a href="#demo">Demo</a>
-      <a href="#disk">Features</a>
-      <a href="#cli">Command line</a>
-      <a href="#safety">Safety</a>
-      <a href="https://github.com/chungquantin/ai-keeper">GitHub</a>
-      <a class="btn btn-primary btn-sm" href="https://github.com/chungquantin/ai-keeper/releases/download/v0.2.1/AI-Keeper-0.2.1.zip" data-download>Download</a>
+<header class="hero" id="top">
+  <canvas id="scene" aria-hidden="true"></canvas>
+  <div class="shade"></div>
+  <div class="tags" id="tags" aria-hidden="true"></div>
+  <div class="nav"><div class="wrap">
+    <a class="brand" href="#top"><img src="logo-robot.svg" alt="">AI Keeper</a>
+    <nav aria-label="Main">
+      <a href="#picker">Cleanup</a><a href="#terminal">Command line</a><a href="#history">History</a><a href="#skills">Skills</a><a href="#safety">Safety</a><a href="https://github.com/chungquantin/ai-keeper">GitHub</a>
+      <a class="btn notch" href="#get" style="padding:13px 22px">Download</a>
     </nav>
+  </div></div>
+  <div class="wrap hero-inner">
+    <h1>Your coding agents leave gigabytes behind.</h1>
+    <p class="lead">AI Keeper finds the worktrees, build folders and caches that Claude, Codex, Conductor and other agents leave on your Mac, shows which are safe to delete, and clears them in the background. Use the Mac app, or the <code>keeper</code> command.</p>
+    <div class="install">
+      <div class="tabs" role="tablist" aria-label="Install method">
+        <button role="tab" aria-selected="true" data-t="brew">Homebrew</button>
+        <button role="tab" aria-selected="false" data-t="curl">Terminal</button>
+        <button role="tab" aria-selected="false" data-t="zip">Download</button>
+      </div>
+      <div class="code notch" id="codebox"></div>
+    </div>
+    <p class="fine">Free. Needs macOS 14 or later. Apple Silicon and Intel. Nothing leaves your Mac.</p>
   </div>
+  <div class="hud notch" aria-hidden="true"><span>free</span><i><b id="hudbar"></b></i><strong id="hudfree">258.2 GB</strong><em id="hudgot"></em><span id="hudbots" style="color:var(--muted)"></span></div>
+  <div class="hint notch" id="hint" aria-hidden="true">click the floor to drop packages</div>
 </header>
 
-<main id="top">
+<main>
+<section class="sec" style="padding-top:34px">
+  <div class="wrap">
+    <p class="works">Cleans up after <b>Claude Code</b>, <b>Codex</b>, <b>Conductor</b>, <b>Superset</b> and <b>Pi</b>. It also clears the caches, old chat history and build folders they leave next to your code.</p>
+  </div>
+</section>
 
-<section class="hero">
-  <div class="wrap hero-head">
-    <h1>Your coding agents leave gigabytes behind.</h1>
-    <div class="hero-side">
-      <p class="lead">AI Keeper shows which worktrees, build folders and caches Claude, Codex, Conductor and other agents left on your Mac, which are safe to delete, and clears them in the background. Use the Mac app, or the <code>keeper</code> command in your terminal.</p>
-      <div class="hero-actions">
-        <a class="btn btn-primary" href="https://github.com/chungquantin/ai-keeper/releases/download/v0.2.1/AI-Keeper-0.2.1.zip" data-download>Download for macOS</a>
-        <a class="link" href="#install">Install with Homebrew</a>
+<section class="sec" id="picker" style="padding-top:60px">
+  <div class="wrap split">
+    <div>
+      <h2>Pick what goes. The reason sits beside each one.</h2>
+      <p class="sub">Every workspace shows its Git state and pull request. A merged PR with a clean tree is safe to remove. Work you have not pushed is flagged, saved first, and never selected for you.</p>
+      <div class="rules">
+        <p>Workspaces with a running agent are skipped.</p>
+        <p>Files go to the Trash, or to a vault you can restore from.</p>
       </div>
-      <p class="fine">Free. Requires macOS 14 or later. Apple Silicon and Intel.</p>
     </div>
-  </div>
-  <div class="stage">
-    <div class="wrap duo">
-      <div class="win win-lg rise"><img src="assets/overview.webp" width="1800" height="1297" alt="The AI Keeper overview: 108 GB you can get back, a bar showing where disk space goes, and the biggest folders with Clean buttons."></div>
-      <!-- terminal-hero:start -->
-<div class="term term-hero" role="img" aria-label="The keeper dashboard: 107.9 GB you can get back drawn as large numerals, where it comes from, and a numbered menu."><div class="term-bar"><span>home</span></div><pre aria-hidden="true"> <span style="color:rgb(238,238,238);background:rgb(37,69,245);font-weight:700"> keeper </span><span style="color:rgb(138,147,161)">  </span>                                        <span style="font-weight:700">612.4 GB</span><span style="color:rgb(138,147,161)"> free </span><span style="color:rgb(116,146,255)">━━━━</span><span style="color:rgb(138,147,161);opacity:.55">──────</span> 
-
-   <span style="color:rgb(245,166,36)">▄█  █▀█ ▀▀█     █▀█ </span>
-   <span style="color:rgb(245,166,36)"> █  █ █  ▄▀     ▀▀█ </span>  <span style="font-weight:700">GB</span>
-   <span style="color:rgb(245,166,36)">▄█▄ █▄█  █   ▄  ▄▄█ </span>  <span style="color:rgb(138,147,161)">you can get back</span>
-   <span style="color:rgb(138,147,161)">scanned just now</span>
-
-   <span style="color:rgb(138,147,161);opacity:.55">──</span><span style="font-weight:700"> where it comes from </span><span style="color:rgb(138,147,161);opacity:.55">───────────────────────────────────────────────</span>
-   build folders  <span style="color:rgb(245,166,36)">━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━</span>    63.7 GB
-   workspaces     <span style="color:rgb(245,166,36)">━━━━━━━━━━━━━</span><span style="color:rgb(138,147,161);opacity:.55">─────────────────</span>    26.9 GB<span style="color:rgb(138,147,161)">  7 safe to remov</span>
-   leftovers      <span style="color:rgb(245,166,36)">━━━━━━━━</span><span style="color:rgb(138,147,161);opacity:.55">──────────────────────</span>    17.3 GB
-
-   <span style="color:rgb(138,147,161);opacity:.55">──</span><span style="font-weight:700"> go to </span><span style="color:rgb(138,147,161);opacity:.55">─────────────────────────────────────────────────────────────</span>
-<span style="background:rgb(36,40,52)">   </span><span style="color:rgb(138,147,161);background:rgb(36,40,52)">1</span><span style="background:rgb(36,40,52)">  </span><span style="background:rgb(36,40,52);font-weight:700">Workspaces        </span><span style="background:rgb(36,40,52)">7 safe to remove, </span><span style="color:rgb(245,166,36);background:rgb(36,40,52)">26.9 GB</span><span style="background:rgb(36,40,52)">                         </span>
-   <span style="color:rgb(138,147,161)">2</span>  Leftovers         <span style="color:rgb(245,166,36)">17.3 GB</span> of old chat history and caches
-   <span style="color:rgb(138,147,161)">3</span>  Agents            5 running, <span style="font-weight:700">1 waiting for you</span>
-   <span style="color:rgb(138,147,161)">4</span>  Skills            10 installed, <span style="font-weight:700">3 worth a look</span>
-   <span style="color:rgb(138,147,161)">5</span>  AI usage          $25.29 today, $159.07 this week
-   <span style="color:rgb(138,147,161)">6</span>  Disk map          where the space went
-   <span style="color:rgb(138,147,161)">7</span>  System            cpu, memory, disk, the heaviest apps
- <span style="color:rgb(116,146,255)">↑↓</span><span style="color:rgb(138,147,161)"> move</span>   <span style="color:rgb(116,146,255)">enter</span><span style="color:rgb(138,147,161)"> open</span>   <span style="color:rgb(116,146,255)">r</span><span style="color:rgb(138,147,161)"> rescan</span>   <span style="color:rgb(116,146,255)">q</span><span style="color:rgb(138,147,161)"> quit</span></pre></div>
-<!-- terminal-hero:end -->
-    </div>
+    <div class="lift"><div class="picker notch" id="picker-ui" aria-label="Interactive example of the cleanup list"></div></div>
   </div>
 </section>
 
-<section class="section" id="demo">
+<div class="dither" style="--c:var(--night);margin-bottom:-1px"></div>
+<section class="sec dark" id="terminal">
   <div class="wrap">
-    <div class="wide-head">
-      <h2>See it in action.</h2>
-      <p class="prose">A 45-second walkthrough: where the disk went, which worktrees can go, and a cleanup running in the background.</p>
-    </div>
-    <div class="video-frame">
-      <video controls preload="none" playsinline poster="media/ai-keeper-demo-poster.webp" width="1920" height="1080" aria-label="AI Keeper demo video">
-        <source src="media/ai-keeper-demo.mp4" type="video/mp4">
-        Your browser can't play this video. <a href="media/ai-keeper-demo.mp4">Download the MP4</a>.
-      </video>
-    </div>
-  </div>
-</section>
-
-<section class="section" id="disk">
-  <div class="wrap">
-    <div class="wide-head">
-      <h2>See where the disk went.</h2>
-      <p class="prose">One bar splits your disk into developer files, library, tool folders and apps. Below it, the biggest folders each get a plain explanation, and a Clean button when the contents can be rebuilt.</p>
-    </div>
-    <div class="plate"><div class="win"><img src="assets/overview-map.webp" width="1800" height="1297" loading="lazy" alt="The disk map: a stacked bar by category and a list of the largest folders with sizes and Clean buttons."></div></div>
-  </div>
-</section>
-
-<section class="section" id="workspaces">
-  <div class="wrap">
-    <div class="wide-head">
-      <h2>Know which worktrees are still needed.</h2>
-      <p class="prose">Each workspace shows its Git state and pull request. A merged PR with a clean tree is safe to remove. Unpushed commits and uncommitted files are flagged, with the reason beside them.</p>
-    </div>
-  </div>
-  <div class="stage" style="margin-top:0">
-    <div class="wrap">
-      <div class="win"><img src="assets/workspaces.webp" width="1800" height="1297" loading="lazy" alt="All workspaces with Git status and PR badges, and an inspector explaining why one worktree is safe to remove."></div>
-    </div>
-  </div>
-</section>
-
-<section class="section" id="agents">
-  <div class="wrap">
-    <div class="wide-head">
-      <h2>Watch what is running, and what it costs.</h2>
-      <p class="prose">Agents lists every running Claude, Codex and other agent with its CPU, memory and session cost. Usage charts daily spend by model from logs on your Mac, and warns you at the budget you set.</p>
-    </div>
-    <div class="plate"><div class="plate-pair">
-      <div class="win"><img src="assets/agents.webp" width="1800" height="1297" loading="lazy" alt="Running agents with their state, working directory, CPU and cost."></div>
-      <div class="win"><img src="assets/usage.webp" width="1800" height="1297" loading="lazy" alt="Daily AI spend by model across Claude and Codex, with budgets."></div>
-    </div></div>
-  </div>
-</section>
-
-<section class="section" id="system">
-  <div class="wrap split split-flip">
-    <div class="plate"><div class="win"><img src="assets/system.webp" width="1800" height="1297" loading="lazy" alt="The System page with CPU, memory, disk and network charts and the heaviest process groups."></div></div>
-    <div class="copy-col">
-      <h2>A health check in the sidebar.</h2>
-      <p class="prose">CPU, memory, disk and network in one live view. Developer processes are grouped, so a runaway build stands out.</p>
-    </div>
-  </div>
-</section>
-
-<section class="section" id="more">
-  <div class="wrap">
-    <h2 class="index-title">Also in the app</h2>
-    <div class="index">
-      <div class="index-row"><h3>Leftovers</h3><p>Folders from tools you removed, found and sized.</p></div>
-      <div class="index-row"><h3>Duplicates</h3><p>Identical large files, checked by content before anything is offered.</p></div>
-      <div class="index-row"><h3>Containers</h3><p>Docker and OrbStack images, volumes and build cache, with a safe prune.</p></div>
-      <div class="index-row"><h3>Recently removed</h3><p>Unsaved work is saved before a workspace is deleted, so you can restore it.</p></div>
-      <div class="index-row"><h3>Skills</h3><p>Every skill your agents can load, scanned with NVIDIA SkillSpector for prompt injection, data exfiltration and risky scripts. Each finding shows the code it points at.</p></div>
-      <div class="index-row"><h3>Background cleanup</h3><p>Cleanups run in the sidebar with progress while you keep working.</p></div>
-      <div class="index-row"><h3>The keeper command, and MCP</h3><p>Every feature is a <code>keeper</code> command, with JSON output. Or let your agent ask what is safe to clean.</p></div>
-    </div>
-  </div>
-</section>
-
-<section class="section" id="cli">
-  <div class="wrap">
-    <div class="wide-head">
-      <h2>Everything the app does, from your terminal.</h2>
-      <p class="prose">Run <code>keeper</code> for the dashboard, or use any command in a script. Anything that deletes is a preview until you add <code>--yes</code>, and files go to the Trash. Homebrew installs it with the app.</p>
+    <h2>Everything the app does, from your terminal.</h2>
+    <p class="sub">Run <code style="font:500 .86em var(--mono);background:rgba(255,255,255,.1);padding:2px 7px">keeper</code> for a full-screen dashboard, or call any command from a script. Anything that deletes is a preview until you add <code style="font:500 .86em var(--mono);background:rgba(255,255,255,.1);padding:2px 7px">--yes</code>.</p>
+    <div style="margin-top:40px">
+      <div class="term-tabs" role="tablist" id="termtabs" aria-label="Example commands"></div>
+      <div class="lift"><div class="term notch"><div class="bar"><i></i><i></i><i></i><span id="termtitle">keeper</span></div><pre id="termout" aria-live="polite"></pre></div></div>
     </div>
     <dl class="cmds">
-      <div><dt>keeper status</dt><dd>Disk, what you can reclaim, running agents, spend.</dd></div>
       <div><dt>keeper workspaces --deprecated</dt><dd>What is no longer needed, biggest first.</dd></div>
-      <div><dt>keeper remove --all-safe</dt><dd>Preview, then add --yes. Unsaved work is saved first.</dd></div>
-      <div><dt>keeper skills scan --all</dt><dd>Check every skill your agents can load, with NVIDIA SkillSpector.</dd></div>
       <div><dt>keeper skills remove --risk danger</dt><dd>Quarantine the risky ones. Restore any of them later.</dd></div>
-      <div><dt>keeper history</dt><dd>A year of cleanups as squares, with the total space you got back.</dd></div>
       <div><dt>keeper agents</dt><dd>What is running, what it costs, and stop one.</dd></div>
       <div><dt>keeper usage --by model</dt><dd>Spend by model, tool, day or project.</dd></div>
       <div><dt>keeper disk explore ~/Library</dt><dd>See what is inside any folder, biggest first.</dd></div>
       <div><dt>keeper ui</dt><dd>The full-screen dashboard. Same as typing keeper.</dd></div>
     </dl>
-    <!-- terminal:start -->
-<figure class="term-fig"><figcaption>Pick what goes, with the reason beside it.</figcaption><div class="term term-lg" role="img" aria-label="The keeper workspace picker. Three safe workspaces are selected, and a preview explains why the highlighted one can go."><div class="term-bar"><span>workspaces</span></div><pre aria-hidden="true"> <span style="color:rgb(238,238,238);background:rgb(37,69,245);font-weight:700"> keeper </span><span style="color:rgb(138,147,161)">  workspaces</span>                                                                              <span style="font-weight:700">612.4 GB</span><span style="color:rgb(138,147,161)"> free </span><span style="color:rgb(116,146,255)">━━━━</span><span style="color:rgb(138,147,161);opacity:.55">──────</span> 
- <span style="color:rgb(138,147,161)">Safe to remove</span>    <span style="font-weight:700">Deprecated</span>    <span style="color:rgb(138,147,161)">All</span><span style="color:rgb(138,147,161)">   sorted by size</span>
- <span style="color:rgb(138,147,161);opacity:.55">──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</span>
-<span style="color:rgb(116,146,255);background:rgb(36,40,52)">▌</span><span style="background:rgb(36,40,52)"> </span><span style="color:rgb(245,166,36);background:rgb(36,40,52);font-weight:700"> 11.4 GB</span><span style="background:rgb(36,40,52)"> </span><span style="color:rgb(245,166,36);background:rgb(36,40,52)">━━━━━</span><span style="background:rgb(36,40,52)">  </span><span style="color:rgb(116,146,255);background:rgb(36,40,52)">safe to remove  </span><span style="color:rgb(138,147,161);background:rgb(36,40,52)">api-server/</span><span style="background:rgb(36,40,52);font-weight:700">refactor-auth</span><span style="background:rgb(36,40,52)">           </span><span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="font-weight:700">refactor-auth</span>
-<span style="color:rgb(116,146,255)">▌</span> <span style="color:rgb(245,166,36);font-weight:700">  8.6 GB</span> <span style="color:rgb(245,166,36)">━━━━</span><span style="color:rgb(138,147,161);opacity:.55">─</span>  <span style="color:rgb(116,146,255)">safe to remove  </span><span style="color:rgb(138,147,161)">api-server/</span>feat-search-index       <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">api-server · refactor-auth</span>
-<span style="color:rgb(116,146,255)">▌</span> <span style="color:rgb(245,166,36);font-weight:700">  2.9 GB</span> <span style="color:rgb(245,166,36)">━</span><span style="color:rgb(138,147,161);opacity:.55">────</span>  <span style="color:rgb(116,146,255)">safe to remove  </span><span style="color:rgb(138,147,161)">web-app/</span>experiment-graphql         <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
-    1.4 GB <span style="color:rgb(245,166,36)">━</span><span style="color:rgb(138,147,161);opacity:.55">────</span>  <span style="color:rgb(116,146,255)">safe to remove  </span><span style="color:rgb(138,147,161)">web-app/</span>chore-deps-update          <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(116,146,255)">Safe to remove</span><span style="color:rgb(138,147,161)">  ·  active 2 days ago</span>
-    1.1 GB <span style="color:rgb(245,166,36)">━</span><span style="color:rgb(138,147,161);opacity:.55">────</span>  <span style="color:rgb(116,146,255)">safe to remove  </span><span style="color:rgb(138,147,161)">web-app/</span>fix-pagination-bug         <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="font-weight:700">Not needed: PR #405 merged 3 days ago</span>
-    900 MB <span style="color:rgb(245,166,36)">━</span><span style="color:rgb(138,147,161);opacity:.55">────</span>  <span style="color:rgb(116,146,255)">safe to remove  </span><span style="color:rgb(138,147,161)">docs-site/</span>docs-search-polish       <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">The work is on main and nothing here is unsaved.</span>
-    600 MB <span style="color:rgb(245,166,36)">━</span><span style="color:rgb(138,147,161);opacity:.55">────</span>  <span style="color:rgb(116,146,255)">safe to remove  </span><span style="color:rgb(138,147,161)">api-server/</span>hotfix-session-time…    <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Safe to remove.</span>
-                                                                     <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
-                                                                     <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Working tree </span>clean
-                                                                     <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Not pushed   </span>nothing
-                                                                     <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Versus main  </span>6 ahead · 0 behind
-                                                                     <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Pull request </span>#405 merged
-                                                                     <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
- <span style="color:rgb(138,147,161);opacity:.55">──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</span>
- <span style="font-weight:700">3 selected</span><span style="color:rgb(138,147,161)"> · </span><span style="color:rgb(245,166,36);font-weight:700">22.9 GB</span><span style="color:rgb(138,147,161)"> can be freed   x remove · c clean build folders only · n clear</span>
- <span style="color:rgb(116,146,255)">space</span><span style="color:rgb(138,147,161)"> select</span>   <span style="color:rgb(116,146,255)">a</span><span style="color:rgb(138,147,161)"> all safe</span>   <span style="color:rgb(116,146,255)">x</span><span style="color:rgb(138,147,161)"> remove</span>   <span style="color:rgb(116,146,255)">c</span><span style="color:rgb(138,147,161)"> clean builds</span>   <span style="color:rgb(116,146,255)">f</span><span style="color:rgb(138,147,161)"> filter</span>   <span style="color:rgb(116,146,255)">/</span><span style="color:rgb(138,147,161)"> search</span>   <span style="color:rgb(116,146,255)">esc</span><span style="color:rgb(138,147,161)"> back</span></pre></div></figure>
-<figure class="term-fig"><figcaption>See how often you clean up, and what it added up to.</figcaption><div class="term term-lg" role="img" aria-label="The keeper history screen: 427 GB freed since January, drawn as a year of squares, one per day, darker for more space freed."><div class="term-bar"><span>history</span></div><pre aria-hidden="true"> <span style="color:rgb(238,238,238);background:rgb(37,69,245);font-weight:700"> keeper </span><span style="color:rgb(138,147,161)">  history</span>                                                                           <span style="font-weight:700">612.4 GB</span><span style="color:rgb(138,147,161)"> free </span><span style="color:rgb(116,146,255)">━━━━</span><span style="color:rgb(138,147,161);opacity:.55">──────</span> 
+    <p class="scriptnote">For scripts and agents, add <code>--json</code> to any command. To let Claude Code run it: <code>claude mcp add keeper -- keeper mcp</code></p>
+  </div>
+</section>
+<div class="dither up" style="--c:var(--night);margin-top:-1px"></div>
 
-   <span style="color:rgb(245,166,36)">█ █ ▀▀█ ▀▀█     ▀▀█ </span>
-   <span style="color:rgb(245,166,36)">▀▀█ █▀▀  ▄▀     █▀▀ </span>  <span style="font-weight:700">GB</span>
-   <span style="color:rgb(245,166,36)">  █ █▄▄  █   ▄  █▄▄ </span>  <span style="color:rgb(138,147,161)">freed since Jan 2026</span>
-
-      <span style="color:rgb(138,147,161)">nov dec       jan     feb     mar       apr     may     jun       jul     aug       sep     oct     nov </span>
-  <span style="color:rgb(138,147,161)">    </span><span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36);font-weight:700">█</span> <span style="color:rgb(245,166,36)">▓</span> <span style="color:rgb(245,166,36);font-weight:700">█</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> 
-  <span style="color:rgb(138,147,161)">mon </span><span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">▒</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> 
-  <span style="color:rgb(138,147,161)">    </span><span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">▓</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">▒</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36);font-weight:700">█</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">▓</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span>   
-  <span style="color:rgb(138,147,161)">wed </span><span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">▓</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">▒</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36);font-weight:700">█</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">▓</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span>   
-  <span style="color:rgb(138,147,161)">    </span><span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36);font-weight:700">█</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">▓</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">▒</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">▒</span> <span style="color:rgb(245,166,36);font-weight:700">█</span>   
-  <span style="color:rgb(138,147,161)">fri </span><span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36);font-weight:700">█</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">▓</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span>   
-  <span style="color:rgb(138,147,161)">    </span><span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36);font-weight:700">█</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">▒</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span>   
-
-      <span style="color:rgb(138,147,161)">less </span><span style="color:rgb(138,147,161)">·</span> <span style="color:rgb(245,166,36)">░</span> <span style="color:rgb(245,166,36)">▒</span> <span style="color:rgb(245,166,36)">▓</span> <span style="color:rgb(245,166,36);font-weight:700">█</span><span style="color:rgb(138,147,161)"> more</span>
-
-  <span style="color:rgb(138,147,161)">Cleanups     </span>105 on 105 days
-  <span style="color:rgb(138,147,161)">Streak       </span>5 days now, 5 days longest
- <span style="color:rgb(116,146,255)">esc</span><span style="color:rgb(138,147,161)"> back</span></pre></div></figure>
-<div class="term-pair">
-<figure class="term-fig"><figcaption>Check every skill your agents can load.</figcaption><div class="term" role="img" aria-label="The keeper skills screen: ten skills with risk ratings from NVIDIA SkillSpector, and the findings for the highlighted one."><div class="term-bar"><span>skills</span></div><pre aria-hidden="true"> <span style="color:rgb(238,238,238);background:rgb(37,69,245);font-weight:700"> keeper </span><span style="color:rgb(138,147,161)">  skills</span>                                                                                  <span style="font-weight:700">612.4 GB</span><span style="color:rgb(138,147,161)"> free </span><span style="color:rgb(116,146,255)">━━━━</span><span style="color:rgb(138,147,161);opacity:.55">──────</span> 
- <span style="font-weight:700">All 10</span>    <span style="color:rgb(138,147,161)">Worth a look 3</span>    <span style="color:rgb(138,147,161)">Not scanned 2</span>   <span style="color:rgb(138,147,161)">Scanned with NVIDIA SkillSpector</span>
- <span style="color:rgb(138,147,161);opacity:.55">──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</span>
-<span style="background:rgb(36,40,52)">  </span><span style="color:rgb(240,96,96);background:rgb(36,40,52);font-weight:700">do not install </span><span style="color:rgb(138,147,161);background:rgb(36,40,52)">  78</span><span style="background:rgb(36,40,52)">  </span><span style="background:rgb(36,40,52);font-weight:700">deploy-helper                 </span><span style="color:rgb(245,166,36);background:rgb(36,40,52)"> scripts</span><span style="background:rgb(36,40,52)"> </span><span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="font-weight:700">deploy-helper</span>
-  <span style="font-weight:700">review         </span><span style="color:rgb(138,147,161)">  32</span>  db-migrations                 <span style="color:rgb(245,166,36)"> scripts</span> <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Claude Code · plugin ship-it@marketplace</span>
-  <span style="font-weight:700">review         </span><span style="color:rgb(138,147,161)">  41</span>  figma-sync                    <span style="color:rgb(245,166,36)"> scripts</span> <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
-  <span style="color:rgb(116,146,255)">looks safe     </span><span style="color:rgb(138,147,161)">   0</span>  code-review                            <span style="color:rgb(138,147,161);opacity:.55"> │ </span>Build the current branch and ship it to the staging
-  <span style="color:rgb(116,146,255)">looks safe     </span><span style="color:rgb(138,147,161)">   6</span>  commit-style                           <span style="color:rgb(138,147,161);opacity:.55"> │ </span>environment.
-  <span style="color:rgb(116,146,255)">looks safe     </span><span style="color:rgb(138,147,161)">   4</span>  pdf-toolkit                   <span style="color:rgb(245,166,36)"> scripts</span> <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
-  <span style="color:rgb(116,146,255)">looks safe     </span><span style="color:rgb(138,147,161)">   0</span>  release-notes                          <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Where        </span><span style="color:rgb(138,147,161)">/Users/alex/.claude/plugins/cache/ship-it@ma</span>…
-  <span style="color:rgb(116,146,255)">looks safe     </span><span style="color:rgb(138,147,161)">   0</span>  test-writer                            <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(138,147,161)">Contents     </span>7 files, 42 KB<span style="color:rgb(245,166,36)">  has scripts</span>
-  <span style="color:rgb(138,147,161)">not scanned    </span><span style="color:rgb(138,147,161)">    </span>  docs-writer                            <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
-  <span style="color:rgb(138,147,161)">not scanned    </span><span style="color:rgb(138,147,161)">    </span>  slack-digest                  <span style="color:rgb(245,166,36)"> scripts</span> <span style="color:rgb(138,147,161);opacity:.55"> │ </span><span style="color:rgb(240,96,96);font-weight:700">Do not install</span><span style="color:rgb(138,147,161)">  score 78/100 · 2 findings · 3 hr ago</span>
-                                                              <span style="color:rgb(138,147,161);opacity:.55"> │ </span>
- <span style="color:rgb(138,147,161);opacity:.55">──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</span>
- <span style="color:rgb(138,147,161)">Findings are heuristics, not verdicts. Read the lines they point at before deciding.</span>
- <span style="color:rgb(116,146,255)">space</span><span style="color:rgb(138,147,161)"> select</span>   <span style="color:rgb(116,146,255)">a</span><span style="color:rgb(138,147,161)"> all high risk</span>   <span style="color:rgb(116,146,255)">x</span><span style="color:rgb(138,147,161)"> remove</span>   <span style="color:rgb(116,146,255)">enter</span><span style="color:rgb(138,147,161)"> findings</span>   <span style="color:rgb(116,146,255)">s</span><span style="color:rgb(138,147,161)"> scan</span>   <span style="color:rgb(116,146,255)">S</span><span style="color:rgb(138,147,161)"> scan new</span>   <span style="color:rgb(116,146,255)">u</span><span style="color:rgb(138,147,161)"> removed</span>   <span style="color:rgb(116,146,255)">f</span><span style="color:rgb(138,147,161)"> filter</span>   <span style="color:rgb(116,146,255)">esc</span><span style="color:rgb(138,147,161)"> back</span></pre></div></figure>
-<figure class="term-fig"><figcaption>Nothing happens until you confirm.</figcaption><div class="term" role="img" aria-label="The confirmation screen listing three workspaces to remove, 22.9 GB in total."><div class="term-bar"><span>confirm</span></div><pre aria-hidden="true"> <span style="color:rgb(238,238,238);background:rgb(37,69,245);font-weight:700"> keeper </span><span style="color:rgb(138,147,161)">  confirm removal</span>                                         <span style="font-weight:700">612.4 GB</span><span style="color:rgb(138,147,161)"> free </span><span style="color:rgb(116,146,255)">━━━━</span><span style="color:rgb(138,147,161);opacity:.55">──────</span> 
-
-  <span style="font-weight:700">These will be removed</span><span style="color:rgb(138,147,161)">   (3)</span>
-
-      11.4 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">api-server/</span>refactor-auth
-       8.6 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">api-server/</span>feat-search-index
-       2.9 GB  <span style="color:rgb(116,146,255)">Safe to remove </span> <span style="color:rgb(138,147,161)">web-app/</span>experiment-graphql
-
-    <span style="color:rgb(138,147,161)">Total</span>  <span style="color:rgb(245,166,36);font-weight:700">22.9 GB</span>
-
-  <span style="color:rgb(138,147,161)">Files move to the Trash.</span><span style="color:rgb(138,147,161)"> Unsaved work is saved to the vault first.</span>
-
- <span style="color:rgb(116,146,255)">y</span><span style="color:rgb(138,147,161)"> do it</span>   <span style="color:rgb(116,146,255)">p</span><span style="color:rgb(138,147,161)"> permanent: off</span>   <span style="color:rgb(116,146,255)">s</span><span style="color:rgb(138,147,161)"> snapshot: on</span>   <span style="color:rgb(116,146,255)">esc</span><span style="color:rgb(138,147,161)"> cancel</span></pre></div></figure>
-</div>
-<!-- terminal:end -->
-    <div class="scripts">
-      <div>
-        <h3>For scripts and agents</h3>
-        <p class="prose">Every command takes <code>--json</code>. Exit codes mean something: 0 done, 1 failed or everything you named was skipped, 2 wrong usage. <code>keeper skills scan</code> exits 1 when a skill is rated do-not-install, so it can gate an install.</p>
-        <p class="prose">An MCP server lets an agent check free space and clean its own build folders.</p>
-      </div>
-      <div class="cmd" style="max-width:none">
-        <code><span class="p">$ </span>keeper status --json
-{
-  "disk": { "free_bytes": 612400000000, "low": false },
-  "reclaimable": { "total_bytes": 107900000000 },
-  "agents": { "running": 5, "need_you": 1 }
-}
-<span class="p">$ </span>claude mcp add keeper -- keeper mcp</code>
-      </div>
-    </div>
+<section class="sec" id="history" style="padding-top:90px">
+  <div class="wrap">
+    <h2>See how often you clean up, and what it added up to.</h2>
+    <p class="sub">Every cleanup earns a square, darker for more space. Open the Overview in the app, or run <code style="font:500 .86em var(--mono);background:var(--mist);padding:2px 7px">keeper history</code>.</p>
+    <div class="lift"><div class="chart notch">
+      <div class="head"><div class="total"><span id="ctotal">0</span><small id="csince">GB freed</small></div>
+        <div class="legend">Less <i style="background:#e3e7ff"></i><i style="background:#ffe2a0"></i><i style="background:#ffc95c"></i><i style="background:#ffb020"></i><i style="background:#d98600"></i> More</div></div>
+      <div class="months" id="months"></div>
+      <div class="grid" id="grid" role="img" aria-label="A year of cleanups, one square per day"></div>
+      <div class="facts" id="facts"></div>
+    </div></div>
   </div>
 </section>
 
-<section class="section" id="safety">
+<section class="sec" id="skills" style="background:var(--mist);padding-top:110px">
   <div class="wrap split">
-    <div class="copy-col">
-      <h2>Nothing is deleted before you see it.</h2>
-      <p class="prose">Each cleanup opens a list of exactly what will be removed and how much space it frees. Unpushed and uncommitted work is saved first, and workspaces with a running agent are skipped.</p>
-      <p class="prose">Everything runs on your Mac. No account needed.</p>
+    <div>
+      <h2>Check every skill your agents can load.</h2>
+      <p class="sub">Skills run with your permissions, so a bad one is a risk. AI Keeper lists every installed skill and scans them with NVIDIA SkillSpector, locally and without an AI model.</p>
+      <div class="rules">
+        <p>Remove the risky ones in one step. They move to a quarantine, not the bin.</p>
+        <p>Restore any of them whenever you change your mind.</p>
+      </div>
     </div>
-    <div class="plate plate-center"><div class="win win-dialog"><img src="assets/cleanup-confirm.webp" width="1079" height="805" loading="lazy" alt="The confirmation dialog listing three workspaces to remove and the space each frees."></div></div>
+    <div class="lift"><div class="skills notch" id="skills-ui"></div></div>
   </div>
 </section>
 
-</main>
+<section class="sec" id="safety">
+  <div class="wrap">
+    <h2>Nothing is deleted before you see it.</h2>
+    <div class="trio">
+      <div><svg viewBox="0 0 11 7" id="i-eye"></svg><h3>You see the list first</h3><p>Each cleanup opens a list of exactly what will go and how much space it frees. Commands are a dry run until you add <b>--yes</b>.</p></div>
+      <div><svg viewBox="0 0 9 9" id="i-restore"></svg><h3>Unsaved work is saved first</h3><p>Uncommitted files and unpushed commits are saved to a vault before anything is removed, so you can bring a workspace back.</p></div>
+      <div><svg viewBox="0 0 9 10" id="i-lock"></svg><h3>It stays on your Mac</h3><p>No account, no upload. Scanning skills looks up known vulnerabilities by package name, and nothing else leaves the machine.</p></div>
+    </div>
+  </div>
+</section>
 
-<section class="close" id="install">
+<section class="final" id="get">
+  <canvas id="scene2" aria-hidden="true"></canvas>
   <div class="wrap">
     <h2>Get your disk back.</h2>
-    <p class="lead">Download the app, or install it with Homebrew. Homebrew asks you to trust the tap once, because it is not an official one.</p>
-    <div class="hero-actions">
-      <a class="btn btn-primary" href="https://github.com/chungquantin/ai-keeper/releases/download/v0.2.1/AI-Keeper-0.2.1.zip" data-download>Download for macOS</a>
-      <a class="btn" href="https://github.com/chungquantin/ai-keeper">View source</a>
+    <p>Download the app, or install it with Homebrew. Homebrew asks you to trust the tap once, because it is not an official one.</p>
+    <div class="cta">
+      <a class="btn amber notch" href="https://github.com/chungquantin/ai-keeper/releases/latest">Download for macOS</a>
+      <a class="btn ghost notch" href="https://github.com/chungquantin/ai-keeper">View source</a>
     </div>
-    <div class="cmd" role="group" aria-label="Install with Homebrew">
-      <code><span class="p">$ </span>brew tap chungquantin/ai-keeper https://github.com/chungquantin/ai-keeper
-<span class="p">$ </span>brew trust --tap chungquantin/ai-keeper
-<span class="p">$ </span>brew install --cask ai-keeper</code>
-      <button class="copy" type="button" data-copy="brew tap chungquantin/ai-keeper https://github.com/chungquantin/ai-keeper&#10;brew trust --tap chungquantin/ai-keeper&#10;brew install --cask ai-keeper">Copy</button>
-    </div>
-    <p class="fine" style="margin-top:var(--s-5);max-width:40em">Or install from Terminal, which also skips the macOS warning below:</p>
-    <div class="cmd" role="group" aria-label="Install from Terminal" style="margin-top:var(--s-3)">
-      <code><span class="p">$ </span>curl -fsSL https://chungquantin.github.io/ai-keeper/install.sh | bash</code>
-      <button class="copy" type="button" data-copy="curl -fsSL https://chungquantin.github.io/ai-keeper/install.sh | bash">Copy</button>
-    </div>
-    <p class="fine" style="margin-top:var(--s-4);max-width:40em">The app is not notarized yet, so macOS warns when you open a zip downloaded in a browser. To open it anyway, go to System Settings, Privacy &amp; Security, scroll down and click Open Anyway. Homebrew and the Terminal command don't trigger the warning.</p>
   </div>
 </section>
-
-<footer class="foot">
-  <div class="wrap">
-    <span>AI Keeper</span>
-    <nav aria-label="Footer">
-      <a href="design-system.html">Design system</a>
-      <a href="https://github.com/chungquantin/ai-keeper/issues">Issues</a>
-      <a href="https://github.com/chungquantin/ai-keeper/releases">Releases</a>
-      <a href="https://github.com/chungquantin/ai-keeper">GitHub</a>
-    </nav>
-  </div>
-</footer>
+</main>
+<footer><div class="wrap"><span>AI Keeper</span><a href="design-system.html">Design system</a><a href="https://github.com/chungquantin/ai-keeper/issues">Issues</a><a href="https://github.com/chungquantin/ai-keeper/releases">Releases</a><a href="https://github.com/chungquantin/ai-keeper">GitHub</a></div></footer>
+<div class="tip" id="tip"></div>
 
 <script>
-// The links start on the current release's zip. Ask GitHub for the newest one so they never go stale.
-fetch('https://api.github.com/repos/chungquantin/ai-keeper/releases/latest').then(function (r) { return r.ok ? r.json() : null; }).then(function (rel) {
-  var a = rel && rel.assets && rel.assets.find(function (x) { return /\.zip$/.test(x.name); });
-  if (a) document.querySelectorAll('[data-download]').forEach(function (l) { l.href = a.browser_download_url; });
-}).catch(function () {});
-document.querySelectorAll('.copy').forEach(function (b) {
-  b.addEventListener('click', function () {
-    var done = function () { var o = b.textContent; b.textContent = 'Copied'; setTimeout(function () { b.textContent = o; }, 1400); };
-    if (navigator.clipboard) navigator.clipboard.writeText(b.getAttribute('data-copy')).then(done, function () {});
+(() => {
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const rgb = h => [1,3,5].map(i => parseInt(h.slice(i, i + 2), 16));
+
+/* ============ the scene: a glass-walled office at dusk. Developers work, agents leave crates, Keeper robots clean ============ */
+const SKY = ['#0a1050','#0f1768','#16228a','#2236c8','#4a5fe8','#9aaaf8','#f4f6ff'].map(rgb);
+const GND = ['#1a2a9a','#2236c8','#3a4fe0','#6f84f2','#c8d1ff','#f4f6ff'].map(rgb);
+const BAYER = [0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
+const INK = '#0c1240';
+const NAMES = ['node_modules','target/','.next','DerivedData','.venv','build/','dist/','.gradle','__pycache__','Pods'];
+const SAYS = ['npm install','git push','claude, fix the tests','cargo build','codex is running','one more prompt','ship it','why is my disk full?'];
+const SKIN = ['#f2c9a0','#c98f66','#8d5a3b','#f5d5b8'], HAIR = ['#1a1a3a','#7a4a2a','#d98600','#e8ecff','#3a2a6a'], SHIRT = ['#ff7a59','#35c9a0','#ffd36b','#b58cff','#ff6fa8'];
+
+function compile(rows, pal, outline = INK) {
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length, set = new Map();
+  rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.' && pal[ch]) set.set(x + ',' + y, pal[ch]); }));
+  const px = [], has = (x, y) => set.has(x + ',' + y);
+  for (let y = -1; y <= h; y++) for (let x = -1; x <= w; x++) {
+    if (has(x, y)) px.push([x, y, set.get(x + ',' + y)]);
+    else if (outline && (has(x+1,y)||has(x-1,y)||has(x,y+1)||has(x,y-1))) px.push([x, y, outline]);
+  }
+  return { w, h, px };
+}
+const RP = { W:'#ffffff', L:'#dfe5ff', M:'#9aa8f5', K:INK, D:'#1a2a9a', Y:'#ffb020', A:'#ffb020', B:'#35c9a0' };
+const robotRows = (wheel, sleep, led) => [
+  '.....' + led + '........','.....' + led + '........','...WWWWWWWW...','..WWWWWWWWWW..',
+  sleep ? '..WWWWWWWWWW..' : '..WWKKWWKKWW..', '..WWKKWWKKWW..','..WWWWWWWWWW..','...WWWWWWWW...',
+  '..LLLLLLLLLM..','.LLLLDDDDLLLLM','.LLLLDYYDLLLLM','.LLLLDDDDLLLLM','..LLLLLLLLLM..','...MMMMMMMM...',
+  wheel ? '..KKKK..KKKK..' : '.KKKKK..KKKKK.', wheel ? '.KKKKK..KKKKK.' : '..KKK....KKK..'];
+const ROBOT = [0,1].map(l => [0,1].map(w => [0,1].map(s => compile(robotRows(w, s, l ? 'B' : 'A'), RP))));
+const AGENT = [0,1].map(f => compile(['..GGGG..','.GGGGGG.','.GKGGKG.','.GGGGGG.','..GGGG..','.DDDDDD.','.DDDDDD.', f ? '..D..D..' : '.D....D.', '.DD..DD.'], { G:'#c9d2ff', D:'#8392f2', K:INK }));
+const devCache = {};
+function dev(i, f) {
+  const k = i + ':' + f; if (devCache[k]) return devCache[k];
+  return devCache[k] = compile(['...HHHH...','..HHHHHH..','..HSSSSH..','..SKSSKS..','..SSSSSS..','...SSSS...','..TTTTTT..','.TTTTTTTT.', f ? '.STTTTTTS.' : 'STTTTTTTTS', f ? 'STTTTTTTTS' : '.TTTTTTTT.','.TTTTTTTT.','.TTTTTTTT.','.TTTTTTTT.','.TTTTTTTT.'],
+    { H: HAIR[i % 5], S: SKIN[(i * 3) % 4], T: SHIRT[i % 5], K: INK });
+}
+const PLANT = compile(['....B.B....','..B.BBB.B..','.BBBBBBBBB.','..BBBBBBB..','...BBBBB...','....DDD....','...MMMMM...','...MLLLM...','...MLLLM...','....MMM....'], RP);
+
+function makeScene(canvas, o = {}) {
+  const ctx = canvas.getContext('2d'), calm = !!o.calm, rnd = rng(o.seed || 11);
+  const host = canvas.parentElement, tagsEl = o.tags || null;
+  let W, H, G, ps, back, clouds = [], crates = [], agents = [], parts = [], robots = [], desks = [], props = [], spawn = 120, free = 258.2, got = 0, running = false, raf = 0, last = 0, tick = 0;
+  const hud = o.hud ? { free: $('#hudfree'), bar: $('#hudbar'), got: $('#hudgot'), bots: $('#hudbots') } : null;
+  const showBots = () => { if (hud) hud.bots.textContent = 'bots ' + robots.length + '/5'; };
+  const floorY = () => Math.round(G + 17 + rnd() * Math.max(2, H - G - 17 - 7));
+
+  function build() {
+    const r = host.getBoundingClientRect();
+    ps = Math.max(3, Math.round(r.width / 300));
+    W = Math.ceil(r.width / ps); H = Math.ceil(r.height / ps); G = Math.round(H * (o.ground || .74));
+    canvas.width = W; canvas.height = H; canvas.style.width = W * ps + 'px'; canvas.style.height = H * ps + 'px';
+    if (tagsEl) { tagsEl.style.width = W * ps + 'px'; tagsEl.style.height = H * ps + 'px'; }
+    const off = document.createElement('canvas'); off.width = W; off.height = H;
+    const c = off.getContext('2d'), img = c.createImageData(W, H), d = img.data;
+    const ramp = (stops, t, x, y) => { t = Math.min(.999, Math.max(0, t)); const f = t * (stops.length - 1), i = Math.floor(f); return stops[(f - i) > (BAYER[(y & 3) * 4 + (x & 3)] + .5) / 16 ? i + 1 : i]; };
+    const rug = { x0: Math.round(W * .26), x1: Math.round(W * .74), y0: G + 15, y1: G + Math.round((H - G) * .8) };
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      let col = y < G ? ramp(SKY, Math.pow(y / G, 2.5), x, y) : ramp(GND, Math.pow((y - G) / (H - G), .8), x, y), add = 0;
+      if (y > G && (y - G) % 6 === 0) add += 9;
+      if (y >= rug.y0 && y <= rug.y1 && x >= rug.x0 && x <= rug.x1 && ((x + y) & 1) === 0 && (y - G) < (H - G) * .85) add += 16;
+      const k = (y * W + x) * 4; d[k] = Math.min(255, col[0] + add); d[k+1] = Math.min(255, col[1] + add); d[k+2] = Math.min(255, col[2] + add); d[k+3] = 255;
+    }
+    c.putImageData(img, 0, 0);
+    // city skyline behind the glass: three layers, lit windows on the nearest
+    const base = G - 3, layers = [['#7f93f7', 6, 24, 1.0], ['#3f55e8', 9, 34, 1.0], ['#17239a', 12, 46, 1.0]];
+    layers.forEach(([col, hmin, hmax], li) => {
+      let x = -2; while (x < W) { const w = 3 + Math.floor(rnd() * 6), h = hmin + Math.floor(rnd() * (hmax - hmin)); c.fillStyle = col; c.fillRect(x, base - h, w, h);
+        if (li === 2) { if (rnd() < .5) c.fillRect(x + Math.floor(w / 2), base - h - 3, 1, 3); for (let y = base - h + 2; y < base - 1; y += 3) for (let xx = x + 1; xx < x + w - 1; xx += 2) if (rnd() < .22) { c.fillStyle = rnd() < .6 ? '#ffb020' : '#ffffff'; c.fillRect(xx, y, 1, 1); c.fillStyle = col; } }
+        x += w + (rnd() < .4 ? 1 : 0); }
+    });
+    // glass wall: mullions, ceiling with light panels, pendant lamps, baseboard
+    c.fillStyle = 'rgba(12,18,64,.3)'; const cols = Math.max(3, Math.round(W / 62));
+    for (let i = 1; i < cols; i++) c.fillRect(Math.round(i * W / cols), 5, 2, G - 5);
+    
+    c.fillStyle = '#0a1050'; c.fillRect(0, 0, W, 5);
+    c.fillStyle = '#dfe5ff'; for (let x = 12; x < W - 20; x += 46) c.fillRect(x, 1, 20, 2);
+    c.fillStyle = INK; c.fillRect(0, G - 2, W, 2); c.fillStyle = '#1a2a9a'; c.fillRect(0, G, W, 1);
+    for (let i = 0; i < cols && W >= 200; i++) { const lx = Math.round((i + .5) * W / cols); c.fillStyle = INK; c.fillRect(lx, 5, 1, 9); c.fillStyle = '#dfe5ff'; c.fillRect(lx - 3, 14, 7, 2); c.fillStyle = '#ffd36b'; c.fillRect(lx - 2, 16, 5, 1); }
+    back = off;
+    clouds = Array.from({ length: Math.round(W / 22) }, () => ({ x: W * .45 + rnd() * W * .55, y: 7 + rnd() * G * .6, len: 6 + rnd() * 30, sp: .015 + rnd() * .05, a: .05 + rnd() * .12 }));
+
+    // desks with a developer each
+    const n = Math.max(2, Math.min(5, Math.floor(W / 95))), x0 = 22, x1 = W - 34 - 24;
+    const old = desks.map(d => d.bub); old.forEach(b => b && b.remove());
+    desks = Array.from({ length: n }, (_, i) => ({ x: Math.round(x0 + (n === 1 ? 0 : i * (x1 - x0) / (n - 1))), i, seed: Math.floor(rnd() * 99), bub: null, say: 60 + rnd() * 240, sayT: 0 }));
+    props = [{ k: 'plant', x: 6, y: G + 16 }, { k: 'rack', x: W - 17, y: G + 20 }];
+    if (n > 2) props.push({ k: 'plant', x: Math.round((desks[0].x + desks[1].x + 34) / 2) - 5, y: G + 16 });
+
+    if (!robots.length) {
+      robots = [0, 1].map(i => ({ x: W * (.4 + i * .2), yb: G + 24, dir: 1, st: 'idle', t: i * 40, wheel: 0, target: null, led: i }));
+      if (!calm) for (let i = 0; i < 4; i++) dropCrate(W * (.12 + .2 * i + rnd() * .08), true);
+    }
+    robots.forEach(R => { R.x = Math.min(R.x, W - 24); R.yb = Math.max(R.yb, G + 20); });
+    crates.forEach(cr => { cr.x = Math.min(cr.x, W - cr.w - 6); cr.yb = Math.max(cr.yb, G + 18); });
+  }
+
+  function dropCrate(x, instant, yb) {
+    const gb = +(0.6 + rnd() * rnd() * 7).toFixed(1), w = Math.max(9, Math.min(22, Math.round(7 + gb * 2.2))), h = Math.max(8, Math.min(17, Math.round(6 + gb * 1.5)));
+    const cr = { x: Math.round(Math.max(10, Math.min(W - w - 10, x))), yb: yb != null ? Math.round(yb) : floorY(), w, h, gb, name: NAMES[Math.floor(rnd() * NAMES.length)], r: 1, st: 'idle', pix: [], owner: null };
+    for (let py = 0; py < h; py++) for (let px = 0; px < w; px++) {
+      const top = py === 0, bot = py >= h - 2, edgeR = px === w - 1, plank = py === Math.floor(h / 2) || (px === Math.floor(w / 2) && py > 1 && py < h - 2 && w > 12);
+      cr.pix.push({ x: px, y: py, col: top ? '#ffd36b' : bot || edgeR ? '#c27a00' : plank ? '#e69a10' : '#ffb020', h: (((px * 73856093) ^ (py * 19349663) ^ (cr.x * 83492791)) >>> 0) % 1000 / 1000 });
+    }
+    if (tagsEl) { cr.el = document.createElement('div'); cr.el.className = 'tag notch'; cr.el.innerHTML = cr.name + ' <b>' + gb.toFixed(1) + ' GB</b>'; tagsEl.appendChild(cr.el); }
+    crates.push(cr);
+    if (!instant) { free -= gb; for (let i = 0; i < 14; i++) parts.push({ sx: cr.x + cr.w / 2, sy: cr.yb - cr.h / 2, free: true, vx: (rnd() - .5) * 1.4, vy: -rnd() * 1.6, t: 0, len: 22, col: i % 2 ? '#fff' : '#ffd36b' }); }
+    return cr;
+  }
+
+  const nozzle = R => ({ x: R.dir > 0 ? R.x + 16 : R.x - 2, y: R.yb - 7 });
+  function say(dk, txt) {
+    if (!tagsEl) return;
+    if (dk.bub) dk.bub.remove();
+    const b = document.createElement('div'); b.className = 'tag notch'; b.style.background = '#fff'; b.textContent = txt;
+    b.style.left = (dk.x + 13) * ps + 'px'; b.style.top = (G + 4 - 17) * ps + 'px'; tagsEl.appendChild(b); dk.bub = b; dk.sayT = 170;
+  }
+  function update(dt) {
+    tick += dt;
+    clouds.forEach(c => { c.x -= c.sp * dt; if (c.x + c.len < W * .42) c.x = W; });
+    desks.forEach(dk => {
+      if (dk.sayT > 0) { dk.sayT -= dt; if (dk.sayT <= 0 && dk.bub) { dk.bub.remove(); dk.bub = null; } }
+      else { dk.say -= dt; if (dk.say <= 0) { if (!calm) say(dk, SAYS[Math.floor(rnd() * SAYS.length)]); dk.say = 260 + rnd() * 420; } }
+    });
+    if (calm) { robots.forEach(R => R.t += dt); return; }
+    spawn -= dt;
+    if (spawn <= 0) { if (crates.length < 7 && agents.length < 3) { const fromRight = rnd() < .5; agents.push({ x: fromRight ? W + 8 : -10, dir: fromRight ? -1 : 1, yb: floorY(), tx: W * (.15 + rnd() * .68), st: 'in', t: 0 }); } spawn = 170 + rnd() * 220; }
+    agents.forEach(a => {
+      a.t += dt;
+      if (a.st === 'in') { a.x += a.dir * .55 * dt; if ((a.dir < 0 && a.x <= a.tx) || (a.dir > 0 && a.x >= a.tx)) { a.st = 'drop'; a.t = 0; } }
+      else if (a.st === 'drop') { if (a.t > 28 && !a.did) { a.did = true; dropCrate(a.x - 4 * a.dir); } if (a.t > 52) a.st = 'out'; }
+      else a.x += a.dir * .7 * dt;
+    });
+    agents = agents.filter(a => a.x > -16 && a.x < W + 16);
+    robots.forEach(R => {
+      if (R.st === 'idle') {
+        R.t += dt;
+        if (R.t > 25) { const cand = crates.find(c => c.st === 'idle' && !c.owner); /* first in, first cleaned */ if (cand) { R.target = cand; cand.owner = R; R.st = 'walk'; } }
+      } else if (R.st === 'walk') {
+        const c = R.target; if (!c || !crates.includes(c)) { R.st = 'idle'; R.t = 0; return; }
+        const right = R.x < c.x, stop = right ? c.x - 17 : c.x + c.w + 3, dx = stop - R.x;
+        R.dir = right ? 1 : -1; const step = Math.min(Math.abs(dx), .5 * dt); R.x += Math.sign(dx) * step; R.wheel += step;
+        R.yb += (c.yb - R.yb) * .07 * dt;
+        if (Math.abs(dx) < 1 && Math.abs(c.yb - R.yb) < 1.6) { R.st = 'clean'; c.st = 'cleaning'; R.yb = c.yb; }
+      } else if (R.st === 'clean') {
+        const c = R.target; if (!c || !crates.includes(c)) { R.st = 'idle'; R.t = 0; return; }
+        const r0 = c.r; c.r -= dt / (60 + c.gb * 22);
+        c.pix.forEach(p => { if (p.h < r0 && p.h >= c.r) parts.push({ sx: c.x + p.x, sy: c.yb - c.h + p.y, col: p.col, t: 0, len: 16 + rnd() * 14, R }); });
+        const gain = (r0 - Math.max(0, c.r)) * c.gb; free += gain; got += gain;
+        if (c.r <= 0) {
+          if (c.el) { const pop = document.createElement('div'); pop.className = 'pop'; pop.textContent = '+' + c.gb.toFixed(1) + ' GB'; pop.style.left = (c.x + c.w / 2) * ps + 'px'; pop.style.top = (c.yb - c.h - 4) * ps + 'px'; tagsEl.appendChild(pop); setTimeout(() => pop.remove(), 1400); c.el.remove(); }
+          crates = crates.filter(x => x !== c); R.st = 'idle'; R.t = 0; R.target = null;
+        }
+      }
+    });
+    parts.forEach(p => { p.t += dt; });
+    parts = parts.filter(p => p.t < p.len);
+    if (hud) { const f = Math.min(free, 270); hud.free.textContent = f.toFixed(1) + ' GB'; hud.bar.style.width = Math.max(4, Math.min(100, (f - 236) / 36 * 100)) + '%'; hud.got.textContent = got > .05 ? '+' + got.toFixed(1) + ' GB' : ''; }
+  }
+
+  const R_ = (x, y, w, h, col) => { ctx.fillStyle = col; ctx.fillRect(Math.round(x), Math.round(y), w, h); };
+  function sprite(s, x, y, flip) { for (const [px, py, col] of s.px) { ctx.fillStyle = col; ctx.fillRect(Math.round(x + (flip ? s.w - 1 - px : px)), Math.round(y + py), 1, 1); } }
+  function drawDesk(dk) {
+    const x = dk.x, top = G + 4, f = Math.floor(tick / 7 + dk.i * 3) % 2, hot = crates.length >= 5;
+    sprite(dev(dk.i, f), x + 7, top - 14, false);                           // developer, behind the desk
+    R_(x - 1, top - 1, 36, 11, INK); R_(x, top, 34, 2, '#dfe5ff'); R_(x, top + 2, 34, 1, '#9aa8f5'); R_(x + 1, top + 3, 32, 6, '#8392f2');
+    R_(x + 21, top + 3, 1, 6, '#6c7ae0'); R_(x + 22, top + 5, 10, 1, '#6c7ae0'); R_(x + 3, top + 4, 8, 1, '#6c7ae0');
+    R_(x + 6, top - 6, 13, 6, INK); R_(x + 7, top - 5, 11, 4, '#c9d2ff'); R_(x + 11, top - 4, 2, 2, hot ? '#ff5c5c' : '#ffb020'); // laptop lid
+    R_(x + 2, top - 4, 4, 4, INK); R_(x + 3, top - 3, 2, 2, '#ff7a59');                                                        // mug
+    const mx = x + 22; R_(mx, top - 12, 12, 10, INK); R_(mx + 1, top - 11, 10, 8, '#0f1760'); R_(mx + 4, top - 2, 4, 2, INK);   // monitor
+    for (let k = 0; k < 4; k++) { const h = ((dk.seed * 31 + k * 17 + Math.floor(tick / 40) * 13) >>> 0) % 7; R_(mx + 2, top - 10 + k * 2, 2 + h, 1, ['#7f93f7', '#ffffff', '#ffb020', '#35c9a0'][(k + dk.seed) % 4]); }
+    if (hot && Math.floor(tick / 20) % 2) R_(mx + 8, top - 10, 2, 2, '#ff5c5c');
+  }
+  function drawProp(p) {
+    if (p.k === 'plant') { R_(p.x, p.y, 11, 1, 'rgba(12,18,64,.3)'); sprite(PLANT, p.x, p.y - 10, false); }
+    else {
+      R_(p.x - 1, p.y - 27, 12, 28, INK); R_(p.x, p.y - 26, 10, 26, '#17239a');
+      for (let i = 0; i < 5; i++) { const y = p.y - 24 + i * 5; R_(p.x + 1, y, 8, 3, '#0f1760'); const on = Math.floor(tick / (12 + i * 5) + i) % 3; R_(p.x + 2, y + 1, 1, 1, crates.length >= 5 && !calm ? (on ? '#ff5c5c' : '#7a2020') : on === 0 ? '#35c9a0' : '#0f1760'); R_(p.x + 4, y + 1, 1, 1, '#ffb020'); R_(p.x + 6, y + 1, 3, 1, '#3f55e8'); }
+    }
+  }
+  function draw() {
+    ctx.drawImage(back, 0, 0);
+    clouds.forEach(c => { ctx.fillStyle = 'rgba(255,255,255,' + c.a + ')'; ctx.fillRect(Math.round(c.x), Math.round(c.y), Math.round(c.len), 1); });
+    let qi = 0; crates.forEach(c => { const w = c.st === 'idle' && !c.owner && !crates.every(x => x.st === 'idle'); if (c.el) { c.el.classList.toggle('wait', c.st === 'idle' && !c.owner && robots.every(R => R.st !== 'idle')); if (c.st === 'idle' && !c.owner) c.el.dataset.q = ++qi; } });
+    const items = [];
+    desks.forEach(dk => items.push({ y: G + 13, f: () => drawDesk(dk) }));
+    props.forEach(p => items.push({ y: p.y, f: () => drawProp(p) }));
+    crates.forEach(c => items.push({ y: c.yb, f: () => {
+      R_(c.x - 1, c.yb, c.w + 3, 1, 'rgba(12,18,64,.35)');
+      for (const p of c.pix) if (p.h < c.r) R_(c.x + p.x, c.yb - c.h + p.y, 1, 1, p.col);
+      if (c.el) { c.el.style.left = (c.x + c.w / 2) * ps + 'px'; c.el.style.top = (c.yb - c.h - 3) * ps + 'px'; c.el.classList.toggle('busy', c.st === 'cleaning'); c.el.style.opacity = c.r < .15 ? 0 : 1; }
+    } }));
+    agents.forEach(a => items.push({ y: a.yb, f: () => { R_(a.x, a.yb, 9, 1, 'rgba(12,18,64,.35)'); sprite(AGENT[Math.floor(a.t / 8) % 2], a.x - 1, a.yb - 10, a.dir < 0); } }));
+    robots.forEach(R => items.push({ y: R.yb, f: () => {
+      const bob = calm ? (Math.floor(R.t / 40) % 2) : 0, w = Math.floor(R.wheel / 4) % 2;
+      R_(R.x, R.yb, 16, 1, 'rgba(12,18,64,.35)');
+      sprite(ROBOT[R.led][w][calm ? 1 : 0], R.x - 1, R.yb - 18 - bob, R.dir < 0);
+      const n = nozzle(R); R_(n.x - 1, n.y - 1, 3, 4, INK); R_(n.x, n.y, 1, 2, R.st === 'clean' ? '#ffb020' : '#7f93f7');
+    } }));
+    items.sort((a, b) => a.y - b.y).forEach(i => i.f());
+    parts.forEach(p => {
+      if (p.free) { R_(p.sx + p.vx * p.t, p.sy + p.vy * p.t + .06 * p.t * p.t, 1, 1, p.col); return; }
+      const e = p.t / p.len, ee = e * e * (3 - 2 * e), n = nozzle(p.R);
+      R_(p.sx + (n.x - p.sx) * ee, p.sy + (n.y - p.sy) * ee - Math.sin(Math.PI * e) * 5, 1, 1, e > .85 ? '#ffffff' : p.col);
+    });
+    desks.forEach(dk => { if (dk.bub) { dk.bub.style.left = (dk.x + 13) * ps + 'px'; dk.bub.style.top = (G + 4 - 17) * ps + 'px'; } });
+  }
+  function frame(t) { if (!running) return; const dt = Math.min(3, (t - last) / 16.7 || 1); last = t; update(dt); draw(); raf = requestAnimationFrame(frame); }
+  function start() { if (running || reduce) return; running = true; last = performance.now(); raf = requestAnimationFrame(frame); }
+  function stop() { running = false; cancelAnimationFrame(raf); }
+  function poke(px, py) {
+    if (calm || reduce || !back) return;
+    const x = px / ps, y = py / ps, fy = Math.min(H - 8, Math.max(G + 18, y));
+    for (let i = 0; i < 2 && crates.length < 10; i++) dropCrate(x + (i ? 13 : -7) + (rnd() - .5) * 6, false, fy + (i ? 4 : 0) > H - 8 ? H - 8 : fy + (i ? 4 : 0));
+    if (robots.length < 5) { const left = x < W / 2; robots.push({ x: left ? -20 : W + 4, yb: G + 22, dir: left ? 1 : -1, st: 'idle', t: 20, wheel: 0, target: null, led: robots.length % 2 }); showBots(); }
+    const h = $('#hint'); if (h) h.remove();
+  }
+  if (!calm) host.addEventListener('click', e => {
+    if (e.target.closest('a,button,.install,h1,.lead,.fine,.nav,.hud')) return;
+    const r = canvas.getBoundingClientRect(); poke(e.clientX - r.left, e.clientY - r.top);
   });
-});
+  const sized = () => { const r = host.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  function boot() {
+    if (!sized()) { setTimeout(boot, 120); return; }
+    build(); showBots();
+    if (reduce) { for (let i = 0; i < 400 && !calm; i++) update(1); if (tagsEl && desks[0]) { say(desks[0], SAYS[2]); desks[0].sayT = 1e9; } draw(); } else draw();
+    if (!reduce && wantRun) start();
+  }
+  let wantRun = false;
+  boot();
+  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (sized()) { build(); draw(); } }, 150); });
+  new IntersectionObserver(es => { wantRun = es[0].isIntersecting; if (wantRun && back) start(); else stop(); }, { threshold: 0 }).observe(host);
+  document.addEventListener('visibilitychange', () => document.hidden ? stop() : (wantRun && back && start()));
+  return { start, stop };
+}
+makeScene($('#scene'), { tags: $('#tags'), hud: true, seed: 11 });
+makeScene($('#scene2'), { calm: true, seed: 4, ground: .74 });
+
+/* ============ install tabs ============ */
+const INSTALL = {
+  brew: { html: '<span class="p">$</span> brew tap chungquantin/ai-keeper https://github.com/chungquantin/ai-keeper\n<span class="p">$</span> brew trust --tap chungquantin/ai-keeper\n<span class="p">$</span> brew install --cask ai-keeper', copy: 'brew tap chungquantin/ai-keeper https://github.com/chungquantin/ai-keeper\nbrew trust --tap chungquantin/ai-keeper\nbrew install --cask ai-keeper' },
+  curl: { html: '<span class="p">$</span> curl -fsSL https://chungquantin.github.io/ai-keeper/install.sh | bash', copy: 'curl -fsSL https://chungquantin.github.io/ai-keeper/install.sh | bash' },
+  zip: { html: '<span class="p">$</span> AI-Keeper.zip, from GitHub Releases', href: 'https://github.com/chungquantin/ai-keeper/releases/latest' }
+};
+function showInstall(k) {
+  const d = INSTALL[k], box = $('#codebox');
+  box.innerHTML = '<pre>' + d.html + '</pre>' + (d.copy ? '<button type="button">copy</button>' : '<a class="get" href="' + d.href + '">download</a>');
+  const b = $('button', box); if (b) b.onclick = () => { (navigator.clipboard ? navigator.clipboard.writeText(d.copy) : Promise.reject()).then(() => { b.textContent = 'copied'; setTimeout(() => b.textContent = 'copy', 1400); }).catch(() => { b.textContent = 'press ⌘C'; }); };
+  $$('.tabs button').forEach(t => t.setAttribute('aria-selected', t.dataset.t === k));
+}
+$$('.tabs button').forEach(t => t.onclick = () => showInstall(t.dataset.t));
+showInstall('brew');
+
+/* ============ picker ============ */
+const WS = [
+  { n: 'api-server/refactor-auth', gb: 11.4, why: 'Pull request #405 merged, nothing unsaved', on: true },
+  { n: 'api-server/feat-search-index', gb: 8.6, why: 'Branch landed in main, tree is clean', on: true },
+  { n: 'web-app/experiment-graphql', gb: 2.9, why: 'Idle for 41 days, nothing unpushed', on: true },
+  { n: 'inferx/analytics-consoles', gb: 0.14, why: '2 commits not pushed. Review first', on: false },
+  { n: 'ml-pipeline/hotfix-billing', gb: 4.1, why: '12 files uncommitted. Saved to the vault before any removal', lock: true }
+];
+let removed = false;
+function renderPicker() {
+  const host = $('#picker-ui'), max = Math.max(...WS.map(w => w.gb));
+  const sel = WS.filter(w => w.on && !w.lock && !w.gone), tot = sel.reduce((a, w) => a + w.gb, 0);
+  host.innerHTML = '<h3><span>Workspaces</span><span>' + WS.filter(w => !w.gone).length + ' found</span></h3>' +
+    WS.filter(w => !w.gone || w.fading).map((w, i) =>
+      '<div class="row' + (w.lock ? ' locked' : '') + (w.fading ? ' gone' : '') + '" role="checkbox" aria-checked="' + (!!w.on && !w.lock) + '" tabindex="' + (w.lock ? -1 : 0) + '" data-i="' + WS.indexOf(w) + '"' + (w.lock ? ' aria-disabled="true"' : '') + '>' +
+      '<span class="box"></span><span class="sz">' + (w.gb < 1 ? Math.round(w.gb * 1000) + ' MB' : w.gb.toFixed(1) + ' GB') + '</span>' +
+      '<span class="nm"><strong>' + w.n + '</strong><span>' + w.why + '</span></span>' +
+      '<span class="bar"><i style="width:' + Math.max(4, w.gb / max * 100) + '%"></i></span></div>').join('') +
+    '<div class="pbar"><div class="tot' + (removed ? ' done' : '') + '">' +
+    (removed ? '<small>Moved to the Trash</small>' + removedGB.toFixed(1) + ' GB back<button class="undo" type="button" id="undo">Put them back</button>' : '<small>' + sel.length + ' selected, can be freed</small>' + tot.toFixed(1) + ' GB') +
+    '</div>' + (removed ? '' : '<button class="btn primary notch" type="button" id="rm"' + (sel.length ? '' : ' disabled') + '>Remove ' + sel.length + '</button>') + '</div>';
+  $$('.row', host).forEach(r => { const w = WS[+r.dataset.i]; if (w.lock) return; const t = () => { w.on = !w.on; renderPicker(); }; r.onclick = t; r.onkeydown = e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); t(); } }; });
+  const rm = $('#rm', host); if (rm) rm.onclick = () => { removedGB = tot; sel.forEach(w => { w.fading = true; w.gone = true; }); renderPicker(); setTimeout(() => { WS.forEach(w => w.fading = false); removed = true; renderPicker(); }, reduce ? 0 : 750); };
+  const un = $('#undo', host); if (un) un.onclick = () => { WS.forEach(w => { if (w.gone) { w.gone = false; w.on = true; } }); removed = false; renderPicker(); };
+}
+let removedGB = 0; renderPicker();
+
+/* ============ cleanup history ============ */
+const hist = (() => {
+  const r = rng(7), days = new Map(), now = new Date(); now.setHours(0, 0, 0, 0);
+  for (let back = 0; back < 371; back++) {
+    const d = new Date(now); d.setDate(d.getDate() - back);
+    const wd = d.getDay(), busy = Math.floor(back / 9) % 3 !== 2, chance = (wd === 0 || wd === 6) ? .12 : busy ? .55 : .18;
+    if (back < 4 || r() < chance) { const big = r() < .12; days.set(back, big ? 6 + r() * 14 : .3 + r() * 3.2); }
+  }
+  return { days, now };
+})();
+const total = [...hist.days.values()].reduce((a, b) => a + b, 0);
+const lvl = (v, peak) => !v ? 0 : v / peak > .75 ? 4 : v / peak > .5 ? 3 : v / peak > .2 ? 2 : 1;
+function streaks() { let cur = 0, b = hist.days.has(0) ? 0 : 1; while (hist.days.has(b + cur)) cur++; let best = 0, run = 0; for (let i = 370; i >= 0; i--) { if (hist.days.has(i)) { run++; best = Math.max(best, run); } else run = 0; } return { cur, best }; }
+function renderGrid() {
+  const N = innerWidth < 700 ? 27 : 53, g = $('#grid'), m = $('#months'), wd = hist.now.getDay();
+  g.style.gridTemplateColumns = m.style.gridTemplateColumns = 'repeat(' + N + ',1fr)';
+  let peak = 0, cells = [];
+  for (let c = 0; c < N; c++) for (let r = 0; r < 7; r++) { const back = (N - 1 - c) * 7 + (wd - r), v = back < 0 ? null : hist.days.get(back) || 0; cells.push({ back, v, c, r }); if (v > peak) peak = v; }
+  g.innerHTML = cells.map(x => x.v === null ? '<i class="f"></i>' : '<i class="l' + lvl(x.v, peak) + '" data-b="' + x.back + '" data-v="' + x.v.toFixed(1) + '"></i>').join('');
+  let last = -1, out = '';
+  for (let c = 0; c < N; c++) { const d = new Date(hist.now); d.setDate(d.getDate() - ((N - 1 - c) * 7 + wd)); const mo = d.getMonth(); out += '<span>' + (mo !== last && c < N - 2 ? d.toLocaleString('en', { month: 'short' }).toLowerCase() : '') + '</span>'; if (mo !== last) last = mo; }
+  m.innerHTML = out;
+  const s = streaks(), bestDay = Math.max(...hist.days.values());
+  $('#facts').innerHTML = '<div><b>' + hist.days.size + ' days</b>with a cleanup</div><div><b>' + s.cur + ' days</b>current streak</div><div><b>' + s.best + ' days</b>longest streak</div><div><b>' + bestDay.toFixed(1) + ' GB</b>best day</div>';
+  $('#csince').textContent = 'GB freed in the last year';
+}
+renderGrid(); let gt; addEventListener('resize', () => { clearTimeout(gt); gt = setTimeout(renderGrid, 200); });
+const tip = $('#tip');
+$('#grid').addEventListener('mouseover', e => { const i = e.target.closest('i[data-b]'); if (!i) return; const d = new Date(hist.now); d.setDate(d.getDate() - +i.dataset.b); tip.textContent = (+i.dataset.v ? i.dataset.v + ' GB' : 'Nothing') + ' on ' + d.toLocaleString('en', { month: 'short', day: 'numeric' }); const r = i.getBoundingClientRect(); tip.style.left = r.left + r.width / 2 + 'px'; tip.style.top = r.top + 'px'; tip.style.display = 'block'; });
+$('#grid').addEventListener('mouseleave', () => tip.style.display = 'none');
+function countUp(el, to, ms = 1400) { if (reduce) { el.textContent = to.toFixed(1); return; } const t0 = performance.now(); (function f(t) { const k = Math.min(1, (t - t0) / ms); el.textContent = (to * (1 - Math.pow(1 - k, 3))).toFixed(1); if (k < 1) requestAnimationFrame(f); })(t0); }
+new IntersectionObserver((es, o) => { if (es[0].isIntersecting) { countUp($('#ctotal'), total); o.disconnect(); } }, { threshold: .4 }).observe($('.chart'));
+
+/* ============ terminals that type ============ */
+const L = (s, c) => '<span class="' + c + '">' + s + '</span>';
+function textChart() {
+  const N = 40, wd = hist.now.getDay(), tx = ['·','░','▒','▓','█']; let peak = 0; const rows = [[], [], [], [], [], [], []];
+  for (let c = 0; c < N; c++) for (let r = 0; r < 7; r++) { const back = (N - 1 - c) * 7 + (wd - r); const v = back < 0 ? null : hist.days.get(back) || 0; rows[r].push(v); if (v > peak) peak = v; }
+  const labels = ['', 'mon', '', 'wed', '', 'fri', ''];
+  return rows.map((row, r) => L(labels[r].padEnd(4), 'g') + row.map(v => v === null ? '  ' : (v === 0 ? L(tx[0], 'g') : L(tx[lvl(v, peak)], 'a')) + ' ').join('')).join('\n');
+}
+const TERM = {
+  'keeper status': () => '$ keeper status',
+  _: null
+};
+const SESS = [
+  { tab: 'status', cmd: 'keeper status', out: () => [
+    L('disk         ', 'g') + L('258.2 GB', 'b') + L(' free of 994.6 GB   ', 'g') + L('━━━━━━━─────', 'c'),
+    L('reclaimable  ', 'g') + L('107.9 GB', 'u'),
+    '             ' + L('build folders  ', 'g') + L('━━━━━━━━━━━━━━━━━━━━', 'a') + '  75.8 GB',
+    '             ' + L('workspaces     ', 'g') + L('━━━', 'a') + L('─────────────────', 'g') + '  22.9 GB' + L('  3 safe to remove', 'g'),
+    '             ' + L('leftovers      ', 'g') + L('━━', 'a') + L('──────────────────', 'g') + '   9.2 GB',
+    L('agents       ', 'g') + '6 running',
+    L('spend        ', 'g') + '$25.42 today, $1630.36 this week',
+    L('cleaned      ', 'g') + L(total.toFixed(1) + ' GB', 'b') + ' in total, ' + streaks().cur + ' days streak' ] },
+  { tab: 'remove', cmd: 'keeper remove --all-safe --yes', out: () => [
+    L('size      status           workspace', 'g'),
+    ' 11.4 GB  ' + L('safe to remove', 'a') + '   api-server/refactor-auth',
+    '  8.6 GB  ' + L('safe to remove', 'a') + '   api-server/feat-search-index',
+    '  2.9 GB  ' + L('safe to remove', 'a') + '   web-app/experiment-graphql', '',
+    L('[3/3] web-app/experiment-graphql  22.9 GB of 22.9 GB', 'g'),
+    'Freed ' + L('22.9 GB', 'u') + ' by removing 3 workspaces. They are in the Trash.' ] },
+  { tab: 'skills', cmd: 'keeper skills scan --all', out: () => [
+    L('Scanned 142 skills with NVIDIA SkillSpector', 'g'), '',
+    L(' do not install', 'r') + '   78  deploy-helper     ' + L('scripts', 'g'),
+    L(' review', 'a') + '           41  figma-sync',
+    L(' review', 'a') + '           32  db-migrations     ' + L('scripts', 'g'),
+    L(' looks safe', 'c') + '        0  code-review',
+    L(' looks safe', 'c') + '        0  pdf-kit', '',
+    L('21 worth a look. Nothing was changed.', 'b') + L('  keeper skills remove --risk danger', 'g') ] },
+  { tab: 'history', cmd: 'keeper history', out: () => [L(total.toFixed(1) + ' GB', 'u') + L('  freed in the last year', 'g'), '', textChart(), '', L('streak        ', 'g') + streaks().cur + ' days now, ' + streaks().best + ' longest'] }
+];
+let typing = 0;
+function runTerm(i) {
+  const s = SESS[i], out = $('#termout'), id = ++typing; $('#termtitle').textContent = 'keeper ' + s.tab;
+  $$('#termtabs button').forEach((b, j) => b.setAttribute('aria-selected', j === i));
+  const lines = s.out(), prompt = L('$ ', 'c');
+  if (reduce) { out.innerHTML = prompt + s.cmd + '\n' + lines.join('\n'); return; }
+  let n = 0; out.innerHTML = prompt + '<span class="caret"></span>';
+  const type = () => { if (id !== typing) return; n++; out.innerHTML = prompt + s.cmd.slice(0, n) + '<span class="caret"></span>'; if (n < s.cmd.length) setTimeout(type, 28); else setTimeout(() => show(0), 260); };
+  const show = k => { if (id !== typing) return; out.innerHTML = prompt + s.cmd + '\n' + lines.slice(0, k + 1).join('\n') + (k + 1 < lines.length ? '' : '\n' + prompt + '<span class="caret"></span>'); if (k + 1 < lines.length) setTimeout(() => show(k + 1), 70); };
+  setTimeout(type, 200);
+}
+$('#termtabs').innerHTML = SESS.map((s, i) => '<button role="tab" aria-selected="false" type="button" data-i="' + i + '">keeper ' + s.tab + '</button>').join('');
+$$('#termtabs button').forEach(b => b.onclick = () => runTerm(+b.dataset.i));
+new IntersectionObserver((es, o) => { if (es[0].isIntersecting) { runTerm(0); o.disconnect(); } }, { threshold: .35 }).observe($('.term'));
+
+/* ============ skills scanning ============ */
+const SK = [['deploy-helper', 'scripts, network access', 'bad', 'do not install'], ['figma-sync', 'plugin figma', 'rev', 'review'], ['db-migrations', 'scripts', 'rev', 'review'], ['code-review', 'markdown only', 'ok', 'looks safe'], ['pdf-kit', 'scripts, reads files', 'ok', 'looks safe'], ['release-notes', 'markdown only', 'ok', 'looks safe']];
+$('#skills-ui').innerHTML = SK.map(s => '<div class="sk"><span><strong>' + s[0] + '</strong><small>' + s[1] + '</small></span><span class="verdict notch scan" data-k="' + s[2] + '" data-t="' + s[3] + '">scanning</span></div>').join('');
+function scanSkills() { $$('#skills-ui .verdict').forEach((v, i) => setTimeout(() => { v.classList.remove('scan'); v.classList.add(v.dataset.k); v.textContent = v.dataset.t; }, reduce ? 0 : 500 + i * 520)); }
+new IntersectionObserver((es, o) => { if (es[0].isIntersecting) { scanSkills(); o.disconnect(); } }, { threshold: .5 }).observe($('#skills-ui'));
+
+/* ============ pixel icons ============ */
+function icon(el, rows, pal) { const w = Math.max(...rows.map(r => r.length)); el.setAttribute('viewBox', `0 0 ${w} ${rows.length}`); el.innerHTML = rows.map((r, y) => [...r].map((ch, x) => pal[ch] ? `<rect x="${x}" y="${y}" width="1" height="1" fill="${pal[ch]}"/>` : '').join('')).join(''); }
+const IP = { K: '#0c1240', W: '#ffffff', C: '#2f45ff', Y: '#ffb020', A: '#2f45ff' };
+icon($('#i-eye'), ['..KKKKKKK..', '.KWWWWWWWK.', 'KWWWCCCWWWK', 'KWWCCKCCWWK', 'KWWWCCCWWWK', '.KWWWWWWWK.', '..KKKKKKK..'], IP);
+icon($('#i-restore'), ['....A....', '...AAA...', '..AAAAA..', '....A....', 'KKKKKKKKK', 'KWWWWWWWK', 'KWWWWWWWK', 'KWWWWWWWK', 'KKKKKKKKK'], IP);
+icon($('#i-lock'), ['..KKKKK..', '.KK...KK.', '.K.....K.', '.K.....K.', 'KKKKKKKKK', 'KYYYYYYYK', 'KYYYKYYYK', 'KYYYKYYYK', 'KYYYYYYYK', 'KKKKKKKKK'], IP);
+})();
 </script>
 </body>
 </html>
