@@ -15,6 +15,7 @@ K="$BINDIR/keeper"
 "$K" demo-export >/dev/null
 "$K" ui --snapshot home --size 76x21 > "$OUT/home.ans"
 "$K" ui --snapshot workspaces --size 124x19 --select 3 > "$OUT/workspaces.ans"
+"$K" ui --snapshot history --size 118x20 > "$OUT/history.ans"
 "$K" ui --snapshot skills --size 124x17 > "$OUT/skills.ans"
 "$K" ui --snapshot confirm --size 92x13 --select 3 > "$OUT/confirm.ans"
 python3 - "$OUT" "$VERSION" <<'PY'
@@ -34,6 +35,7 @@ hero = ("<!-- terminal-hero:start -->\n"
         + "<!-- terminal-hero:end -->")
 block = ("<!-- terminal:start -->\n"
          + term("workspaces", "The keeper workspace picker. Three safe workspaces are selected, and a preview explains why the highlighted one can go.", "Pick what goes, with the reason beside it.", "term term-lg") + "\n"
+         + term("history", "The keeper history screen: 427 GB freed since January, drawn as a year of squares, one per day, darker for more space freed.", "See how often you clean up, and what it added up to.", "term term-lg") + "\n"
          + '<div class="term-pair">\n'
          + term("skills", "The keeper skills screen: ten skills with risk ratings from NVIDIA SkillSpector, and the findings for the highlighted one.", "Check every skill your agents can load.") + "\n"
          + term("confirm", "The confirmation screen listing three workspaces to remove, 22.9 GB in total.", "Nothing happens until you confirm.") + "\n"
