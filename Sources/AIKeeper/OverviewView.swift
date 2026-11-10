@@ -51,6 +51,7 @@ struct OverviewView: View {
                 hero
                 StorageMapView(explore: explore, open: go)
                 FreeSpaceChart()
+                CleanupChart()
                 breakdown
                 repos
             }

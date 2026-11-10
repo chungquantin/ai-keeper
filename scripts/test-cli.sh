@@ -277,5 +277,10 @@ FAKE="$WORK/Fake.app/Contents"; mkdir -p "$FAKE/MacOS"; cp "$BIN" "$FAKE/MacOS/A
 printf '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>CFBundleShortVersionString</key><string>9.9.9</string></dict></plist>' > "$FAKE/Info.plist"
 ln -s "$FAKE/MacOS/AIKeeper" "$BINDIR/linked"; ln -s "$BINDIR/linked" "$BINDIR/keeper2"
 check "version found through symlinks" '[ "$("$BINDIR/keeper2" version)" = "keeper 9.9.9" ]'
+
+# History: removals above (workspaces, a folder, skills do not count) are logged and summed.
+check "history logs real removals"     '"$K" history --json | python3 -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if d[\"total_freed_bytes\"]>0 and d[\"cleanups\"]>=1 and d[\"current_streak_days\"]==1 else 1)"'
+check "history draws the chart"        '"$K" history --weeks 12 | grep -q "freed" && "$K" history --weeks 12 | grep -q "streak"'
+check "status shows the running total" '"$K" status | grep -q "cleaned"'
 echo "keeper CLI: $pass passed, $fail failed"
 [ "$fail" = 0 ]

@@ -34,6 +34,7 @@ enum TUILauncher {
         case "usage": screen = UsageScreen()
         case "disk": screen = DiskScreen()
         case "vault": screen = VaultScreen()
+        case "history": screen = HistoryScreen()
         default: return nil
         }
         let body = screen.render(cols, rows - 2)

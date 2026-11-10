@@ -185,6 +185,7 @@ enum Library {
         }
         if onProgress == nil { Out.endStatus() }
         if prog.isCancelled, onProgress == nil { Out.note("Stopped. What was already deleted stays deleted.") }
+        CleanLog.record(bytes: outcome.freed, items: outcome.done.count, kind: mode == .removeWorkspaces ? "workspaces" : "build folders")
         save(all)
         return outcome
     }

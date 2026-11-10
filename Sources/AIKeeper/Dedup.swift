@@ -138,6 +138,7 @@ enum Dedup {
             progress(done, total, freed)
         }
         Self.done = cloned
+        CleanLog.record(bytes: freed, items: done, kind: "duplicates")
         return (freed, failed)
     }
 }

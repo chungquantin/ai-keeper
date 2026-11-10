@@ -56,6 +56,7 @@ Everything the app does is also a plain command for scripts and agents. Every co
 
 ```bash
 keeper status                              # disk, what you can get back, agents, spend
+keeper history                             # how often you cleaned up, total space freed, streaks
 keeper scan                                # re-measure workspaces, git state and pull requests
 keeper workspaces --deprecated             # what is no longer needed, biggest first
 keeper workspace feat-search-index         # why it is flagged: git, PR, build folders

@@ -63,6 +63,8 @@ enum StatusCommands {
             }
             row("agents", "\(agents.count) running" + (needYou > 0 ? ", " + Term.bold("\(needYou) waiting for you") : ""))
             row("spend", "\(Fmt.usd(today)) today, \(Fmt.usd(week)) this week")
+            let log = CleanLog.summary(CleanLog.all())
+            if log.runs > 0 { row("cleaned", Term.bold(Fmt.size(log.totalBytes)) + Term.dim(" in total, \(HistoryCommands.days(log.currentStreak)) streak")) }
             row("scanned", Term.dim(Library.scanDate.map { Fmt.ago($0) } ?? "never"))
             for al in alerts { Out.line(); Out.line(Term.yellow("! ") + al) }
             return 0

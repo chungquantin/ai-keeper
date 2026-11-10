@@ -364,3 +364,37 @@ final class VaultScreen: Screen {
 
     private func reload() { items = Vault.list(); onChange() }
 }
+
+// MARK: - History
+
+/// A year of cleanups as a contribution chart, with the running total of space given back.
+final class HistoryScreen: Screen {
+    var title: String { "History" }
+    var keys: [(String, String)] { [("esc", "back")] }
+    private let s = CleanLog.summary(CleanLog.all())
+
+    func render(_ w: Int, _ h: Int) -> [String] {
+        guard s.runs > 0 else {
+            return ["", "  " + A.paint("Nothing cleaned yet.", A.bold), "  " + A.paint("Each day you remove something gets a square here. Start from Workspaces.", A.gray)]
+        }
+        let parts = Fmt.size(s.totalBytes).split(separator: " ").map(String.init)
+        var out = [""]
+        for (i, row) in Widget.bigNumber(parts[0]).enumerated() {
+            out.append("   " + A.paint(row, A.amber) + (i == 1 ? "  " + A.paint(parts.count > 1 ? parts[1] : "", A.bold) : i == 2 ? "  " + A.paint("freed" + (s.first.map { " since " + $0.formatted(.dateTime.month(.abbreviated).year()) } ?? ""), A.gray) : ""))
+        }
+        out.append("")
+        let paint: (String, Int) -> String = { t, lv in lv == 0 ? A.paint(t, A.gray) : A.paint(t, lv == 4 ? A.bold + A.amber : A.amber) }
+        let dim: (String) -> String = { A.paint($0, A.gray) }
+        for l in HistoryCommands.grid(s, weeks: HistoryCommands.weekCount(width: w - 4), paint: paint, dim: dim) { out.append("  " + l) }
+        out.append("")
+        out.append("      " + HistoryCommands.legend(paint: paint, dim: dim))
+        out.append("")
+        func stat(_ k: String, _ v: String) { out.append("  " + UI.label(k) + v) }
+        stat("Cleanups", "\(s.runs) on \(HistoryCommands.days(s.activeDays))")
+        stat("Streak", "\(HistoryCommands.days(s.currentStreak)) now, \(HistoryCommands.days(s.longestStreak)) longest")
+        if let b = s.best { stat("Best day", Fmt.size(b.bytes) + A.paint("  " + b.day.formatted(.dateTime.month(.abbreviated).day().year()), A.gray)) }
+        return out
+    }
+
+    func handle(_ key: Key, _ ui: TUI) { if key == .esc || key == .char("q") { ui.pop() } }
+}

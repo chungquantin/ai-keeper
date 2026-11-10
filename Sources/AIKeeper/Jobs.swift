@@ -132,6 +132,8 @@ extension Store {
 
         job.status.freed = prog.freed
         job.outcome = outcome
+        CleanLog.record(bytes: outcome.freed, items: max(0, targets.count - outcome.failures.count),
+                        kind: plan.mode == .removeWorkspaces ? "workspaces" : "build folders")
         job.state = .finished
         forgetFromMap(removed.map(\.path))
         for r in removed { analyzer.forget(path: r.path, bytes: r.bytes) }

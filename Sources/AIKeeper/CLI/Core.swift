@@ -203,7 +203,7 @@ enum CLI {
         ?? (Runtime.infoPlist?["CFBundleShortVersionString"] as? String) ?? "dev"
 
     static var all: [Command] {
-        StatusCommands.all + WorkspaceCommands.all + CleanCommands.all + AgentCommands.all + UsageCommands.all
+        StatusCommands.all + HistoryCommands.all + WorkspaceCommands.all + CleanCommands.all + AgentCommands.all + UsageCommands.all
             + SkillCommands.all + DiskCommands.all + SystemCommands.all + SafetyCommands.all + SetupCommands.all
     }
 

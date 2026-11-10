@@ -35,6 +35,7 @@ struct Summary {
     var vaultCount = 0
     var health: Int?
     var skillCount = 0, skillsScanned = 0, skillsToReview = 0
+    var cleaned = CleanLog.summary([])
 
     static func load(withAgents: Bool = true) -> Summary {
         var s = Summary()
@@ -45,6 +46,7 @@ struct Summary {
         if withAgents { s.agents = Library.agents().filter { $0.kind != .mcp } }
         (s.today, s.week) = StatusCommands.spend(StatusCommands.cachedUsage() ?? UsageData())
         s.vaultCount = Vault.list().count
+        s.cleaned = CleanLog.summary(CleanLog.all())
         let skills = SkillLibrary.skills(), cache = SkillScanner.loadCache()
         s.skillCount = skills.count
         let verdicts = skills.map { SkillLibrary.verdict($0, cache) }
@@ -62,7 +64,7 @@ final class HomeScreen: Screen {
     var keys: [(String, String)] { [("↑↓", "move"), ("enter", "open"), ("r", "rescan"), ("q", "quit")] }
     private var summary: Summary
     private var cursor = 0
-    private let items: [(String, String)] = [("Workspaces", "w"), ("Leftovers", "l"), ("Agents", "a"), ("Skills", "c"), ("AI usage", "u"), ("Disk map", "d"), ("System", "s"), ("Recently removed", "v")]
+    private let items: [(String, String)] = [("Workspaces", "w"), ("Leftovers", "l"), ("Agents", "a"), ("Skills", "c"), ("AI usage", "u"), ("Disk map", "d"), ("System", "s"), ("History", "h"), ("Recently removed", "v")]
 
     init(summary: Summary = .load()) { self.summary = summary }
 
@@ -82,6 +84,7 @@ final class HomeScreen: Screen {
         case 4: return "\(Fmt.usd(summary.today)) today, \(Fmt.usd(summary.week)) this week"
         case 5: return "where the space went"
         case 6: return "cpu, memory, disk, the heaviest apps"
+        case 7: return summary.cleaned.runs == 0 ? "no cleanups yet" : A.paint(Fmt.size(summary.cleaned.totalBytes), A.amber) + " freed on \(summary.cleaned.activeDays) days"
         default: return summary.vaultCount == 0 ? "nothing saved" : "\(summary.vaultCount) snapshots you can bring back"
         }
     }
@@ -146,6 +149,7 @@ final class HomeScreen: Screen {
         case 4: ui.push(UsageScreen())
         case 5: ui.push(DiskScreen())
         case 6: ui.push(SystemScreen())
+        case 7: ui.push(HistoryScreen())
         default: ui.push(VaultScreen(onChange: { [weak self] in self?.summary = .load() }))
         }
     }
