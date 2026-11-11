@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AI Keeper launch video</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=JetBrains+Mono:wght@400;500&family=Jersey+15&display=swap" rel="stylesheet">
+<style>html,body{margin:0;background:#0a1050}canvas{display:block;width:1920px;height:1080px}</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<script>
+/* A 30 second launch film, drawn as a pure function of time: window.render(t). Frames are captured by video/capture.js. */
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const S = 6, LW = 320, LH = 180, G = 116;      // pixel scale, logical size, floor line
+const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const ease = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const outC = x => 1 - Math.pow(1 - x, 3);
+const back = x => { const c = 1.70158; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const rgb = h => [1,3,5].map(i => parseInt(h.slice(i, i + 2), 16));
+const F = { disp: '"Bricolage Grotesque", sans-serif', pix: '"Jersey 15", monospace', mono: '"JetBrains Mono", monospace' };
+const INK = '#0c1240', AMBER = '#ffb020', COBALT = '#2f45ff';
+const IMGS = {}; ['conductor.png', 'superset.png', 'aider.png', 'goose.png', 'zai.svg'].forEach(f => { const im = new Image(); im.src = 'logos/' + f; IMGS[f.split('.')[0]] = im; });
+const imgsLoaded = Promise.all(Object.values(IMGS).map(im => im.decode()));
+const MARKS = { claude: 'm4.7144 15.9555 4.7174-2.6471.079-.2307-.079-.1275h-.2307l-.7893-.0486-2.6956-.0729-2.3375-.0971-2.2646-.1214-.5707-.1215-.5343-.7042.0546-.3522.4797-.3218.686.0608 1.5179.1032 2.2767.1578 1.6514.0972 2.4468.255h.3886l.0546-.1579-.1336-.0971-.1032-.0972L6.973 9.8356l-2.55-1.6879-1.3356-.9714-.7225-.4918-.3643-.4614-.1578-1.0078.6557-.7225.8803.0607.2246.0607.8925.686 1.9064 1.4754 2.4893 1.8336.3643.3035.1457-.1032.0182-.0728-.164-.2733-1.3539-2.4467-1.445-2.4893-.6435-1.032-.17-.6194c-.0607-.255-.1032-.4674-.1032-.7285L6.287.1335 6.6997 0l.9957.1336.419.3642.6192 1.4147 1.0018 2.2282 1.5543 3.0296.4553.8985.2429.8318.091.255h.1579v-.1457l.1275-1.706.2368-2.0947.2307-2.6957.0789-.7589.3764-.9107.7468-.4918.5828.2793.4797.686-.0668.4433-.2853 1.8517-.5586 2.9021-.3643 1.9429h.2125l.2429-.2429.9835-1.3053 1.6514-2.0643.7286-.8196.85-.9046.5464-.4311h1.0321l.759 1.1293-.34 1.1657-1.0625 1.3478-.8804 1.1414-1.2628 1.7-.7893 1.36.0729.1093.1882-.0183 2.8535-.607 1.5421-.2794 1.8396-.3157.8318.3886.091.3946-.3278.8075-1.967.4857-2.3072.4614-3.4364.8136-.0425.0304.0486.0607 1.5482.1457.6618.0364h1.621l3.0175.2247.7892.522.4736.6376-.079.4857-1.2142.6193-1.6393-.3886-3.825-.9107-1.3113-.3279h-.1822v.1093l1.0929 1.0686 2.0035 1.8092 2.5075 2.3314.1275.5768-.3218.4554-.34-.0486-2.2039-1.6575-.85-.7468-1.9246-1.621h-.1275v.17l.4432.6496 2.3436 3.5214.1214 1.0807-.17.3521-.6071.2125-.6679-.1214-1.3721-1.9246L14.38 17.959l-1.1414-1.9428-.1397.079-.674 7.2552-.3156.3703-.7286.2793-.6071-.4614-.3218-.7468.3218-1.4753.3886-1.9246.3157-1.53.2853-1.9004.17-.6314-.0121-.0425-.1397.0182-1.4328 1.9672-2.1796 2.9446-1.7243 1.8456-.4128.164-.7164-.3704.0667-.6618.4008-.5889 2.386-3.0357 1.4389-1.882.929-1.0868-.0062-.1579h-.0546l-6.3385 4.1164-1.1293.1457-.4857-.4554.0608-.7467.2307-.2429 1.9064-1.3114Z', openai: 'M22.2819 9.8211a5.9847 5.9847 0 0 0-.5157-4.9108 6.0462 6.0462 0 0 0-6.5098-2.9A6.0651 6.0651 0 0 0 4.9807 4.1818a5.9847 5.9847 0 0 0-3.9977 2.9 6.0462 6.0462 0 0 0 .7427 7.0966 5.98 5.98 0 0 0 .511 4.9107 6.051 6.051 0 0 0 6.5146 2.9001A5.9847 5.9847 0 0 0 13.2599 24a6.0557 6.0557 0 0 0 5.7718-4.2058 5.9894 5.9894 0 0 0 3.9977-2.9001 6.0557 6.0557 0 0 0-.7475-7.0729zm-9.022 12.6081a4.4755 4.4755 0 0 1-2.8764-1.0408l.1419-.0804 4.7783-2.7582a.7948.7948 0 0 0 .3927-.6813v-6.7369l2.02 1.1686a.071.071 0 0 1 .038.052v5.5826a4.504 4.504 0 0 1-4.4945 4.4944zm-9.6607-4.1254a4.4708 4.4708 0 0 1-.5346-3.0137l.142.0852 4.783 2.7582a.7712.7712 0 0 0 .7806 0l5.8428-3.3685v2.3324a.0804.0804 0 0 1-.0332.0615L9.74 19.9502a4.4992 4.4992 0 0 1-6.1408-1.6464zM2.3408 7.8956a4.485 4.485 0 0 1 2.3655-1.9728V11.6a.7664.7664 0 0 0 .3879.6765l5.8144 3.3543-2.0201 1.1685a.0757.0757 0 0 1-.071 0l-4.8303-2.7865A4.504 4.504 0 0 1 2.3408 7.872zm16.5963 3.8558L13.1038 8.364 15.1192 7.2a.0757.0757 0 0 1 .071 0l4.8303 2.7913a4.4944 4.4944 0 0 1-.6765 8.1042v-5.6772a.79.79 0 0 0-.407-.667zm2.0107-3.0231l-.142-.0852-4.7735-2.7818a.7759.7759 0 0 0-.7854 0L9.409 9.2297V6.8974a.0662.0662 0 0 1 .0284-.0615l4.8303-2.7866a4.4992 4.4992 0 0 1 6.6802 4.66zM8.3065 12.863l-2.02-1.1638a.0804.0804 0 0 1-.038-.0567V6.0742a4.4992 4.4992 0 0 1 7.3757-3.4537l-.142.0805L8.704 5.459a.7948.7948 0 0 0-.3927.6813zm1.0976-2.3654l2.602-1.4998 2.6069 1.4998v2.9994l-2.5974 1.4997-2.6067-1.4997Z', cursor: 'M11.503.131 1.891 5.678a.84.84 0 0 0-.42.726v11.188c0 .3.162.575.42.724l9.609 5.55a1 1 0 0 0 .998 0l9.61-5.55a.84.84 0 0 0 .42-.724V6.404a.84.84 0 0 0-.42-.726L12.497.131a1.01 1.01 0 0 0-.996 0M2.657 6.338h18.55c.263 0 .43.287.297.515L12.23 22.918c-.062.107-.229.064-.229-.06V12.335a.59.59 0 0 0-.295-.51l-9.11-5.257c-.109-.063-.064-.23.061-.23', opencode: 'M22 24H2V0h20zM17 4.8H7v14.4h10z', pi: 'M0 0v24h6v-6h6v-6H6V6h6v6h6V0Zm18 12v12h6V12Z', gemini: 'M11.04 19.32Q12 21.51 12 24q0-2.49.93-4.68.96-2.19 2.58-3.81t3.81-2.55Q21.51 12 24 12q-2.49 0-4.68-.93a12.3 12.3 0 0 1-3.81-2.58 12.3 12.3 0 0 1-2.58-3.81Q12 2.49 12 0q0 2.49-.96 4.68-.93 2.19-2.55 3.81a12.3 12.3 0 0 1-3.81 2.58Q2.49 12 0 12q2.49 0 4.68.96 2.19.93 3.81 2.55t2.55 3.81' };
+
+/* ---------- sprites (same art as the website) ---------- */
+function compile(rows, pal, outline = INK) {
+  const w = Math.max(...rows.map(r => r.length)), h = rows.length, set = new Map();
+  rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.' && pal[ch]) set.set(x + ',' + y, pal[ch]); }));
+  const px = [], has = (x, y) => set.has(x + ',' + y);
+  for (let y = -1; y <= h; y++) for (let x = -1; x <= w; x++) {
+    if (has(x, y)) px.push([x, y, set.get(x + ',' + y)]);
+    else if (outline && (has(x+1,y)||has(x-1,y)||has(x,y+1)||has(x,y-1))) px.push([x, y, outline]);
+  }
+  return { w, h, px };
+}
+const RP = { W:'#ffffff', L:'#dfe5ff', M:'#9aa8f5', K:INK, D:'#1a2a9a', Y:AMBER, A:AMBER, B:'#35c9a0' };
+const robotRows = (wheel, led, sleep) => ['.....' + led + '........','.....' + led + '........','...WWWWWWWW...','..WWWWWWWWWW..', sleep ? '..WWWWWWWWWW..' : '..WWKKWWKKWW..','..WWKKWWKKWW..','..WWWWWWWWWW..','...WWWWWWWW...','..LLLLLLLLLM..','.LLLLDDDDLLLLM','.LLLLDYYDLLLLM','.LLLLDDDDLLLLM','..LLLLLLLLLM..','...MMMMMMMM...', wheel ? '..KKKK..KKKK..' : '.KKKKK..KKKKK.', wheel ? '.KKKKK..KKKKK.' : '..KKK....KKK..'];
+const ROBOT = [0, 1].map(l => [0, 1].map(w => [0, 1].map(s => compile(robotRows(w, l ? 'B' : 'A', s), RP))));
+const AGENT = [0, 1].map(f => compile(['..GGGG..','.GGGGGG.','.GKGGKG.','.GGGGGG.','..GGGG..','.DDDDDD.','.DDDDDD.', f ? '..D..D..' : '.D....D.', '.DD..DD.'], { G:'#c9d2ff', D:'#8392f2', K:INK }));
+const SKIN = ['#f2c9a0','#c98f66','#8d5a3b','#f5d5b8'], HAIR = ['#1a1a3a','#7a4a2a','#d98600','#e8ecff','#3a2a6a'], SHIRT = ['#ff7a59','#35c9a0','#ffd36b','#b58cff','#ff6fa8'];
+const devC = {};
+const dev = (i, f) => devC[i + ':' + f] || (devC[i + ':' + f] = compile(['...HHHH...','..HHHHHH..','..HSSSSH..','..SKSSKS..','..SSSSSS..','...SSSS...','..TTTTTT..','.TTTTTTTT.', f ? '.STTTTTTS.' : 'STTTTTTTTS', f ? 'STTTTTTTTS' : '.TTTTTTTT.','.TTTTTTTT.','.TTTTTTTT.','.TTTTTTTT.','.TTTTTTTT.'], { H: HAIR[i % 5], S: SKIN[(i * 3) % 4], T: SHIRT[i % 5], K: INK }));
+const PLANT = compile(['....B.B....','..B.BBB.B..','.BBBBBBBBB.','..BBBBBBB..','...BBBBB...','....DDD....','...MMMMM...','...MLLLM...','...MLLLM...','....MMM....'], RP);
+const LOGO_ROWS = ['.....A........','.....A........','...WWWWWWWW...','..WWWWWWWWWW..','..WWKKWWKKWW..','..WWKKWWKKWW..','..WWWWWWWWWW..','...WWWWWWWW...','..LLLLLLLLLM..','.LLLLDDDDLLLLM','.LLLLDYYDLLLLM','.LLLLDDDDLLLLM','..LLLLLLLLLM..','...MMMMMMMM...','.KKKKK..KKKKK.','..KKK....KKK..'];
+const LOGO = compile(LOGO_ROWS, RP);
+
+/* ---------- primitives ---------- */
+const R = (x, y, w, h, col) => { ctx.fillStyle = col; ctx.fillRect(Math.round(x * S), Math.round(y * S), Math.round(w * S), Math.round(h * S)); };
+function sprite(s, x, y, flip, scale = S) { for (const [px, py, col] of s.px) { ctx.fillStyle = col; ctx.fillRect(Math.round(x * S + (flip ? s.w - 1 - px : px) * scale), Math.round(y * S + py * scale), scale, scale); } }
+function notchPath(x, y, w, h, c = 12) { ctx.beginPath(); ctx.moveTo(x, y + c); ctx.lineTo(x + c, y + c); ctx.lineTo(x + c, y); ctx.lineTo(x + w - c, y); ctx.lineTo(x + w - c, y + c); ctx.lineTo(x + w, y + c); ctx.lineTo(x + w, y + h - c); ctx.lineTo(x + w - c, y + h - c); ctx.lineTo(x + w - c, y + h); ctx.lineTo(x + c, y + h); ctx.lineTo(x + c, y + h - c); ctx.lineTo(x, y + h - c); ctx.closePath(); }
+function notch(x, y, w, h, col, c = 12) { ctx.fillStyle = col; notchPath(x, y, w, h, c); ctx.fill(); }
+function text(s, x, y, font, col, align = 'left', alpha = 1) { const prev = ctx.globalAlpha; ctx.globalAlpha = prev * alpha; ctx.font = font; ctx.fillStyle = col; ctx.textAlign = align; ctx.textBaseline = 'alphabetic'; ctx.fillText(s, x, y); ctx.globalAlpha = prev; }
+
+/* ---------- the office backdrop, built once ---------- */
+const BAYER = [0,8,2,10,12,4,14,6,3,11,1,9,15,7,13,5];
+const SKY = ['#0a1050','#0f1768','#16228a','#2236c8','#4a5fe8','#9aaaf8','#f4f6ff'].map(rgb);
+const GND = ['#1a2a9a','#2236c8','#3a4fe0','#6f84f2','#c8d1ff','#f4f6ff'].map(rgb);
+const bg = document.createElement('canvas'); bg.width = LW; bg.height = LH;
+(function buildBack() {
+  const c = bg.getContext('2d'), img = c.createImageData(LW, LH), d = img.data, rnd = rng(11);
+  const ramp = (st, t, x, y) => { t = clamp(t, 0, .999); const f = t * (st.length - 1), i = Math.floor(f); return st[(f - i) > (BAYER[(y & 3) * 4 + (x & 3)] + .5) / 16 ? i + 1 : i]; };
+  for (let y = 0; y < LH; y++) for (let x = 0; x < LW; x++) {
+    const col = y < G ? ramp(SKY, Math.pow(y / G, 2.5), x, y) : ramp(GND, Math.pow((y - G) / (LH - G), .8), x, y);
+    let add = 0; if (y > G && (y - G) % 6 === 0) add += 9;
+    if (y >= G + 15 && y <= G + 50 && x > 84 && x < 236 && ((x + y) & 1) === 0) add += 16;
+    const k = (y * LW + x) * 4; d[k] = Math.min(255, col[0] + add); d[k+1] = Math.min(255, col[1] + add); d[k+2] = Math.min(255, col[2] + add); d[k+3] = 255;
+  }
+  c.putImageData(img, 0, 0);
+  const base = G - 3;
+  [['#7f93f7', 6, 24], ['#3f55e8', 9, 34], ['#17239a', 12, 46]].forEach(([col, a, b], li) => {
+    let x = -2; while (x < LW) { const w = 3 + Math.floor(rnd() * 6), h = a + Math.floor(rnd() * (b - a)); c.fillStyle = col; c.fillRect(x, base - h, w, h);
+      if (li === 2) { for (let y = base - h + 2; y < base - 1; y += 3) for (let xx = x + 1; xx < x + w - 1; xx += 2) if (rnd() < .22) { c.fillStyle = rnd() < .6 ? AMBER : '#fff'; c.fillRect(xx, y, 1, 1); c.fillStyle = col; } }
+      x += w + (rnd() < .4 ? 1 : 0); }
+  });
+  c.fillStyle = 'rgba(12,18,64,.3)'; for (let i = 1; i < 5; i++) c.fillRect(Math.round(i * LW / 5), 5, 2, G - 5);
+  c.fillStyle = '#0a1050'; c.fillRect(0, 0, LW, 5); c.fillStyle = '#dfe5ff'; for (let x = 12; x < LW - 20; x += 46) c.fillRect(x, 1, 20, 2);
+  c.fillStyle = INK; c.fillRect(0, G - 2, LW, 2); c.fillStyle = '#1a2a9a'; c.fillRect(0, G, LW, 1);
+  for (let i = 0; i < 5; i++) { const lx = Math.round((i + .5) * LW / 5); c.fillStyle = INK; c.fillRect(lx, 5, 1, 9); c.fillStyle = '#dfe5ff'; c.fillRect(lx - 3, 14, 7, 2); c.fillStyle = '#ffd36b'; c.fillRect(lx - 2, 16, 5, 1); }
+})();
+
+const DESKS = [38, 118, 200].map((x, i) => ({ x, i, seed: 11 + i * 17 }));
+function drawOffice(t, hot) {
+  ctx.imageSmoothingEnabled = false; ctx.drawImage(bg, 0, 0, 1920, 1080);
+  const items = [];
+  DESKS.forEach(dk => items.push({ y: G + 13, f: () => {
+    const x = dk.x, top = G + 4, f = Math.floor(t * 8 + dk.i * 3) % 2;
+    sprite(dev(dk.i, f), x + 7, top - 14, false);
+    R(x - 1, top - 1, 36, 11, INK); R(x, top, 34, 2, '#dfe5ff'); R(x, top + 2, 34, 1, '#9aa8f5'); R(x + 1, top + 3, 32, 6, '#8392f2'); R(x + 21, top + 3, 1, 6, '#6c7ae0'); R(x + 22, top + 5, 10, 1, '#6c7ae0');
+    R(x + 6, top - 6, 13, 6, INK); R(x + 7, top - 5, 11, 4, '#c9d2ff'); R(x + 11, top - 4, 2, 2, hot ? '#ff5c5c' : AMBER); R(x + 2, top - 4, 4, 4, INK); R(x + 3, top - 3, 2, 2, '#ff7a59');
+    const mx = x + 22; R(mx, top - 12, 12, 10, INK); R(mx + 1, top - 11, 10, 8, '#0f1768'); R(mx + 4, top - 2, 4, 2, INK);
+    for (let k = 0; k < 4; k++) { const h = ((dk.seed * 31 + k * 17 + Math.floor(t * 2) * 13) >>> 0) % 7; R(mx + 2, top - 10 + k * 2, 2 + h, 1, ['#7f93f7', '#fff', AMBER, '#35c9a0'][(k + dk.i) % 4]); }
+  } }));
+  [{ x: 6, y: G + 16 }, { x: 160, y: G + 16 }].forEach(p => items.push({ y: p.y, f: () => { R(p.x, p.y, 11, 1, 'rgba(12,18,64,.3)'); sprite(PLANT, p.x, p.y - 10, false); } }));
+  items.push({ y: G + 20, f: () => { const x = 303, y = G + 20; R(x - 1, y - 27, 12, 28, INK); R(x, y - 26, 10, 26, '#17239a');
+    for (let i = 0; i < 5; i++) { const yy = y - 24 + i * 5, on = Math.floor(t * 4 + i) % 3; R(x + 1, yy, 8, 3, '#0f1768'); R(x + 2, yy + 1, 1, 1, hot ? (on ? '#ff5c5c' : '#7a2020') : on === 0 ? '#35c9a0' : '#0f1768'); R(x + 4, yy + 1, 1, 1, AMBER); R(x + 6, yy + 1, 3, 1, '#3f55e8'); } } });
+  return items;
+}
+
+const SHADE = (() => { const c = document.createElement('canvas'); c.width = 1920; c.height = 1080; const x = c.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 1920, 0); g.addColorStop(0, 'rgba(8,13,70,.9)'); g.addColorStop(.45, 'rgba(8,13,70,.6)'); g.addColorStop(.8, 'rgba(8,13,70,0)'); x.fillStyle = g; x.fillRect(0, 0, 1920, 1080);
+  x.globalCompositeOperation = 'destination-in'; const v = x.createLinearGradient(0, 0, 0, 1080); v.addColorStop(0, '#000'); v.addColorStop(.5, '#000'); v.addColorStop(.68, 'rgba(0,0,0,0)'); x.fillStyle = v; x.fillRect(0, 0, 1920, 1080); return c; })();
+/* ---------- scene A/B: crates arrive, robots clear them ---------- */
+const NAMES = ['node_modules', 'target/', '.next', 'DerivedData', '.venv', 'build/', 'dist/', '.gradle', '__pycache__', 'Pods'];
+const CR = (() => {
+  const r = rng(5), n = 15; let ws = Array.from({ length: n }, () => .25 + r() * r() * 2.6); const sum = ws.reduce((a, b) => a + b, 0);
+  const list = ws.map((w, i) => { const gb = +(w / sum * 107.9).toFixed(1); return { i, gb, w: Math.round(clamp(8 + gb * 1.25, 9, 24)), h: Math.round(clamp(7 + gb * 1.0, 8, 19)), name: NAMES[i % NAMES.length],
+    x: 20 + (i * 59 + Math.floor(r() * 26)) % 260, yb: G + 18 + Math.floor(r() * 30), spawn: .5 + i * .24 + r() * .1 }; });
+  // robots: five of them, each crate goes to the first robot that is free (a queue)
+  const robots = Array.from({ length: 5 }, (_, i) => ({ i, led: i % 2, segs: [], x: i % 2 ? -22 : 340, y: G + 22 + i * 5, free: 3.9 + i * .12 }));
+  list.slice().sort((a, b) => a.spawn - b.spawn).forEach(c => {
+    const plan = rb => { const right = rb.x < c.x, stop = right ? c.x - 17 : c.x + c.w + 3, walk = Math.abs(stop - rb.x) / 120 + .12, t0 = Math.max(rb.free, c.spawn + .2), dur = .3 + c.gb * .04; return { rb, right, stop, walk, t0, dur, end: t0 + walk + dur }; };
+    const p = robots.map(plan).sort((a, b) => a.end - b.end)[0], rb = p.rb;
+    rb.segs.push({ k: 'walk', t0: p.t0, t1: p.t0 + p.walk, x0: rb.x, x1: p.stop, y0: rb.y, y1: c.yb, dir: p.right ? 1 : -1 });
+    c.cs = p.t0 + p.walk; c.ce = c.cs + p.dur;
+    rb.segs.push({ k: 'clean', t0: c.cs, t1: c.ce, x: p.stop, y: c.yb, dir: p.right ? 1 : -1, c });
+    rb.x = p.stop; rb.y = c.yb; rb.free = c.ce + .03;
+  });
+  return { list, robots };
+})();
+function robotAt(rb, t) {
+  if (t < rb.segs[0].t0) { const s = rb.segs[0]; return { x: s.x0 + (s.dir > 0 ? -1 : 1) * 0, y: s.y0, dir: s.dir, st: 'wait', w: 0 }; }
+  for (const s of rb.segs) {
+    if (t >= s.t0 && t < s.t1) { if (s.k === 'walk') { const p = ease(seg(t, s.t0, s.t1)); return { x: s.x0 + (s.x1 - s.x0) * p, y: s.y0 + (s.y1 - s.y0) * p, dir: s.dir, st: 'walk', w: (t * 14) | 0 }; } return { x: s.x, y: s.y, dir: s.dir, st: 'clean', c: s.c, p: seg(t, s.t0, s.t1), w: 0 }; }
+  }
+  const l = rb.segs[rb.segs.length - 1]; return { x: l.x, y: l.y, dir: l.dir, st: 'idle', w: 0 };
+}
+const crateRemain = (c, t) => t < c.spawn ? 0 : t >= c.ce ? 0 : t < c.cs ? 1 : 1 - seg(t, c.cs, c.ce);
+function crateHash(c, px, py) { return (((px * 73856093) ^ (py * 19349663) ^ (c.i * 83492791)) >>> 0) % 1000 / 1000; }
+function drawCrate(c, rem) {
+  R(c.x - 1, c.yb, c.w + 3, 1, 'rgba(12,18,64,.35)');
+  for (let py = 0; py < c.h; py++) for (let px = 0; px < c.w; px++) {
+    if (crateHash(c, px, py) >= rem) continue;
+    const top = py === 0, bot = py >= c.h - 2, er = px === c.w - 1, pl = py === Math.floor(c.h / 2) || (px === Math.floor(c.w / 2) && py > 1 && py < c.h - 2 && c.w > 12);
+    R(c.x + px, c.yb - c.h + py, 1, 1, top ? '#ffd36b' : bot || er ? '#c27a00' : pl ? '#e69a10' : AMBER);
+  }
+}
+function freeGB(t) {
+  let f = 258.2;
+  CR.list.forEach(c => { if (t >= c.spawn) f -= c.gb * clamp((t - c.spawn) / .25); if (t >= c.cs) f += c.gb * seg(t, c.cs, c.ce); });
+  return f;
+}
+function drawScene(t, tNow) {
+  const hot = CR.list.filter(c => t >= c.spawn && t < c.ce).length >= 5;
+  const items = drawOffice(t, hot);
+  CR.list.forEach(c => {
+    const rem = crateRemain(c, t); if (rem <= 0 && t < c.spawn) return;
+    // the agent that drops it: walks in from the nearer edge, drops, walks off
+    const fromL = c.x < 160, a0 = c.spawn - 1.2, a1 = c.spawn, a2 = c.spawn + 1.1;
+    if (t > a0 && t < a2) { const sx = fromL ? -12 : 330, dx = c.x + (fromL ? -6 : c.w + 4); let ax; if (t < a1) ax = sx + (dx - sx) * ease(seg(t, a0, a1)); else ax = dx + (sx - dx) * ease(seg(t, a1 + .2, a2)); items.push({ y: c.yb + 1, f: () => { R(ax, c.yb + 1, 9, 1, 'rgba(12,18,64,.35)'); sprite(AGENT[(t * 8 | 0) % 2], ax - 1, c.yb - 9, !(fromL ? t < a1 : t >= a1)); } }); }
+    if (rem > 0) items.push({ y: c.yb, f: () => drawCrate(c, c.spawn > t - .12 ? 1 : rem) });
+  });
+  CR.robots.forEach(rb => { const p = robotAt(rb, t); if (t < rb.segs[0].t0 - .01) return; items.push({ y: p.y, f: () => {
+    R(p.x, p.y, 16, 1, 'rgba(12,18,64,.35)'); sprite(ROBOT[rb.led][p.w % 2][0], p.x - 1, p.y - 18, p.dir < 0);
+    const nx = p.dir > 0 ? p.x + 16 : p.x - 2, ny = p.y - 7; R(nx - 1, ny - 1, 3, 4, INK); R(nx, ny, 1, 2, p.st === 'clean' ? AMBER : '#7f93f7');
+    if (p.st === 'clean') { const c = p.c; for (let k = 0; k < 14; k++) { const ph = ((t * 3.1 + k / 14) % 1), cx = c.x + ((k * 7) % c.w), cy = c.yb - c.h + ((k * 5) % c.h); R(cx + (nx - cx) * ph * ph, cy + (ny - cy) * ph - Math.sin(Math.PI * ph) * 5, 1, 1, ph > .85 ? '#fff' : '#ffd36b'); } }
+  } }); });
+  items.sort((a, b) => a.y - b.y).forEach(i => i.f());
+}
+
+/* ---------- ui helpers for the product scenes ---------- */
+function dim(a) { ctx.fillStyle = `rgba(8,13,70,${a})`; ctx.fillRect(0, 0, 1920, 1080); }
+function wipe(t, a, b, col = '#0a1050') { // pixel blocks cover the screen left to right, then uncover it
+  const p = seg(t, a, b); if (p <= 0 || p >= 1) return; const B = 60;
+  for (let gy = 0; gy < 18; gy++) for (let gx = 0; gx < 32; gx++) {
+    const th = (gx / 32) * .75 + (((gx * 7 + gy * 13) % 10) / 10) * .25;
+    const on = p < .5 ? th < p * 2 : th >= (p - .5) * 2; if (on) { ctx.fillStyle = col; ctx.fillRect(gx * B, gy * B, B, B); }
+  }
+}
+function caption(s, t, a, b, y = 150) {
+  const p = outC(seg(t, a, a + .5)), q = seg(t, b - .35, b); if (q >= 1) return;
+  ctx.font = `800 76px ${F.disp}`; ctx.textAlign = 'left'; ctx.fillStyle = '#fff'; ctx.globalAlpha = p * (1 - q);
+  const n = Math.round(s.length * clamp(seg(t, a, a + .7))); ctx.fillText(s.slice(0, n), 120, y + (1 - p) * 24); ctx.globalAlpha = 1;
+}
+function termPanel(x, y, w, h, title) { notch(x, y, w, h, '#090f3f'); ctx.fillStyle = '#141f7a'; ctx.fillRect(x + 12, y, w - 24, 44); ctx.fillRect(x, y + 12, w, 32); ctx.fillStyle = '#3f55e8'; for (let i = 0; i < 3; i++) ctx.fillRect(x + 28 + i * 22, y + 17, 12, 12); text(title, x + 108, y + 32, `500 20px ${F.mono}`, '#aebaff'); }
+const TC = { c: '#7f93f7', a: AMBER, g: '#7d86bd', r: '#ff8484', b: '#ffffff', w: '#dfe5ff' };
+function termLines(lines, x, y, lh, size = 24) { // lines: arrays of [color, text] pieces
+  ctx.font = `400 ${size}px ${F.mono}`; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  lines.forEach((ln, i) => { let cx = x; ln.forEach(([c, s]) => { ctx.fillStyle = TC[c] || c; ctx.fillText(s, cx, y + i * lh); cx += ctx.measureText(s).width; }); });
+}
+function typed(s, t, a, cps = 30) { return s.slice(0, Math.floor(clamp((t - a) * cps, 0, s.length))); }
+
+/* ---------- history data (matches the website) ---------- */
+const HIST = (() => { const r = rng(7), days = new Map(); for (let back = 0; back < 371; back++) { const wd = back % 7, busy = Math.floor(back / 9) % 3 !== 2, chance = (wd === 0 || wd === 6) ? .12 : busy ? .55 : .18; if (back < 4 || r() < chance) { const big = r() < .12; days.set(back, big ? 6 + r() * 14 : .3 + r() * 3.2); } } return days; })();
+const HTOTAL = [...HIST.values()].reduce((a, b) => a + b, 0);
+const HFACT = (() => { let cur = 0; while (HIST.has(cur)) cur++; let best = 0, run = 0; for (let i = 370; i >= 0; i--) { if (HIST.has(i)) { run++; best = Math.max(best, run); } else run = 0; }
+  return [[HIST.size + ' days', 'with a cleanup'], [cur + ' days', 'current streak'], [best + ' days', 'longest streak'], [Math.max(...HIST.values()).toFixed(1) + ' GB', 'best day']]; })();
+
+/* ---------- the film ---------- */
+const TOOLS = [['Claude Code', 'claude'], ['Codex', 'openai'], ['Conductor', 'conductor'], ['Superset', 'superset'], ['Pi', 'pi'], ['ZCode', 'zai'], ['Cursor', 'cursor'], ['Goose', 'goose'], ['Gemini CLI', 'gemini'], ['Aider', 'aider'], ['OpenCode', 'opencode'], ['Yours?', '+']];
+function render(t) {
+  ctx.clearRect(0, 0, 1920, 1080);
+  const free = freeGB(Math.min(t, 9.4));
+  /* A: the problem and the fix, 0 to 9.4s */
+  if (t < 9.6) {
+    drawScene(Math.min(t, 9.4), t);
+    // shade for the headline
+    ctx.drawImage(SHADE, 0, 0);
+    // headline, then the name
+    const h1a = seg(t, .2, 1.4), h1o = seg(t, 3.7, 4.1);
+    if (t < 4.2) { const words = ['Your coding agents', 'leave gigabytes behind.']; ctx.globalAlpha = 1 - h1o; words.forEach((w, i) => { const n = Math.floor(w.length * clamp(seg(t, .2 + i * 1.0, 1.1 + i * 1.0))); text(w.slice(0, n), 120, 250 + i * 110, `800 108px ${F.disp}`, '#fff'); }); ctx.globalAlpha = 1; }
+    if (t >= 4.0) { const p = outC(seg(t, 4.0, 4.7)); ctx.globalAlpha = p; sprite(LOGO, 20, 12, false, 6); text('Meet AI Keeper.', 120, 330 + (1 - p) * 30, `800 124px ${F.disp}`, '#fff'); text('Free and open source. A Mac app and a keeper command.', 124, 410, `500 40px ${F.disp}`, '#dfe5ff'); ctx.globalAlpha = 1; }
+    // disk gauge, top right
+    const warn = free < 60;
+    notch(1380, 60, 460, 96, warn && Math.floor(t * 4) % 2 ? '#ff5c5c' : '#ffffff'); text('free', 1410, 118, `400 32px ${F.pix}`, INK);
+    ctx.fillStyle = '#dfe5ff'; ctx.fillRect(1490, 96, 180, 18); ctx.fillStyle = warn ? '#c0392b' : COBALT; ctx.fillRect(1490, 96, 180 * clamp(free / 270), 18);
+    text(free.toFixed(1) + ' GB', 1700, 118, `400 37px ${F.pix}`, INK, 'left');
+    if (t > 2.6 && t < 4.1) text('disk almost full', 1840, 200, `400 37px ${F.pix}`, '#ff8484', 'right', .6 + .4 * Math.sin(t * 14));
+    // payoff
+    const pp = seg(t, 8.55, 9.0); if (pp > 0 && t < 9.4) { const sc = 1 + (1 - back(pp)) * .0; notch(560, 470, 800, 300, 'rgba(255,255,255,.96)'); text('+107.9 GB', 960, 630, `400 162px ${F.pix}`, INK, 'center'); text('back in under five seconds', 960, 710, `500 38px ${F.disp}`, '#656c93', 'center'); }
+    wipe(t, 9.2, 10.0);
+  }
+  /* B: status and the picker, 9.4 to 15 */
+  if (t >= 9.6 && t < 15.3) {
+    drawOfficeDim(t);
+    caption('Know what is safe to delete.', t, 9.8, 14.9);
+    const tp = outC(seg(t, 9.8, 10.4));
+    ctx.save(); ctx.translate(0, (1 - tp) * 40); ctx.globalAlpha = tp;
+    termPanel(120, 250, 900, 640, 'keeper status');
+    const cmd = typed('keeper status', t, 10.4, 26);
+    const L = [[['c', '$ '], ['w', cmd + (t < 11.4 && Math.floor(t * 3) % 2 ? '▌' : '')]]];
+    const out = [
+      [['g', 'disk         '], ['b', '258.2 GB'], ['g', ' free of 994.6 GB']],
+      [['g', 'reclaimable  '], ['a', '107.9 GB']],
+      [['g', '             build folders  '], ['a', '━━━━━━━━━━━━'], ['w', '  75.8 GB']],
+      [['g', '             workspaces     '], ['a', '━━'], ['g', '──────────'], ['w', '  22.9 GB']],
+      [['g', '             leftovers      '], ['a', '━'], ['g', '───────────'], ['w', '   9.2 GB']],
+      [['g', 'agents       '], ['w', '6 running']],
+      [['g', 'spend        '], ['w', '$25.42 today']],
+      [['g', 'cleaned      '], ['b', HTOTAL.toFixed(1) + ' GB'], ['w', ' in total']]];
+    out.forEach((o, i) => { if (t > 11.5 + i * .22) L.push(o); });
+    termLines(L, 156, 345, 50, 26);
+    ctx.restore();
+    // picker
+    const pk = outC(seg(t, 10.6, 11.3)); ctx.save(); ctx.translate((1 - pk) * 60, 0); ctx.globalAlpha = pk;
+    notch(1070, 250, 740, 640, '#ffffff'); text('Workspaces', 1110, 310, `400 28px ${F.pix}`, '#656c93');
+    const WS = [['api-server/refactor-auth', 11.4, 'Pull request #405 merged', 1], ['api-server/feat-search-index', 8.6, 'Branch landed, tree is clean', 1], ['web-app/experiment-graphql', 2.9, 'Idle 41 days, nothing unpushed', 1], ['inferx/analytics', .14, '2 commits not pushed', 0], ['ml-pipeline/hotfix', 4.1, '12 files uncommitted, saved first', -1]];
+    WS.forEach((w, i) => { const y = 340 + i * 100, on = w[3] === 1 ? seg(t, 12.4 + i * .35, 12.7 + i * .35) : 0, rowA = outC(seg(t, 11 + i * .15, 11.5 + i * .15));
+      ctx.globalAlpha = pk * rowA * (w[3] < 0 ? .55 : 1); ctx.fillStyle = INK; ctx.fillRect(1110, y + 18, 34, 34); ctx.fillStyle = on > .5 ? COBALT : '#fff'; ctx.fillRect(1114, y + 22, 26, 26); if (on > .5) { ctx.fillStyle = '#fff'; ctx.fillRect(1122, y + 30, 10, 10); }
+      text(w[1] < 1 ? Math.round(w[1] * 1000) + ' MB' : w[1].toFixed(1) + ' GB', 1262, y + 46, `400 32px ${F.pix}`, INK, 'right');
+      text(w[0], 1286, y + 36, `700 27px ${F.disp}`, INK); text(w[2], 1286, y + 68, `500 22px ${F.disp}`, '#656c93');
+      ctx.fillStyle = '#dfe5ff'; ctx.fillRect(1286, y + 78, 460, 6); ctx.fillStyle = w[3] < 0 ? '#ff5c5c' : AMBER; ctx.fillRect(1286, y + 78, 460 * (w[1] / 11.4) * .98 + 6, 6); ctx.globalAlpha = pk; });
+    const press = t > 14.0 && t < 14.3 ? 6 : 0; notch(1500, 826 + press, 270, 52, COBALT); text('Remove 3', 1635, 862 + press, `600 26px ${F.disp}`, '#fff', 'center'); text('22.9 GB can be freed', 1110, 862, `400 30px ${F.pix}`, INK);
+    ctx.restore(); wipe(t, 14.9, 15.7);
+  }
+  /* C: remove and scan, 15 to 20 */
+  if (t >= 15.3 && t < 20.3) {
+    drawOfficeDim(t); caption('Clean it. Scan your skills.', t, 15.7, 19.9);
+    const tp = outC(seg(t, 15.7, 16.3)); ctx.save(); ctx.globalAlpha = tp; ctx.translate(0, (1 - tp) * 40);
+    termPanel(120, 250, 900, 640, 'keeper remove --all-safe --yes');
+    const cmd = typed('keeper remove --all-safe --yes', t, 16.3, 30);
+    const L = [[['c', '$ '], ['w', cmd]]];
+    const prog = seg(t, 17.6, 18.8);
+    if (t > 17.5) { L.push([['g', 'size      status           workspace']]); L.push([['w', ' 11.4 GB  '], ['a', 'safe to remove'], ['w', '   api-server/refactor-auth']]); L.push([['w', '  8.6 GB  '], ['a', 'safe to remove'], ['w', '   api-server/feat-search-index']]); L.push([['w', '  2.9 GB  '], ['a', 'safe to remove'], ['w', '   web-app/experiment-graphql']]); L.push([]);
+      L.push([['g', '[3/3] ' + '█'.repeat(Math.round(prog * 24)) + '░'.repeat(24 - Math.round(prog * 24)) + '  ' + (prog * 22.9).toFixed(1) + ' GB']]); }
+    if (t > 18.9) L.push([['w', 'Freed '], ['a', '22.9 GB'], ['w', ' by removing 3 workspaces.']]);
+    termLines(L, 156, 345, 50, 25); ctx.restore();
+    const sk = outC(seg(t, 16.0, 16.7)); ctx.save(); ctx.translate((1 - sk) * 60, 0); ctx.globalAlpha = sk;
+    notch(1070, 250, 740, 640, '#ffffff'); text('142 skills scanned with NVIDIA SkillSpector', 1110, 312, `400 26px ${F.pix}`, '#656c93');
+    const SK = [['deploy-helper', 'scripts, network access', 'bad', 'do not install'], ['figma-sync', 'plugin figma', 'rev', 'review'], ['db-migrations', 'scripts', 'rev', 'review'], ['code-review', 'markdown only', 'ok', 'looks safe'], ['pdf-kit', 'reads files', 'ok', 'looks safe']];
+    SK.forEach((s, i) => { const y = 350 + i * 92, done = t > 17.2 + i * .55; text(s[0], 1110, y + 34, `700 29px ${F.disp}`, INK); text(s[1], 1110, y + 64, `500 21px ${F.disp}`, '#656c93');
+      const col = !done ? '#f4f6ff' : s[2] === 'bad' ? '#ff5c5c' : s[2] === 'rev' ? '#ffe2a0' : '#dfe5ff'; notch(1560, y + 8, 220, 52, col, 9);
+      if (done) text(s[3], 1670, y + 43, `400 26px ${F.pix}`, INK, 'center'); else { const k = Math.floor(t * 8) % 4, sx = 1670 - 7 + (k === 1 || k === 2 ? 14 : 0), sy = y + 34 - 7 + (k >= 2 ? 14 : 0); ctx.fillStyle = COBALT; ctx.fillRect(sx - 6, sy - 6, 14, 14); } });
+    text('21 worth a look. Nothing was changed.', 1110, 862, `400 26px ${F.pix}`, INK); ctx.restore();
+    if (t > 18.9 && t < 20) { const p = outC(seg(t, 18.9, 19.4)); ctx.globalAlpha = p; text('Files go to the Trash. Unsaved work is saved first.', 120, 900, `500 38px ${F.disp}`, '#dfe5ff'); ctx.globalAlpha = 1; }
+    wipe(t, 19.9, 20.7);
+  }
+  /* D: history, 20 to 25 */
+  if (t >= 20.3 && t < 25.3) {
+    drawOfficeDim(t); caption('See it add up.', t, 20.7, 24.9);
+    const pa = outC(seg(t, 20.7, 21.3)); ctx.save(); ctx.globalAlpha = pa; ctx.translate(0, (1 - pa) * 40);
+    notch(120, 250, 1680, 640, '#ffffff', 14);
+    const sweep = seg(t, 21.2, 23.6), total = HTOTAL * ease(seg(t, 21.2, 23.8));
+    text(total.toFixed(1), 170, 372, `400 130px ${F.pix}`, INK); text('GB freed in the last year', 170 + 340, 372, `500 40px ${F.disp}`, '#656c93');
+    const N = 53, cell = 26, gap = 4, gx = 165, gy = 450;
+    let peak = 0; for (let c = 0; c < N; c++) for (let r = 0; r < 7; r++) { const back = (N - 1 - c) * 7 + (6 - r); const v = HIST.get(back) || 0; if (v > peak) peak = v; }
+    for (let c = 0; c < N; c++) { const show = c / N < sweep; for (let r = 0; r < 7; r++) { const back = (N - 1 - c) * 7 + (6 - r), v = HIST.get(back) || 0, lv = !v ? 0 : v / peak > .75 ? 4 : v / peak > .5 ? 3 : v / peak > .2 ? 2 : 1;
+      ctx.fillStyle = show ? ['#e3e7ff', '#ffe2a0', '#ffc95c', AMBER, '#d98600'][lv] : '#eef0ff'; ctx.fillRect(gx + c * (cell + gap), gy + r * (cell + gap), cell, cell); } }
+    const facts = HFACT;
+    facts.forEach((f, i) => { const a = outC(seg(t, 23.2 + i * .15, 23.7 + i * .15)); ctx.globalAlpha = pa * a; text(f[0], 170 + i * 400, 790, `400 43px ${F.pix}`, INK); text(f[1], 170 + i * 400, 830, `500 26px ${F.disp}`, '#656c93'); });
+    ctx.restore(); wipe(t, 24.9, 25.7);
+  }
+  /* E: tools and the end card, 25 to 30 */
+  if (t >= 25.3) {
+    drawOfficeDim(t);
+    const endP = seg(t, 28.3, 28.8);
+    if (endP < 1) {
+      ctx.globalAlpha = 1 - endP; caption('Works with the agents you already use.', t, 25.6, 28.6, 140);
+      TOOLS.forEach((tl, i) => { const a = back(seg(t, 25.9 + i * .07, 26.4 + i * .07)); if (a <= 0) return; const col = i % 6, row = (i / 6) | 0, cx = 120 + col * 290, cy = 260 + row * 330; ctx.save(); ctx.translate(cx + 110, cy + 110); ctx.scale(a, a); ctx.translate(-110, -110);
+        const m = tl[1];
+        if (IMGS[m]) { ctx.save(); notchPath(0, 0, 220, 220, 14); ctx.clip(); ctx.drawImage(IMGS[m], 0, 0, 220, 220); ctx.restore(); }
+        else notch(0, 0, 220, 220, i === 11 ? AMBER : '#ffffff', 14);
+        if (IMGS[m]) {} else if (MARKS[m]) { ctx.save(); ctx.translate(70, 70); ctx.scale(3.4, 3.4); ctx.fillStyle = INK; ctx.fill(new Path2D(MARKS[m])); ctx.restore(); } else text(m, 110, 134, `600 ${m.length > 2 ? 56 : 84}px ${F.pix}`, INK, 'center');
+        text(tl[0], 110, 262, `700 30px ${F.disp}`, '#fff', 'center'); ctx.restore(); });
+      ctx.globalAlpha = 1;
+    }
+    if (endP > 0) {
+      ctx.fillStyle = `rgba(8,13,70,${.93 * endP})`; ctx.fillRect(0, 0, 1920, 1080);
+      const a = outC(seg(t, 28.5, 29.1)); ctx.globalAlpha = a;
+      notch(780, 150 + (1 - a) * 40, 360, 360, COBALT, 24); sprite(LOGO, 136, 31 + (1 - a) * 6.6, false, 18);
+      text('AI Keeper', 960, 650, `800 130px ${F.disp}`, '#fff', 'center'); text('Free and open source for Mac. App and keeper command.', 960, 725, `500 40px ${F.disp}`, '#dfe5ff', 'center');
+      const b = outC(seg(t, 29.1, 29.6)); ctx.globalAlpha = b;
+      notch(560, 790, 800, 90, '#090f3f', 12); text('$ brew install --cask ai-keeper', 960, 850, `500 38px ${F.mono}`, '#fff', 'center');
+      text('github.com/chungquantin/ai-keeper', 960, 960, `400 43px ${F.pix}`, AMBER, 'center'); ctx.globalAlpha = 1;
+    }
+  }
+  // fade in and out
+  const fi = 1 - seg(t, 0, .35), fo = seg(t, 29.6, 30); if (fi > 0 || fo > 0) { ctx.fillStyle = `rgba(8,13,70,${Math.max(fi, fo)})`; ctx.fillRect(0, 0, 1920, 1080); }
+}
+function drawOfficeDim(t) { drawOffice(t, false); dim(.9); }
+window.render = render;
+window.ready = Promise.all([imgsLoaded, document.fonts.load(`800 40px "Bricolage Grotesque"`), document.fonts.load(`500 40px "Bricolage Grotesque"`), document.fonts.load(`700 40px "Bricolage Grotesque"`), document.fonts.load(`400 40px "Jersey 15"`), document.fonts.load(`400 40px "JetBrains Mono"`), document.fonts.load(`500 40px "JetBrains Mono"`)]).then(() => document.fonts.ready);
+const q = new URLSearchParams(location.search).get('t'); if (q != null) window.ready.then(() => render(parseFloat(q)));
+</script>
+</body>
+</html>
