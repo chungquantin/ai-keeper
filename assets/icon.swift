@@ -1,7 +1,6 @@
 import AppKit
 
-// AI Keeper app icon. A "K" drawn as a git branch: a stem and two branches ending in commit nodes.
-// Ultramarine is the brand colour; amber marks the one node that is yours to take back. Run: swift icon.swift <outdir>
+// AI Keeper app icon: the pixel Keeper robot on an ultramarine squircle. Run: swift icon.swift <outdir>
 
 func color(_ hex: UInt32, _ a: CGFloat = 1) -> CGColor {
     CGColor(red: CGFloat((hex >> 16) & 255) / 255, green: CGFloat((hex >> 8) & 255) / 255, blue: CGFloat(hex & 255) / 255, alpha: a)
@@ -44,25 +43,29 @@ func draw(_ cg: CGContext) {
     cg.drawLinearGradient(hi, start: CGPoint(x: 512, y: 930), end: CGPoint(x: 512, y: 560), options: [.drawsBeforeStartLocation])
     cg.restoreGState()
 
-    // The K: stem + two branches.
-    let stemX: CGFloat = 400, top: CGFloat = 744, bottom: CGFloat = 280, join: CGFloat = 512, armX: CGFloat = 648
+        // The Keeper robot, drawn as pixels (the same sprite as the website, the launch film and the app's loading screen).
+    let rows = [".....A........", ".....A........", "...WWWWWWWW...", "..WWWWWWWWWW..", "..WWKKWWKKWW..", "..WWKKWWKKWW..", "..WWWWWWWWWW..", "...WWWWWWWW...",
+                "..LLLLLLLLLM..", ".LLLLDDDDLLLLM", ".LLLLDYYDLLLLM", ".LLLLDDDDLLLLM", "..LLLLLLLLLM..", "...MMMMMMMM...", ".KKKKK..KKKKK.", "..KKK....KKK.."]
+    let pal: [Character: UInt32] = ["W": 0xFFFFFF, "L": 0xDFE5FF, "M": 0x9AA8F5, "K": 0x0C1240, "D": 0x1A2A9A, "Y": 0xFFB020, "A": 0xFFB020]
+    var set: [String: UInt32] = [:]
+    for (y, r) in rows.enumerated() { for (x, ch) in r.enumerated() where ch != "." { if let c = pal[ch] { set["\(x),\(y)"] = c } } }
+    func has(_ x: Int, _ y: Int) -> Bool { set["\(x),\(y)"] != nil }
+    let u: CGFloat = 32, w = 14, h = rows.count
+    let x0 = 512 - CGFloat(w + 2) * u / 2, top = 512 + CGFloat(h + 2) * u / 2 - 6
+    func cell(_ x: Int, _ y: Int, _ c: UInt32) { cg.setFillColor(color(c)); cg.fill(CGRect(x: x0 + CGFloat(x + 1) * u, y: top - CGFloat(y + 2) * u, width: u, height: u)) }
+    // soft floor shadow under the wheels
     cg.saveGState()
-    cg.setShadow(offset: CGSize(width: 0, height: -8), blur: 14, color: color(0x0B1450, 0.35))
-    cg.setStrokeColor(color(ivory)); cg.setLineWidth(40); cg.setLineCap(.round); cg.setLineJoin(.round)
-    cg.move(to: CGPoint(x: stemX, y: bottom)); cg.addLine(to: CGPoint(x: stemX, y: top))
-    cg.move(to: CGPoint(x: stemX, y: join)); cg.addLine(to: CGPoint(x: armX, y: top))
-    cg.move(to: CGPoint(x: stemX, y: join)); cg.addLine(to: CGPoint(x: armX, y: bottom))
-    cg.strokePath()
-
-    // Commit nodes.
-    func node(_ x: CGFloat, _ y: CGFloat, fill: UInt32, r: CGFloat) {
-        cg.setFillColor(color(fill)); cg.fillEllipse(in: CGRect(x: x - r, y: y - r, width: 2 * r, height: 2 * r))
-        cg.setFillColor(color(inkBlue)); cg.fillEllipse(in: CGRect(x: x - r * 0.40, y: y - r * 0.40, width: r * 0.80, height: r * 0.80))
-    }
-    node(stemX, top, fill: ivory, r: 52)
-    node(stemX, bottom, fill: ivory, r: 52)
-    node(armX, top, fill: ivory, r: 52)
-    node(armX, bottom, fill: amber, r: 60)   // the one that's yours to take back
+    cg.setFillColor(color(0x0B1450, 0.32))
+    cg.fillEllipse(in: CGRect(x: 512 - 190, y: top - CGFloat(h + 2) * u - 6, width: 380, height: 40))
+    cg.restoreGState()
+    cg.saveGState()
+    cg.setShadow(offset: CGSize(width: 0, height: -10), blur: 18, color: color(0x0B1450, 0.38))
+    cg.beginTransparencyLayer(auxiliaryInfo: nil)   // one shadow for the whole robot, not one per pixel
+    for y in -1...h { for x in -1...w {
+        if let c = set["\(x),\(y)"] { cell(x, y, c) }
+        else if has(x + 1, y) || has(x - 1, y) || has(x, y + 1) || has(x, y - 1) { cell(x, y, 0x0C1240) }
+    } }
+    cg.endTransparencyLayer()
     cg.restoreGState()
 }
 

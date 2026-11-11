@@ -35,9 +35,14 @@ struct EntryListView: View {
         let rows = self.rows
         VStack(spacing: 0) {
             if rows.isEmpty {
-                ContentUnavailableView(store.isScanning ? "Scanning…" : "Nothing here",
-                                       systemImage: store.isScanning ? "magnifyingglass" : "checkmark.seal",
-                                       description: Text(store.isScanning ? "Results appear as they are measured." : "Nothing matches. Clear the search or change the view options."))
+                ContentUnavailableView {
+                    VStack(spacing: 10) {
+                        if store.isScanning { RobotSpinner().scaleEffect(2) .frame(height: 44) } else { SleepingRobot() }
+                        Text(store.isScanning ? "Scanning…" : "Nothing here").font(.title2.weight(.semibold))
+                    }
+                } description: {
+                    Text(store.isScanning ? "Results appear as they are measured." : "Nothing matches. Clear the search or change the view options.")
+                }
             } else {
                 table(rows)
             }
@@ -97,7 +102,7 @@ struct EntryListView: View {
                 }
             }.width(min: 170, ideal: 300)
             TableColumn("Git") { e in
-                if let g = e.gitSummary { Pill(text: g.text, color: g.color) }
+                if let g = e.gitSummary { Pill(text: g.text, color: g.color, truncates: true) }
             }.width(min: 120, ideal: 150)
             TableColumn("Size", value: \.sizeValue) { e in
                 if e.measured {
@@ -117,7 +122,7 @@ struct EntryListView: View {
             }.width(min: 80, ideal: 100)
             TableColumn("Status") { e in
                 let (t, c) = e.statusPill
-                Pill(text: t, color: c)
+                Pill(text: t, color: c, truncates: true)
             }.width(min: 110, ideal: 125)
         }
         .contextMenu(forSelectionType: Entry.ID.self) { ids in

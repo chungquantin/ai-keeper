@@ -37,13 +37,23 @@ extension Int64 {
 struct Pill: View {
     let text: String
     let color: Color
+    /// In a table column the label shortens with an ellipsis (and the full text is the tooltip) instead of spilling into the next column.
+    var truncates = false
     var body: some View {
         HStack(spacing: 5) {
             Circle().fill(color).frame(width: 6, height: 6)
-            Text(text).font(.caption)
+            Text(text).font(.caption).lineLimit(1).truncationMode(.tail)
                 .foregroundStyle(color == .red ? Color.red : Color.secondary)
         }
-        .fixedSize()
+        .modifier(PillFit(truncates: truncates, text: text))
+    }
+}
+
+private struct PillFit: ViewModifier {
+    let truncates: Bool
+    let text: String
+    func body(content: Content) -> some View {
+        if truncates { content.help(text) } else { content.fixedSize() }
     }
 }
 

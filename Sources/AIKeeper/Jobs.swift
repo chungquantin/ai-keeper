@@ -91,6 +91,7 @@ extension Store {
                 job.status.label = prog.label
                 job.status.detail = prog.detail
                 job.status.cancelling = prog.isCancelled
+                NSApp.dockTile.badgeLabel = "\(Int(job.status.fraction * 100))%"
                 try? await Task.sleep(for: .milliseconds(250))
             }
         }
@@ -132,6 +133,7 @@ extension Store {
 
         job.status.freed = prog.freed
         job.outcome = outcome
+        NSApp.dockTile.badgeLabel = nil
         CleanLog.record(bytes: outcome.freed, items: max(0, targets.count - outcome.failures.count),
                         kind: plan.mode == .removeWorkspaces ? "workspaces" : "build folders")
         job.state = .finished
@@ -254,7 +256,7 @@ private struct ActivitySummary: View {
         if let running = jobs.first(where: { $0.state == .running }) {
             RunningLine(job: running, queued: jobs.filter { $0.state == .queued }.count)
         } else if jobs.contains(where: { $0.state == .queued }) {
-            Label("Cleanup waiting", systemImage: "clock").font(.caption).foregroundStyle(.secondary)
+            HStack(spacing: 6) { SleepingRobot(scale: 1); Text("Cleanup waiting").font(.caption).foregroundStyle(.secondary) }
         } else {
             FinishedLine(jobs: jobs)
         }
@@ -265,12 +267,14 @@ private struct RunningLine: View {
     @ObservedObject var job: CleanupJob
     let queued: Int
     var body: some View {
-        HStack(spacing: 8) {
-            ProgressView(value: job.status.fraction).progressViewStyle(.circular).controlSize(.small)
-            Text("\(job.status.cancelling ? "Stopping" : "Cleaning") · \(Int(job.status.fraction * 100))%" + (queued > 0 ? " · \(queued) waiting" : ""))
-                .font(.caption).monospacedDigit()
-            Spacer()
-            Image(systemName: "chevron.up").font(.caption2).foregroundStyle(.tertiary)
+        VStack(alignment: .leading, spacing: 5) {
+            RobotRunner(stopping: job.status.cancelling)
+            HStack(spacing: 8) {
+                Text("\(job.status.cancelling ? "Stopping" : "Cleaning") · \(Int(job.status.fraction * 100))%" + (queued > 0 ? " · \(queued) waiting" : ""))
+                    .font(.caption).monospacedDigit()
+                Spacer()
+                Image(systemName: "chevron.up").font(.caption2).foregroundStyle(.tertiary)
+            }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
 }

@@ -10,6 +10,12 @@ struct AIKeeperApp: App {
         Migration.run()   // before anything reads settings
         var cliExit: Int32 = 0
         if CLI.handle(CommandLine.arguments, exitCode: &cliExit) { exit(cliExit) }
+        #if DEBUG
+        if let i = CommandLine.arguments.firstIndex(of: "--pixelshots"), i + 1 < CommandLine.arguments.count {
+            MainActor.assumeIsolated { PixelShots.run(CommandLine.arguments[i + 1]) }
+            exit(0)
+        }
+        #endif
         #if DEBUG   // destructive developer tests never ship in the release binary
         if let i = CommandLine.arguments.firstIndex(of: "--deltest"), i + 1 < CommandLine.arguments.count {
             let path = CommandLine.arguments[i + 1]
@@ -271,6 +277,8 @@ enum Section: Hashable {
 struct RootView: View {
     @EnvironmentObject var store: Store
     @State private var section: Section? = .overview
+    @State private var showSplash = !(Screenshots.outDir != nil || Recording.outDir != nil || Soak.seconds != nil || Demo.enabled
+                                      || ProcessInfo.processInfo.environment["AIKEEPER_NOSPLASH"] != nil)
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -307,6 +315,17 @@ struct RootView: View {
             .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: store.alert?.id)
         }
         .onChange(of: store.requestedSection) { _, s in if let s { section = s; store.requestedSection = nil } }
+        .overlay {
+            if showSplash { SplashView(onSkip: { dismissSplash() }).environmentObject(store).transition(.opacity) }
+        }
+        .task {
+            guard showSplash else { return }
+            // Long enough to see the robots at work, and until the first scan has something to show (never more than six seconds).
+            let began = Date()
+            try? await Task.sleep(for: .seconds(2.6))
+            while store.isScanning && Date().timeIntervalSince(began) < 6 { try? await Task.sleep(for: .milliseconds(150)) }
+            dismissSplash()
+        }
         .task {
             if let dir = Screenshots.outDir { await Screenshots.run(store: store, dir: dir) }
             else if let dir = Recording.outDir { await Recording.run(store: store, dir: dir) }
@@ -317,6 +336,11 @@ struct RootView: View {
         .toolbar {
         }
     }
+
+    private func dismissSplash() {
+        guard showSplash else { return }
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.45)) { showSplash = false }
+    }
 }
 
 struct ScanFooter: View {
@@ -326,10 +350,11 @@ struct ScanFooter: View {
             Group {
                 switch store.phase {
                 case .discovering:
-                    ProgressView().controlSize(.small)
+                    RobotSpinner()
                     Text("Finding workspaces")
                 case .measuring(let d, let t):
-                    ProgressView(value: Double(d), total: Double(max(t, 1))).frame(width: 60)
+                    RobotSpinner()
+                    ProgressView(value: Double(d), total: Double(max(t, 1))).frame(width: 46)
                     Text("Measuring \(d) of \(t)").monospacedDigit()
                 case .done, .idle:
                     Text(store.lastScan.map { "Scanned \($0.formatted(.relative(presentation: .named)))" } ?? "Not scanned yet")
@@ -378,7 +403,8 @@ struct SidebarView: View {
             }
             SwiftUI.Section("By tool") {
                 ForEach(workspaceSources, id: \.self) { s in
-                    row(.tool(s), badge: (store.stats.bySource[s] ?? 0).bytesString)
+                    let bytes = store.stats.bySource[s] ?? 0
+                    row(.tool(s), badge: bytes > 0 ? bytes.bytesString : nil)   // an empty tool says nothing, instead of "Zero KB"
                 }
             }
             SwiftUI.Section("Cleanup") {
