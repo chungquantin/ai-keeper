@@ -1,144 +1,176 @@
-# AI Keeper
+<p align="center">
+  <img src="site/logo-robot.svg" alt="AI Keeper" width="96" height="96">
+</p>
+
+<h1 align="center">AI Keeper</h1>
+
+<p align="center"><b>Clean up after your coding agents.</b></p>
 
 https://github.com/user-attachments/assets/de70d3b0-d4b6-49fe-9f42-064d94749875
 
+**AI Keeper** is a free and open source Mac app and command line tool. It finds the worktrees, build folders and caches that
+Claude Code, Codex, Conductor and other coding agents leave on your Mac, shows which of them are safe to delete and why, and clears
+them in the background. It also watches running agents, tracks what they cost, and checks the skills they load for risky scripts.
 
+Everything runs on your Mac. There is no account, and the app makes no network requests of its own.
 
-A macOS app that shows where your disk space and AI-agent spend are going, and cleans up safely.
-It manages the worktrees that coding agents leave behind, watches running agents, and explains what is using your Mac.
+> [!TIP]
+> **Questions or ideas?** Open an [issue](https://github.com/chungquantin/ai-keeper/issues/new/choose) and pick the form that fits.
+> The [website](https://chungquantin.github.io/ai-keeper/) has a short tour, and [the command reference](docs/CLI.md) covers the terminal.
 
-Built with SwiftUI and Swift Package Manager. macOS 14 or later.
+## Download
 
-## What it does
+[![Download](https://img.shields.io/github/v/release/chungquantin/ai-keeper?style=for-the-badge&logo=github&label=Download)](https://github.com/chungquantin/ai-keeper/releases/latest)&nbsp;&nbsp;
+[![Homebrew](https://img.shields.io/badge/Homebrew-cask-fbb040?style=for-the-badge&logo=homebrew&logoColor=white)](#install)
 
-- **Workspaces.** Finds git worktrees created by Claude Code, Conductor, Codex and Superset, plus plain git worktrees.
-  Each one gets a "still needed?" verdict from git state and pull request status (via the GitHub CLI).
-- **Cleanup.** Removes deprecated workspaces and rebuildable build folders (`target`, `node_modules`, …).
-  Runs as a background job queue, takes a recovery snapshot of unsaved work first, and never touches a folder an agent is using.
-- **Disk.** A whole-disk map that explains the biggest items in plain language, a drill-down analyzer, duplicate merging
-  with APFS clones, and Docker/OrbStack prune. Results are cached and only re-measured when you press Refresh.
-- **Agents and usage.** Running agents with live state ("needs you"), token and cost tracking for Claude, Codex and Pi,
-  budgets, and a searchable session history.
-- **System.** Health score, CPU, memory, swap, disk I/O, battery and network, sampled only while the page is open.
-- **Skills.** Every skill your agents can load (Claude Code, plugins, the shared `~/.agents` folder, Codex, Pi and more) in one list, scanned for prompt injection, data exfiltration and risky scripts with [NVIDIA SkillSpector](https://github.com/NVIDIA/SkillSpector).
-- **Agent access.** A `keeper` command for everything the app does, and an MCP server so agents can check disk space and clean their own build folders.
+Needs **macOS 14 or later**. The app is a universal binary, so it runs on Apple Silicon and Intel.
+
+> [!NOTE]
+> Releases are not notarized yet, because that needs a paid Apple Developer ID. macOS therefore warns about a zip downloaded in a browser.
+> Open **System Settings, Privacy & Security** and click **Open Anyway**, or clear the quarantine flag:
+> `xattr -dr com.apple.quarantine "/Applications/AI Keeper.app"`. Homebrew and the install script skip the warning.
 
 ## Install
 
-**Homebrew** 7 or later (also puts `keeper` on your PATH):
+**Homebrew** (also puts `keeper` on your PATH):
 
 ```bash
 brew tap chungquantin/ai-keeper https://github.com/chungquantin/ai-keeper
-brew trust --tap chungquantin/ai-keeper   # Homebrew asks you to trust non-official taps once
+brew trust --tap chungquantin/ai-keeper   # Homebrew asks you to trust a non-official tap once
 brew install --cask ai-keeper
 ```
 
-**Download** the zip from [the website](https://chungquantin.github.io/ai-keeper/) or [Releases](https://github.com/chungquantin/ai-keeper/releases/latest) and drag AI Keeper to Applications.
-Releases are not notarized yet, so macOS warns when you open a zip downloaded in a browser. Either open System Settings, Privacy & Security and click **Open Anyway**, or install from Terminal, which is never quarantined:
+**Install script**, which is never quarantined:
 
 ```bash
 curl -fsSL https://chungquantin.github.io/ai-keeper/install.sh | bash
 ```
 
-Homebrew installs skip the warning too.
+**Zip.** Download `AI-Keeper-<version>.zip` from [Releases](https://github.com/chungquantin/ai-keeper/releases/latest) and drag the app to Applications.
 
-Landing page: https://chungquantin.github.io/ai-keeper/
+## Stats
 
-## Build
+[![CI](https://github.com/chungquantin/ai-keeper/actions/workflows/ci.yml/badge.svg)](https://github.com/chungquantin/ai-keeper/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/chungquantin/ai-keeper?logo=github)](https://github.com/chungquantin/ai-keeper/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/chungquantin/ai-keeper/total?logo=github)](https://github.com/chungquantin/ai-keeper/releases)
+[![License](https://img.shields.io/github/license/chungquantin/ai-keeper?logo=github)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/chungquantin/ai-keeper?logo=github)](https://github.com/chungquantin/ai-keeper/stargazers)
+[![Swift](https://img.shields.io/badge/Swift-5.9%2B-F05138?logo=swift&logoColor=white)](Package.swift)
 
-```bash
-swift build                 # debug build
-./scripts/bundle.sh         # release build into dist/AIKeeper.app
-./scripts/install.sh        # build and install to /Applications
-```
+## What it does
 
-## Command line: `keeper`
+- **Workspaces.** Finds git worktrees created by Claude Code, Conductor, Codex and Superset, plus plain git worktrees.
+  Each one gets a "still needed?" verdict from its git state and pull request status (through the GitHub CLI).
+- **Cleanup.** Removes deprecated workspaces and rebuildable build folders (`target`, `node_modules`, and so on) as a background job queue.
+  It saves unsaved work to a recovery vault first and never touches a folder an agent is using. Every cleanup is logged, and a contribution-style chart shows how often you cleaned up and how much you got back.
+- **Disk.** A whole-disk map that explains the biggest items in plain language, a drill-down analyzer, duplicate merging with APFS clones, and Docker or OrbStack prune.
+- **Agents and usage.** Running agents with live state ("needs you"), token and cost tracking for Claude, Codex and Pi, budgets, and a searchable session history.
+- **Skills.** Every skill your agents can load, scanned for prompt injection, data exfiltration and risky scripts with [NVIDIA SkillSpector](https://github.com/NVIDIA/SkillSpector). Risky ones can be moved to a quarantine and restored later.
+- **System.** Health score, CPU, memory, swap, disk I/O, battery and network, sampled only while the page is open.
+- **Agent access.** A `keeper` command for everything the app does, with an interactive terminal dashboard, and an MCP server so agents can check disk space and clean their own build folders.
 
-Run `keeper` in a terminal to open the **interactive dashboard**: arrow keys to move, space to select, enter to open, esc to go back, and the keys for each screen on the bottom line. Pick workspaces with the evidence beside them (git state, pull request, what a cleanup frees), confirm, and watch a live progress bar. It also has live Agents and System screens, spend charts, the disk map with a folder explorer, and the vault. `keeper ui --snapshot <screen>` prints a single frame for docs and tests.
+### Supported tools
 
-Everything the app does is also a plain command for scripts and agents. Every command takes `--json`, and anything that deletes is a **dry run until you add `--yes`**. It never opens the window.
-
-```bash
-keeper status                              # disk, what you can get back, agents, spend
-keeper history                             # how often you cleaned up, total space freed, streaks
-keeper scan                                # re-measure workspaces, git state and pull requests
-keeper workspaces --deprecated             # what is no longer needed, biggest first
-keeper workspace feat-search-index         # why it is flagged: git, PR, build folders
-keeper remove --all-safe                   # preview; add --yes to move them to the Trash
-keeper clean --all --yes                   # delete build folders, keep the workspaces
-keeper usage --days 7 --by model           # AI spend; `keeper usage budget --daily 40`
-keeper agents                              # running agents; `keeper agents stop <pid> --yes`
-keeper sessions --search "billing"         # past sessions; `keeper sessions resume <id>`
-keeper disk                                # where the space went; `disk explore`, `disk large`
-keeper system                              # CPU, memory, disk, network, heaviest apps
-keeper vault restore <id>                  # bring back a removed workspace's unsaved work
-keeper dedupe --merge --yes                # replace duplicate files with APFS clones
-keeper docker prune all-safe --yes         # build cache, unused images, stopped containers
-keeper skills                              # every installed skill; `skills scan --all`, `skills show <name>`
-keeper skills remove --risk danger         # preview; --yes quarantines them, `skills restore <name>` undoes it
-keeper tools                               # which agent tools are detected and enabled
-```
-
-| Section in the app | Command |
+| Tool | What AI Keeper handles |
 |---|---|
-| Overview | `status`, `scan` |
-| All workspaces, Deprecated, By tool, inspector | `workspaces`, `workspace`, `remove`, `clean` |
-| Leftovers, Duplicates, Containers | `leftovers`, `dedupe`, `docker` |
-| Agents, Sessions, AI Usage | `agents`, `sessions`, `usage` |
-| Disk Analyzer, System | `disk`, `system` |
-| Recently removed | `vault` |
-| Skills | `skills` |
-| Tools, Settings | `tools`, `config` |
+| Claude Code, Codex | Worktrees, sessions and spend |
+| Conductor, Superset | Parallel workspaces and worktrees |
+| Pi | Sessions and spend |
+| ZCode, Cursor, Goose, Gemini CLI, Aider, OpenCode | Disk use and running agents |
 
-`keeper help <command>` shows every option. Shell completions: `keeper completions zsh|bash|fish`. Exit codes: 0 done, 1 failed or everything you named was skipped, 2 wrong usage.
+Missing yours? [Request a tool](https://github.com/chungquantin/ai-keeper/issues/new?template=feature_request.yml).
 
-The same safety rules as the app apply: unsaved work is saved to the vault first, workspaces with a running agent are skipped, main checkouts are never removed, and files go to the Trash unless you pass `--permanent`.
-
-### Skills and SkillSpector
-
-Skills run with your agent's trust, and plenty of them ship scripts. The **Skills** page (and `keeper skills`) lists every skill your agents can load and scans them with NVIDIA's open-source [SkillSpector](https://github.com/NVIDIA/SkillSpector) (Apache-2.0). Each finding comes with the lines it points at, because a scanner reads a security denylist as an attack as readily as an attack: findings are heuristics, not verdicts.
-
-- AI Keeper does not bundle SkillSpector. `keeper skills scanner install --yes` (or the button) installs the reviewed release `v2.13.4` with `uv`, after showing you the exact command.
-- Scans are static (`--no-llm`): nothing in a skill goes to a language model. SkillSpector does check the dependencies a skill lists against [OSV.dev](https://osv.dev), so those package names and versions leave your Mac.
-- The scanner runs with a bare environment (no API keys), on the skill's real folder (it refuses symlinks), and results are cached until a skill's files change. `keeper skills scan` exits 1 if any skill is rated do-not-install, so it can gate a script. A full scan batches eight skills per process, stops cleanly on Ctrl-C (or Esc in the dashboard) keeping what finished, and drops to one at a time when the Mac is short of memory.
-- **Removing skills.** `keeper skills remove --risk danger` (dry run) lists every skill rated do-not-install; add `--yes` to take them out of use. In the dashboard, `space` selects, `a` selects every high-risk skill and `x` removes; in the app, "Select high risk" then "Remove…". Skills are moved to a **quarantine**, not deleted, and the symlinks other tools use are recorded, so `keeper skills restore <name>` (or `u` in the dashboard, "Removed" in the app) puts everything back exactly. Findings are heuristics, so check them first. Plugin and project skills are never touched: uninstall the plugin, or delete the folder in its repository.
-
-### For agents
+## The command line
 
 ```bash
-claude mcp add keeper -- ~/.local/bin/keeper mcp
+keeper                     # the interactive dashboard
+keeper status              # disk, what you can get back, agents, spend
+keeper remove --all-safe   # a preview; add --yes to move them to the Trash
+keeper skills scan --all   # check every skill your agents can load
+keeper history             # how often you cleaned up, and the total freed
 ```
 
-Homebrew installs `keeper` (and `aikeeper`, the old name, as an alias). Installed the app by hand? Run `keeper install`, or use Settings → Agent access. `./scripts/test-cli.sh` runs the CLI end to end against a throwaway repo.
+Anything that deletes is a **dry run until you add `--yes`**, and every command takes `--json` for scripts. See [docs/CLI.md](docs/CLI.md) for all commands, the skills scanner and the MCP server.
 
 ## Safety
 
-- Workspaces with uncommitted changes are never marked safe to remove.
-- Main checkouts are never removed, only their build folders are cleaned.
-- Deletion defaults to the Trash for workspaces; build folders are deleted directly because they are regenerated.
+- Workspaces with uncommitted changes are never marked safe to remove, and unpushed work is saved to the vault first.
+- Main checkouts are never removed. Only their build folders are cleaned.
+- Workspaces are moved to the Trash by default. Build folders are deleted directly, because they are regenerated.
 - A cleanup will not start in a folder where an agent is running.
+- Nothing leaves your Mac. The app itself makes no network requests; it runs `git`, and the GitHub CLI if you have it, to read pull request status.
+  The optional skills scanner is a separate tool, and it looks up the packages a skill lists on [OSV.dev](https://osv.dev).
+
+## FAQ
+
+### Is it safe to let it delete things?
+
+It shows exactly what will go, and why, before anything is removed. Commands are previews until you add `--yes`, workspaces go to the Trash,
+and unsaved work is saved to a vault you can restore from. See [Safety](#safety).
+
+### Why does macOS say the app can't be opened?
+
+The releases are not notarized yet. Use **Open Anyway** in System Settings, or install with Homebrew or the install script. See [Download](#download).
+
+### Do I need the GitHub CLI?
+
+No. Without it you just don't get pull request status beside each workspace. Install `gh` and run `gh auth login` to turn it on.
+
+### Does it work with an agent that isn't listed?
+
+It still finds plain git worktrees. For a new agent's own folders, [open a feature request](https://github.com/chungquantin/ai-keeper/issues/new?template=feature_request.yml) saying where it keeps its data.
+
+### Are the cost numbers exact?
+
+They are estimates at public API list prices, read from your local session logs.
+
+## Similar projects
+
+AI Keeper is built for the mess that coding agents make. These tools cover neighbouring ground, and several are better at their one job:
+
+- [**Kondo**](https://github.com/tbillington/kondo) and [**npkill**](https://github.com/voidcosmos/npkill) clean build folders and `node_modules` in project directories.
+- [**DaisyDisk**](https://daisydiskapp.com) is a polished disk-space visualizer for the whole Mac.
+- [**Xcode DevCleaner**](https://github.com/vashpan/xcode-dev-cleaner) clears Xcode's derived data, archives and simulators.
+
+## Contribute
+
+There are many ways to help: reporting a bug, asking for a tool to be supported, improving the docs, or sending a pull request.
+We're a small and friendly project. Read [CONTRIBUTING.md](CONTRIBUTING.md) to get started, and please follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+```bash
+swift build                 # debug build
+./scripts/test-cli.sh       # the CLI end to end, against a throwaway repo
+./scripts/bundle.sh         # release build into dist/AIKeeper.app
+```
+
+To report a security problem, follow [SECURITY.md](SECURITY.md).
 
 ## Layout
 
 ```
-Sources/AIKeeper   the app (scanner, cleanup engine, monitors, SwiftUI views)
-assets/            app icon and the Swift script that draws it
-scripts/           bundle, package (universal, signed zip), install, cask update
+Sources/AIKeeper   the app and the keeper command (scanner, cleanup engine, monitors, SwiftUI views, terminal UI)
+assets/            app icon, bundled fonts and tool logos, and the scripts that draw them
+scripts/           bundle, package (universal, signed zip), install, cask update, tests, the launch film
 Casks/             Homebrew cask (this repo is its own tap)
 site/              landing page, deployed to GitHub Pages
-.github/workflows/ CI, release on tag, Pages deploy
+video/             the 30 second launch film (canvas animation, frame renderer, soundtrack)
+docs/              command reference and release signing notes
+.github/           CI, release and Pages workflows; issue forms and the pull request template
 ```
 
 ## Releasing
 
-Push a tag: `git tag v0.2.0 && git push origin v0.2.0`. The release workflow builds a universal app, publishes
-`AI-Keeper-<version>.zip` with its checksum to GitHub Releases, and updates the cask.
+Push a tag: `git tag v0.2.2 && git push origin v0.2.2`. The release workflow builds a universal app, publishes `AI-Keeper-<version>.zip`
+with its checksum to GitHub Releases, and updates the cask. Releases are ad-hoc signed until Developer ID credentials are added;
+[docs/SIGNING.md](docs/SIGNING.md) explains how to sign and notarize them.
 
-Releases are ad-hoc signed until Developer ID credentials are added. To sign and notarize them (so Gatekeeper accepts a
-download without the Open Anyway step), follow [docs/SIGNING.md](docs/SIGNING.md), which ends with one script,
-`scripts/setup-signing.sh`, that stores the credentials as repository secrets.
+## Contributors
 
-## Notes
+<a href="https://github.com/chungquantin/ai-keeper/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=chungquantin/ai-keeper" alt="AI Keeper contributors">
+</a>
 
-- Costs are estimates at public API list prices from local session logs.
-- Several `--probe`-style flags in `App.swift` exist for checking the scanners from the command line.
+## License
+
+AI Keeper is licensed under the [MIT License](LICENSE). It bundles open-licensed fonts, and uses logos that belong to their owners;
+see [THIRD_PARTY.md](THIRD_PARTY.md).

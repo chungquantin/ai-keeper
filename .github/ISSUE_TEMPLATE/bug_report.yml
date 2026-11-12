@@ -1,0 +1,95 @@
+name: Bug report
+description: Something in AI Keeper does not work the way you expect.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to help us improve AI Keeper.
+
+        **Sanity checks**
+        > [!IMPORTANT]
+        > 1. Try the [latest release](https://github.com/chungquantin/ai-keeper/releases/latest).
+        > 2. Search the existing issues so we don't get duplicates.
+        > 3. Give the issue a descriptive title.
+        > 4. Redact anything private, such as project names or paths. Never paste tokens or keys.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before reporting, please confirm
+      options:
+        - label: I tried the latest release, and the problem is still there.
+          required: true
+        - label: I searched for existing issues first.
+          required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: AI Keeper version
+      description: Run `keeper version`, or open the app's About box.
+      placeholder: "keeper 0.2.2"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install it?
+      options:
+        - Homebrew
+        - Install script
+        - Zip from GitHub Releases
+        - Built from source
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version and chip
+      placeholder: "macOS 15.1, Apple M2"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where did it happen?
+      options:
+        - The Mac app
+        - The keeper command
+        - The terminal dashboard (keeper ui)
+        - Both
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what did you see instead? Screenshots help.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open Workspaces
+        2. Select ...
+        3. Click Remove
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Output or logs
+      description: For the command line, the command you ran and its output (add `--json` if it helps). This is rendered as code.
+      render: shell
+    validations:
+      required: false

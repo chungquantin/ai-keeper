@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security problem
+    url: https://github.com/chungquantin/ai-keeper/security/advisories/new
+    about: Please report vulnerabilities privately. See SECURITY.md.
+  - name: Command reference
+    url: https://github.com/chungquantin/ai-keeper/blob/main/docs/CLI.md
+    about: Every keeper command, the skills scanner and the MCP server.
+  - name: Website
+    url: https://chungquantin.github.io/ai-keeper/
+    about: A short tour of the app and the command line.

@@ -1,0 +1,43 @@
+name: Feature request
+description: An idea to improve AI Keeper, or an agent tool you would like supported.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to help us improve AI Keeper.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What is this about?
+      options:
+        - A new feature or change
+        - Support for another agent tool
+    validations:
+      required: true
+
+  - type: textarea
+    id: request
+    attributes:
+      label: What would you like?
+      description: Describe the problem you want solved, and the outcome you have in mind.
+    validations:
+      required: true
+
+  - type: textarea
+    id: tool
+    attributes:
+      label: For a new tool, where does it keep its data?
+      description: Its name and website, and the folders where it creates worktrees, sessions and logs (for example `~/.toolname`).
+      placeholder: "ToolName, https://example.com. Worktrees in ~/.toolname/worktrees, logs in ~/.toolname/logs"
+    validations:
+      required: false
+
+  - type: input
+    id: votes
+    attributes:
+      label: Voting instructions
+      description: Do not modify these instructions.
+      value: React with 👍 or 👎 on the issue to vote on this request
+    validations:
+      required: true
