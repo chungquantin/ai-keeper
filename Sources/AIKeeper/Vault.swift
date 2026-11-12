@@ -240,23 +240,23 @@ struct VaultView: View {
         return HStack(alignment: .top, spacing: 14) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(i.name).fontWeight(.medium)
-                Text(i.path.replacingOccurrences(of: home, with: "~")).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                Text(i.path.replacingOccurrences(of: home, with: "~")).font(.bCaption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                 HStack(spacing: 10) {
                     if i.hasBundle { Pill(text: "Unpushed commits", color: .blue) }
                     if i.hasPatch { Pill(text: "Uncommitted changes", color: .orange) }
                     if i.hasUntracked { Pill(text: "Untracked files", color: .teal) }
                 }.padding(.top, 2)
-                ForEach(i.notes, id: \.self) { Text($0).font(.caption).foregroundStyle(.orange) }
+                ForEach(i.notes, id: \.self) { Text($0).font(.bCaption).foregroundStyle(.orange) }
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
                 Text(i.bytes.bytesString).monospacedDigit()
-                Text("\(i.date.formatted(.relative(presentation: .named))) · \(left)d left").font(.caption).foregroundStyle(.secondary)
+                Text("\(i.date.formatted(.relative(presentation: .named))) · \(left)d left").font(.bCaption).foregroundStyle(.secondary)
             }
             Button("Restore") {
                 do { try Vault.restore(i); message = "Restored to \(i.path)."; Task { await store.rescan() } }
                 catch { message = error.localizedDescription }
-            }.buttonStyle(.borderedProminent)
+            }.buttonStyle(.brandProminent)
             Button(role: .destructive) { Vault.delete(i); store.refreshVault() } label: { Image(systemName: "trash") }.buttonStyle(.borderless).help("Delete snapshot now").accessibilityLabel("Delete snapshot")
         }.padding(.horizontal, 16).padding(.vertical, 12)
     }

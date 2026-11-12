@@ -188,7 +188,7 @@ struct DiskView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 2) {
                         ForEach(Array(model.crumbs.enumerated()), id: \.offset) { i, c in
-                            if i > 0 { Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary) }
+                            if i > 0 { Image(systemName: "chevron.right").font(.bCaption2).foregroundStyle(.tertiary) }
                             Button(c.name) { model.open(c.path) }.buttonStyle(.link)
                         }
                     }
@@ -215,7 +215,7 @@ struct DiskView: View {
                     Text(n.name).lineLimit(1).frame(minWidth: 140, alignment: .leading)
                     if let h = n.hint { Pill(text: h, color: .orange) }
                     GeometryReader { geo in
-                        Capsule().fill(.indigo.opacity(0.8))
+                        Rectangle().fill(.indigo.opacity(0.8))
                             .frame(width: geo.size.width * Double(n.size ?? 0) / total, height: 6)
                             .frame(maxHeight: .infinity, alignment: .center)
                     }.frame(height: 18)
@@ -249,7 +249,7 @@ struct DiskView: View {
                     Image(systemName: "doc.fill").foregroundStyle(.secondary)
                     VStack(alignment: .leading) {
                         Text(n.name).lineLimit(1)
-                        Text(n.path.replacingOccurrences(of: home, with: "~")).font(.caption).foregroundStyle(.secondary)
+                        Text(n.path.replacingOccurrences(of: home, with: "~")).font(.bCaption).foregroundStyle(.secondary)
                             .lineLimit(1).truncationMode(.middle)
                     }
                     Spacer()

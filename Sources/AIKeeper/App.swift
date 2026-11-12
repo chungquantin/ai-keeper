@@ -10,6 +10,7 @@ struct AIKeeperApp: App {
         Migration.run()   // before anything reads settings
         var cliExit: Int32 = 0
         if CLI.handle(CommandLine.arguments, exitCode: &cliExit) { exit(cliExit) }
+        BrandFonts.register()
         #if DEBUG
         if let i = CommandLine.arguments.firstIndex(of: "--pixelshots"), i + 1 < CommandLine.arguments.count {
             MainActor.assumeIsolated { PixelShots.run(CommandLine.arguments[i + 1]) }
@@ -195,6 +196,7 @@ struct AIKeeperApp: App {
         WindowGroup(id: "main") {
             RootView()
                 .environmentObject(store)
+                .font(.bBody)
                 .frame(minWidth: 1060, minHeight: 620)
                 .task {
                     NSApplication.shared.setActivationPolicy(.regular)
@@ -360,7 +362,7 @@ struct ScanFooter: View {
                     Text(store.lastScan.map { "Scanned \($0.formatted(.relative(presentation: .named)))" } ?? "Not scanned yet")
                         .foregroundStyle(store.lastScan.map { Date().timeIntervalSince($0) > 3600 } ?? true ? Color.orange : .secondary)
                 }
-            }.font(.caption).foregroundStyle(.secondary)
+            }.font(.bCaption).foregroundStyle(.secondary)
             Spacer()
             Button { Task { await store.rescan() } } label: { Image(systemName: "arrow.clockwise") }
                 .buttonStyle(.borderless).disabled(store.isScanning).help("Rescan (⌘R)").accessibilityLabel("Rescan")
@@ -420,6 +422,7 @@ struct SidebarView: View {
             }
         }
         .listStyle(.sidebar)
+        .font(.bBody)
     }
 
     private var skillsBadge: String? {
@@ -429,9 +432,15 @@ struct SidebarView: View {
     }
 
     private func row(_ s: Section, badge: String?, accent: Bool = false) -> some View {
-        Label(s.title, systemImage: s.symbol)
-            .badge(badge.map { Text($0) })   // no custom color: it stays readable on the selected row
-            .tag(s)
+        Group {
+            if case .tool(let src) = s, src.logoID != nil {
+                Label { Text(s.title) } icon: { ToolIcon(id: src.logoID, fallback: s.symbol, size: 17) }   // the tool's real logo
+            } else {
+                Label(s.title, systemImage: s.symbol)
+            }
+        }
+        .badge(badge.map { Text($0) })   // no custom color: it stays readable on the selected row
+        .tag(s)
     }
 }
 
@@ -451,19 +460,19 @@ struct SettingsView: View {
         Form {
             SwiftUI.Section("Workspaces") {
                 Stepper(value: $store.staleDays, in: 3...180) { Text("Deprecated after **\(store.staleDays) days** idle") }
-                Text("Workspaces with uncommitted changes are never marked safe to remove.").font(.caption).foregroundStyle(.secondary)
+                Text("Workspaces with uncommitted changes are never marked safe to remove.").font(.bCaption).foregroundStyle(.secondary)
             }
             SwiftUI.Section("App") {
                 Text("The menu-bar icon can be hidden in System Settings → Menu Bar. If it's missing, your menu bar is full: macOS hides items that don't fit beside the notch. AI Keeper is always in the Dock and in Applications.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.bCaption).foregroundStyle(.secondary)
                 Toggle("Open at login", isOn: Binding(get: { launchAtLogin }, set: { on in
                     do { if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }; launchAtLogin = on; loginError = nil }
                     catch { launchAtLogin = SMAppService.mainApp.status == .enabled; loginError = error.localizedDescription }
                 }))
-                if let e = loginError { Text(e).font(.caption).foregroundStyle(.red) }
+                if let e = loginError { Text(e).font(.bCaption).foregroundStyle(.red) }
             }
             SwiftUI.Section("Tools") {
-                Text("\(store.enabledTools.count) tools tracked. Change them on the Tools page in the sidebar.").font(.caption).foregroundStyle(.secondary)
+                Text("\(store.enabledTools.count) tools tracked. Change them on the Tools page in the sidebar.").font(.bCaption).foregroundStyle(.secondary)
                 Button("Run setup again") { store.needsOnboarding = true }
             }
             SwiftUI.Section("Disk guard") {
@@ -477,13 +486,13 @@ struct SettingsView: View {
             }
             SwiftUI.Section("Agent access") {
                 Text("Let your coding agents check disk space and clean their own build folders. Everything is a dry run unless the agent passes confirm.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.bCaption).foregroundStyle(.secondary)
                 HStack {
                     Button("Install command-line tool") { cliMessage = CLIInstaller.install() }
-                    if let m = cliMessage { Text(m).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
+                    if let m = cliMessage { Text(m).font(.bCaption).foregroundStyle(.secondary).lineLimit(2) }
                 }
                 HStack(alignment: .top) {
-                    Text(CLIInstaller.mcpCommand).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                    Text(CLIInstaller.mcpCommand).font(.code(11)).textSelection(.enabled)
                     Spacer()
                     Button("Copy") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(CLIInstaller.mcpCommand, forType: .string) }.controlSize(.small)
                 }
@@ -507,7 +516,7 @@ struct MenuContent: View {
             Label("\(running.count) agent\(running.count == 1 ? "" : "s") running", systemImage: "bolt.horizontal")
             ForEach(running.prefix(5)) { a in
                 Text("\(a.kind.rawValue) · \(store.workspace(for: a)?.name ?? a.cwd.map { ($0 as NSString).lastPathComponent } ?? "—")")
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    .font(.bCaption).foregroundStyle(.secondary).lineLimit(1)
             }
             Divider()
             ForEach(store.activeJobs.prefix(1)) { JobMenuLine(job: $0) }

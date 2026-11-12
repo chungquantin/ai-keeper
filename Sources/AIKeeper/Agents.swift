@@ -173,7 +173,7 @@ struct AgentsView: View {
     @ViewBuilder
     private func section(_ title: String, _ list: [AgentProc], empty: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.headline)
+            Text(title).font(.bHeadline)
             if list.isEmpty {
                 Text(empty).foregroundStyle(.secondary).padding(.vertical, 8)
             } else {
@@ -201,8 +201,8 @@ struct AgentsView: View {
                     else if a.kind != .mcp { statePill(a) }
                 }
                 Text(ws.map { "\($0.repoName) · \($0.name)" } ?? a.cwd?.replacingOccurrences(of: home, with: "~") ?? a.command)
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
-                if let t = a.title { Text(t).font(.caption).foregroundStyle(.tertiary).lineLimit(1) }
+                    .font(.bCaption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                if let t = a.title { Text(t).font(.bCaption).foregroundStyle(.tertiary).lineLimit(1) }
             }
             Spacer()
             if let c = a.cost { stat(String(format: "$%.2f", c), "Session") }
@@ -235,8 +235,8 @@ struct AgentsView: View {
 
     private func stat(_ v: String, _ label: String) -> some View {
         VStack(alignment: .trailing, spacing: 0) {
-            Text(v).monospacedDigit().font(.callout)
-            Text(label).font(.caption2).foregroundStyle(.tertiary)
+            Text(v).monospacedDigit().font(.bCallout)
+            Text(label).font(.bCaption2).foregroundStyle(.tertiary)
         }.frame(width: 72, alignment: .trailing)
     }
 }

@@ -166,7 +166,7 @@ struct JobPanel: View {
 
     private var queued: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Waiting in line").font(.title2.bold())
+            Text("Waiting in line").font(.bTitle2.bold())
             Text("Another cleanup is running. This one starts when it finishes.").foregroundStyle(.secondary)
             HStack {
                 Button("Cancel this cleanup", role: .destructive) { store.cancelJob(job); onClose() }
@@ -181,31 +181,31 @@ struct JobPanel: View {
         return VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(c.cancelling ? "Stopping…" : "\(job.verb)…").font(.title2.bold())
+                    Text(c.cancelling ? "Stopping…" : "\(job.verb)…").font(.bTitle2.bold())
                     Text(c.label.isEmpty ? "Getting ready" : c.label).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                 }
                 Spacer()
                 Text("\(Int(c.fraction * 100))%").font(.figure(44)).monospacedDigit().contentTransition(.numericText())
             }
             VStack(alignment: .leading, spacing: 8) {
-                ProgressView(value: c.fraction).progressViewStyle(.linear).tint(Brand.accent)
+                PixelMeter(value: c.fraction, tint: Brand.accent)
                 HStack {
                     Text("\(c.freed.bytesString) of \(c.total.bytesString)").monospacedDigit()
                     Spacer()
                     if c.speed > 0 {
                         Text("\(Int64(c.speed).bytesString)/s" + (c.remaining.map { " · about \($0.shortDuration) left" } ?? "")).monospacedDigit().foregroundStyle(.secondary)
                     } else { Text("Measuring speed…").foregroundStyle(.secondary) }
-                }.font(.callout)
+                }.font(.bCallout)
             }
             VStack(alignment: .leading, spacing: 4) {
                 Label(c.detail.isEmpty ? "Reading folder…" : c.detail, systemImage: "folder")
-                    .font(.callout).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head)
-                Text("Item \(c.itemIndex) of \(c.itemTotal) · \(c.elapsed.shortDuration) elapsed").font(.caption).foregroundStyle(.tertiary).monospacedDigit()
+                    .font(.bCallout).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head)
+                Text("Item \(c.itemIndex) of \(c.itemTotal) · \(c.elapsed.shortDuration) elapsed").font(.bCaption).foregroundStyle(.tertiary).monospacedDigit()
             }
             HStack {
                 Button("Stop", role: .destructive) { store.cancelJob(job) }.disabled(c.cancelling)
                 Spacer()
-                Text("Keeps going in the background.").font(.caption).foregroundStyle(.tertiary)
+                Text("Keeps going in the background.").font(.bCaption).foregroundStyle(.tertiary)
                 Button("Run in background") { onClose() }.keyboardShortcut(.defaultAction)
             }
         }
@@ -220,13 +220,13 @@ struct JobPanel: View {
             if !job.options.permanent { Text("Moved to Trash. Empty it to get the space back.").foregroundStyle(.secondary) }
             if !o.failures.isEmpty {
                 VStack(alignment: .leading) {
-                    Text("\(o.failures.count) failed").font(.headline)
-                    ForEach(o.failures.indices, id: \.self) { i in Text("\(o.failures[i].name): \(o.failures[i].error)").font(.caption).foregroundStyle(.secondary) }
+                    Text("\(o.failures.count) failed").font(.bHeadline)
+                    ForEach(o.failures.indices, id: \.self) { i in Text("\(o.failures[i].name): \(o.failures[i].error)").font(.bCaption).foregroundStyle(.secondary) }
                 }
             }
             HStack {
                 if !job.options.permanent { Button("Open Trash") { NSWorkspace.shared.open(URL(fileURLWithPath: NSHomeDirectory() + "/.Trash")) } }
-                Button("Done") { store.dismissJob(job); onClose() }.keyboardShortcut(.defaultAction).buttonStyle(.borderedProminent)
+                Button("Done") { store.dismissJob(job); onClose() }.keyboardShortcut(.defaultAction).buttonStyle(.brandProminent)
             }
         }.frame(maxWidth: .infinity)
     }
@@ -256,7 +256,7 @@ private struct ActivitySummary: View {
         if let running = jobs.first(where: { $0.state == .running }) {
             RunningLine(job: running, queued: jobs.filter { $0.state == .queued }.count)
         } else if jobs.contains(where: { $0.state == .queued }) {
-            HStack(spacing: 6) { SleepingRobot(scale: 1); Text("Cleanup waiting").font(.caption).foregroundStyle(.secondary) }
+            HStack(spacing: 6) { SleepingRobot(scale: 1); Text("Cleanup waiting").font(.bCaption).foregroundStyle(.secondary) }
         } else {
             FinishedLine(jobs: jobs)
         }
@@ -271,9 +271,9 @@ private struct RunningLine: View {
             RobotRunner(stopping: job.status.cancelling)
             HStack(spacing: 8) {
                 Text("\(job.status.cancelling ? "Stopping" : "Cleaning") · \(Int(job.status.fraction * 100))%" + (queued > 0 ? " · \(queued) waiting" : ""))
-                    .font(.caption).monospacedDigit()
+                    .font(.bCaption).monospacedDigit()
                 Spacer()
-                Image(systemName: "chevron.up").font(.caption2).foregroundStyle(.tertiary)
+                Image(systemName: "chevron.up").font(.bCaption2).foregroundStyle(.tertiary)
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -285,9 +285,9 @@ private struct FinishedLine: View {
         let freed = jobs.reduce(Int64(0)) { $0 + ($1.outcome?.freed ?? 0) }
         HStack(spacing: 8) {
             Image(systemName: "checkmark.circle.fill").foregroundStyle(Brand.accent)
-            Text("\(freed.bytesString) freed").font(.caption).monospacedDigit()
+            Text("\(freed.bytesString) freed").font(.bCaption).monospacedDigit()
             Spacer()
-            Image(systemName: "chevron.up").font(.caption2).foregroundStyle(.tertiary)
+            Image(systemName: "chevron.up").font(.bCaption2).foregroundStyle(.tertiary)
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -297,7 +297,7 @@ struct ActivityList: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("Cleanups").font(.headline)
+                Text("Cleanups").font(.bHeadline)
                 Spacer()
                 if store.jobs.contains(where: { $0.state == .finished }) { Button("Clear finished") { store.clearFinishedJobs() }.controlSize(.small) }
             }.padding(14)
@@ -319,22 +319,22 @@ private struct JobRow: View {
             Text(job.title).fontWeight(.medium).lineLimit(1)
             switch job.state {
             case .queued:
-                HStack { Text("Waiting").foregroundStyle(.secondary); Spacer(); Button("Cancel") { store.cancelJob(job) }.controlSize(.small) }.font(.callout)
+                HStack { Text("Waiting").foregroundStyle(.secondary); Spacer(); Button("Cancel") { store.cancelJob(job) }.controlSize(.small) }.font(.bCallout)
             case .running:
-                ProgressView(value: job.status.fraction).tint(Brand.accent)
+                PixelMeter(value: job.status.fraction, tint: Brand.accent)
                 HStack {
                     Text("\(job.status.freed.bytesString) of \(job.status.total.bytesString)").monospacedDigit()
                     if let r = job.status.remaining { Text("· \(r.shortDuration) left").foregroundStyle(.secondary) }
                     Spacer()
                     Button("Stop") { store.cancelJob(job) }.controlSize(.small).disabled(job.status.cancelling)
-                }.font(.callout)
-                if !job.status.detail.isEmpty { Text(job.status.detail).font(.caption).foregroundStyle(.tertiary).lineLimit(1).truncationMode(.head) }
+                }.font(.bCallout)
+                if !job.status.detail.isEmpty { Text(job.status.detail).font(.bCaption).foregroundStyle(.tertiary).lineLimit(1).truncationMode(.head) }
             case .finished:
                 let o = job.outcome ?? CleanupOutcome()
                 HStack {
                     Image(systemName: o.failures.isEmpty && !o.cancelled ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                         .foregroundStyle(o.failures.isEmpty && !o.cancelled ? Brand.accent : .orange)
-                    Text("\(o.freed.bytesString) freed" + (o.cancelled ? " · stopped" : o.failures.isEmpty ? "" : " · \(o.failures.count) failed")).font(.callout)
+                    Text("\(o.freed.bytesString) freed" + (o.cancelled ? " · stopped" : o.failures.isEmpty ? "" : " · \(o.failures.count) failed")).font(.bCallout)
                     Spacer()
                     Button("Dismiss") { store.dismissJob(job) }.controlSize(.small)
                 }

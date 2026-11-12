@@ -23,24 +23,25 @@ struct ToolRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Toggle("", isOn: $isOn).toggleStyle(.checkbox).labelsHidden().padding(.top, 2)
-            Image(systemName: det.spec.symbol).font(.title3).frame(width: 26).foregroundStyle(det.found ? .primary : .tertiary).padding(.top, 1)
+            ToolIcon(id: det.spec.id, fallback: det.spec.symbol, size: 24).foregroundStyle(det.found ? .primary : .tertiary)
+                .opacity(det.found ? 1 : 0.55).frame(width: 26).padding(.top, 1)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
                     Text(det.spec.name).fontWeight(.medium)
                     if det.found { Pill(text: det.running > 0 ? "Detected · \(det.running) running" : "Detected", color: Brand.accent) }
                     else { Pill(text: "Not found", color: .gray) }
                 }
-                Text(det.spec.blurb).font(.callout).foregroundStyle(.secondary)
+                Text(det.spec.blurb).font(.bCallout).foregroundStyle(.secondary)
                 if det.found, !det.evidence.isEmpty {
-                    Text(det.evidence + (footprint.map { " · \($0.bytesString) on disk" } ?? "")).font(.caption).foregroundStyle(.tertiary).lineLimit(1).truncationMode(.middle)
+                    Text(det.evidence + (footprint.map { " · \($0.bytesString) on disk" } ?? "")).font(.bCaption).foregroundStyle(.tertiary).lineLimit(1).truncationMode(.middle)
                 }
                 HStack(spacing: 6) {
                     ForEach(det.spec.capabilities, id: \.self) { c in
-                        Text(c).font(.caption2).padding(.horizontal, 6).padding(.vertical, 2)
+                        Text(c).font(.bCaption2).padding(.horizontal, 6).padding(.vertical, 2)
                             .background(.quaternary, in: RoundedRectangle(cornerRadius: 4)).foregroundStyle(.secondary)
                     }
                 }.padding(.top, 1)
-                if let n = det.spec.note { Text(n).font(.caption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true) }
+                if let n = det.spec.note { Text(n).font(.bCaption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 0)
             if showReveal, let d = det.dataPath {
@@ -111,7 +112,7 @@ struct OnboardingView: View {
             Button(step == 2 ? "Start scanning" : "Continue") {
                 if step == 2 { finish() } else { step += 1 }
             }
-            .buttonStyle(.borderedProminent).keyboardShortcut(.defaultAction)
+            .buttonStyle(.brandProminent).keyboardShortcut(.defaultAction)
             .disabled(step == 0 && picked.isEmpty)
         }.padding(.horizontal, 24).padding(.vertical, 14)
     }
@@ -131,7 +132,7 @@ struct OnboardingView: View {
 
     private func group(_ title: String, _ list: [Detection]) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.headline)
+            Text(title).font(.bHeadline)
             VStack(spacing: 0) {
                 ForEach(list) { d in
                     ToolRow(det: d, isOn: Binding(get: { picked.contains(d.id) }, set: { on in if on { picked.insert(d.id) } else { picked.remove(d.id) } }),
@@ -157,7 +158,7 @@ struct OnboardingView: View {
                             Toggle("", isOn: $r.on).toggleStyle(.checkbox).labelsHidden()
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(r.path.replacingOccurrences(of: home, with: "~")).fontWeight(.medium)
-                                Text("\(r.repos) repo\(r.repos == 1 ? "" : "s")" + (r.viaTool ? " · found through your tools" : "")).font(.caption).foregroundStyle(.secondary)
+                                Text("\(r.repos) repo\(r.repos == 1 ? "" : "s")" + (r.viaTool ? " · found through your tools" : "")).font(.bCaption).foregroundStyle(.secondary)
                             }
                             Spacer()
                         }.padding(.horizontal, 14).padding(.vertical, 10)
@@ -181,7 +182,7 @@ struct OnboardingView: View {
             Toggle("Notify me when disk space runs low", isOn: $notify)
             Stepper(value: $floorGB, in: 5...500, step: 5) { Text("Low-disk alert at **\(Int(floorGB)) GB** free") }
             Stepper(value: $daily, in: 0...1000, step: 5) { Text("Daily AI spend alert: **\(daily == 0 ? "off" : String(format: "$%.0f", daily))**") }
-            Text("macOS will ask once to allow notifications. Change any of this later in Settings.").font(.caption).foregroundStyle(.secondary)
+            Text("macOS will ask once to allow notifications. Change any of this later in Settings.").font(.bCaption).foregroundStyle(.secondary)
         }.formStyle(.grouped).scrollDisabled(true).padding(.top, 8)
     }
 
@@ -225,7 +226,7 @@ struct ToolsView: View {
                     HStack {
                         Label("Tool selection changed.", systemImage: "arrow.triangle.2.circlepath").fontWeight(.medium)
                         Spacer()
-                        Button("Rescan now") { Task { store.toolsChanged = false; store.loadUsage(); await store.rescan() } }.buttonStyle(.borderedProminent)
+                        Button("Rescan now") { Task { store.toolsChanged = false; store.loadUsage(); await store.rescan() } }.buttonStyle(.brandProminent)
                     }.padding(14).background(.orange.opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
                 }
                 section("On this Mac", found)
@@ -238,7 +239,7 @@ struct ToolsView: View {
                             HStack {
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(r.replacingOccurrences(of: home, with: "~")).fontWeight(.medium)
-                                    Text("\(ProjectRoots.repoCount(r)) repos").font(.caption).foregroundStyle(.secondary)
+                                    Text("\(ProjectRoots.repoCount(r)) repos").font(.bCaption).foregroundStyle(.secondary)
                                 }
                                 Spacer()
                                 Button { store.repoRoots.removeAll { $0 == r }; store.toolsChanged = true } label: { Image(systemName: "minus.circle") }.buttonStyle(.borderless).help("Remove folder").accessibilityLabel("Remove folder")

@@ -38,7 +38,7 @@ struct EntryListView: View {
                 ContentUnavailableView {
                     VStack(spacing: 10) {
                         if store.isScanning { RobotSpinner().scaleEffect(2) .frame(height: 44) } else { SleepingRobot() }
-                        Text(store.isScanning ? "Scanning…" : "Nothing here").font(.title2.weight(.semibold))
+                        Text(store.isScanning ? "Scanning…" : "Nothing here").font(.bTitle2.weight(.semibold))
                     }
                 } description: {
                     Text(store.isScanning ? "Results appear as they are measured." : "Nothing matches. Clear the search or change the view options.")
@@ -57,9 +57,9 @@ struct EntryListView: View {
                     DetailView(entry: e)
                 } else {
                     VStack(spacing: 6) {
-                        Text(selected.isEmpty ? "No selection" : "\(selected.count) selected").font(.headline)
+                        Text(selected.isEmpty ? "No selection" : "\(selected.count) selected").font(.bHeadline)
                         Text(selected.isEmpty ? "Select a row to see its details." : "Removing them frees up to \(store.total(selected).bytesString).")
-                            .font(.callout).foregroundStyle(.secondary).multilineTextAlignment(.center)
+                            .font(.bCallout).foregroundStyle(.secondary).multilineTextAlignment(.center)
                     }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
@@ -91,13 +91,13 @@ struct EntryListView: View {
         return Table(rows, selection: $selection, sortOrder: $order) {
             TableColumn("Name", value: \.name) { e in
                 HStack(spacing: 10) {
-                    Image(systemName: icon(e)).foregroundStyle(.secondary).frame(width: 18)
+                    rowIcon(e)
                     VStack(alignment: .leading, spacing: 1) {
                         HStack(spacing: 8) {
                             Text(e.name).fontWeight(.medium).lineLimit(1).truncationMode(.middle)
                             if !store.runningAgents(in: e).isEmpty { Pill(text: "Agent running", color: Brand.accent) }
                         }
-                        Text(subtitle(e)).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                        Text(subtitle(e)).font(.bCaption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                     }
                 }
             }.width(min: 170, ideal: 300)
@@ -111,7 +111,7 @@ struct EntryListView: View {
                         if e.artifactBytes > 0 {
                             // Icon instead of the word "rebuildable": the full label clipped in a narrow column.
                             Label(e.artifactBytes.bytesString, systemImage: "shippingbox")
-                                .font(.caption).foregroundStyle(.orange).monospacedDigit().lineLimit(1)
+                                .font(.bCaption).foregroundStyle(.orange).monospacedDigit().lineLimit(1)
                                 .help("\(e.artifactBytes.bytesString) of rebuildable build folders")
                         }
                     }
@@ -145,6 +145,15 @@ struct EntryListView: View {
         switch e.kind {
         case .workspace: [e.repoName, e.branch].compactMap { $0 }.joined(separator: " · ")
         default: e.note
+        }
+    }
+
+    @ViewBuilder private func rowIcon(_ e: Entry) -> some View {
+        if e.kind == .workspace {
+            let src: Source = e.sources.contains(.conductor) ? .conductor : e.sources.contains(.claude) ? .claude : .git
+            ToolIcon(id: src.logoID, fallback: icon(e), size: 17).foregroundStyle(.secondary).frame(width: 20)
+        } else {
+            Image(systemName: icon(e)).foregroundStyle(.secondary).frame(width: 20)
         }
     }
 
@@ -197,7 +206,7 @@ struct EntryListView: View {
                 if !removable.isEmpty {
                     Button(role: .destructive) { store.propose(.removeWorkspaces, for: sel) } label: {
                         Text("Remove · \(store.total(removable).bytesString)")
-                    }.buttonStyle(.borderedProminent).tint(.red).fixedSize()
+                    }.buttonStyle(.brandProminent).tint(.red).fixedSize()
                 }
             }
         }
@@ -233,11 +242,12 @@ struct DetailView: View {
 
     private func header(_ e: Entry, _ text: String, _ color: Color) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(e.name).font(.title3.bold()).textSelection(.enabled).lineLimit(2).truncationMode(.middle)
+            Text(e.name).font(.bTitle3.bold()).textSelection(.enabled).lineLimit(2).truncationMode(.middle)
             HStack(spacing: 10) {
                 Pill(text: text, color: color)
                 ForEach(Source.allCases.filter(e.sources.contains), id: \.self) { s in
-                    Label(s.rawValue, systemImage: s.symbol).font(.caption).foregroundStyle(.secondary).labelStyle(.titleAndIcon)
+                    Label { Text(s.rawValue) } icon: { ToolIcon(id: s.logoID, fallback: s.symbol, size: 13) }
+                        .font(.bCaption).foregroundStyle(.secondary).labelStyle(.titleAndIcon)
                 }
             }
             if !store.runningAgents(in: e).isEmpty { Pill(text: "An agent is running here", color: Brand.accent) }
@@ -248,10 +258,10 @@ struct DetailView: View {
 
     private func needCard(_ n: Neededness) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: n.symbol).font(.title3).foregroundStyle(n.color).frame(width: 24)
+            Image(systemName: n.symbol).font(.bTitle3).foregroundStyle(n.color).frame(width: 24)
             VStack(alignment: .leading, spacing: 3) {
                 Text(n.headline).fontWeight(.semibold).fixedSize(horizontal: false, vertical: true)
-                Text(n.detail).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(n.detail).font(.bCallout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
         }
@@ -265,7 +275,7 @@ struct DetailView: View {
     private func gitSection(_ e: Entry, _ g: GitInfo) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Git").font(.headline)
+                Text("Git").font(.bHeadline)
                 Spacer()
                 if store.prRefreshing { ProgressView().controlSize(.mini) }
                 else if PRService.gh != nil { Button { Task { await store.fetchPRs() } } label: { Image(systemName: "arrow.clockwise") }.buttonStyle(.borderless).help("Refresh pull requests") }
@@ -280,8 +290,8 @@ struct DetailView: View {
                     Divider()
                     VStack(alignment: .leading, spacing: 3) {
                         Text("Last commit" + (g.lastCommit.map { " · \($0.formatted(.relative(presentation: .named)))" } ?? ""))
-                            .font(.caption).foregroundStyle(.secondary)
-                        Text(s).font(.callout).lineLimit(2).truncationMode(.tail).fixedSize(horizontal: false, vertical: true)
+                            .font(.bCaption).foregroundStyle(.secondary)
+                        Text(s).font(.bCallout).lineLimit(2).truncationMode(.tail).fixedSize(horizontal: false, vertical: true)
                     }.frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 12).padding(.vertical, 8)
                 }
             }.panel(10)
@@ -296,12 +306,12 @@ struct DetailView: View {
                         Button { if let u = URL(string: pr.url), u.scheme == "https" { NSWorkspace.shared.open(u) } } label: { Label("GitHub", systemImage: "arrow.up.right.square") }
                             .controlSize(.small).fixedSize().help("Open pull request on GitHub")
                     }
-                    Text(pr.title).font(.callout).frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
-                    if !pr.detailLine.isEmpty { Text(pr.detailLine).font(.caption).foregroundStyle(.secondary) }
+                    Text(pr.title).font(.bCallout).frame(maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
+                    if !pr.detailLine.isEmpty { Text(pr.detailLine).font(.bCaption).foregroundStyle(.secondary) }
                 }.padding(12).panel(10)
             } else {
                 Text(PRService.gh == nil ? "Install the GitHub CLI (gh) to see pull request status." : "No pull request found for this branch.")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.bCaption).foregroundStyle(.secondary)
             }
         }
     }
@@ -320,9 +330,9 @@ struct DetailView: View {
 
     private func fact(_ k: String, _ v: String, _ dot: Color) -> some View {
         HStack(spacing: 8) {
-            Text(k).font(.callout).foregroundStyle(.secondary).lineLimit(1).frame(width: 92, alignment: .leading)
+            Text(k).font(.bCallout).foregroundStyle(.secondary).lineLimit(1).frame(width: 92, alignment: .leading)
             Circle().fill(dot).frame(width: 6, height: 6)
-            Text(v).font(.callout).lineLimit(1).truncationMode(.tail).frame(maxWidth: .infinity, alignment: .leading)
+            Text(v).font(.bCallout).lineLimit(1).truncationMode(.tail).frame(maxWidth: .infinity, alignment: .leading)
         }.padding(.horizontal, 12).padding(.vertical, 8)
     }
 
@@ -330,9 +340,9 @@ struct DetailView: View {
 
     private func whySection(_ e: Entry) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("Why it's flagged").font(.headline)
+            Text("Why it's flagged").font(.bHeadline)
             ForEach(e.reasons, id: \.self) { r in
-                Label(r, systemImage: "circle.fill").labelStyle(BulletStyle()).font(.callout)
+                Label(r, systemImage: "circle.fill").labelStyle(BulletStyle()).font(.bCallout)
             }
         }
     }
@@ -342,7 +352,7 @@ struct DetailView: View {
     private func storage(_ e: Entry) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Storage").font(.headline)
+                Text("Storage").font(.bHeadline)
                 Spacer()
                 Text((e.size ?? 0).bytesString).font(.figure(22)).monospacedDigit()
             }
@@ -352,7 +362,7 @@ struct DetailView: View {
                         Rectangle().fill(.secondary.opacity(0.5))
                             .frame(width: geo.size.width * Double(max(0, size - e.artifactBytes)) / Double(size))
                         Rectangle().fill(Color.orange)
-                    }.clipShape(Capsule())
+                    }.clipShape(Rectangle())
                 }.frame(height: 6)
                 ForEach(e.artifacts.prefix(6)) { a in
                     HStack(spacing: 8) {
@@ -361,9 +371,9 @@ struct DetailView: View {
                             .lineLimit(1).truncationMode(.head)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         Text(a.bytes.bytesString).monospacedDigit().foregroundStyle(.secondary).fixedSize()
-                    }.font(.callout)
+                    }.font(.bCallout)
                 }
-                if e.artifacts.count > 6 { Text("and \(e.artifacts.count - 6) more").font(.caption).foregroundStyle(.tertiary) }
+                if e.artifacts.count > 6 { Text("and \(e.artifacts.count - 6) more").font(.bCaption).foregroundStyle(.tertiary) }
             }
         }
     }
@@ -372,7 +382,7 @@ struct DetailView: View {
 
     private func details(_ e: Entry) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Details").font(.headline)
+            Text("Details").font(.bHeadline)
             kv("Repository", e.repoName)
             if let b = e.branch { kv("Branch", b) }
             if let d = e.lastActivity { kv("Last activity", d.formatted(date: .abbreviated, time: .shortened)) }
@@ -383,8 +393,8 @@ struct DetailView: View {
 
     private func kv(_ k: String, _ v: String) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(k).font(.caption).foregroundStyle(.secondary)
-            Text(v).font(.callout).textSelection(.enabled).lineLimit(3).truncationMode(.middle)
+            Text(k).font(.bCaption).foregroundStyle(.secondary)
+            Text(v).font(.bCallout).textSelection(.enabled).lineLimit(3).truncationMode(.middle)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -406,7 +416,7 @@ struct DetailView: View {
             if e.kind != .repo {
                 Button(role: .destructive) { store.propose(.removeWorkspaces, for: [e]) } label: {
                     Label(e.exists ? "Remove · \((e.size ?? 0).bytesString)" : "Clean up record", systemImage: "trash").frame(maxWidth: .infinity)
-                }.controlSize(.large).buttonStyle(.borderedProminent).tint(.red)
+                }.controlSize(.large).buttonStyle(.brandProminent).tint(.red)
             }
         }
     }

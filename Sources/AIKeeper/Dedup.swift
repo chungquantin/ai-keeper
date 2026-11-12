@@ -216,11 +216,11 @@ struct DedupView: View {
             case .idle:
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Find duplicates").font(.headline)
-                        Text("Scans \(roots.count) dependency folders (node_modules, .venv, Pods).").font(.callout).foregroundStyle(.secondary)
+                        Text("Find duplicates").font(.bHeadline)
+                        Text("Scans \(roots.count) dependency folders (node_modules, .venv, Pods).").font(.bCallout).foregroundStyle(.secondary)
                     }
                     Spacer()
-                    Button("Analyze") { model.analyze(roots: roots) }.buttonStyle(.borderedProminent).disabled(roots.isEmpty)
+                    Button("Analyze") { model.analyze(roots: roots) }.buttonStyle(.brandProminent).disabled(roots.isEmpty)
                 }
             case .scanning(let n):
                 progress("Listing files", "\(n) entries seen")
@@ -236,7 +236,7 @@ struct DedupView: View {
                     }
                     Text("\(r.duplicateFiles) duplicate files in \(r.groups.count) groups, out of \(r.scannedFiles) files scanned.").foregroundStyle(.secondary)
                     HStack {
-                        Button("Merge duplicates") { confirm = true }.buttonStyle(.borderedProminent).tint(Brand.accent).controlSize(.large)
+                        Button("Merge duplicates") { confirm = true }.buttonStyle(.brandProminent).tint(Brand.accent).controlSize(.large)
                         Button("Analyze again") { model.analyze(roots: roots) }.controlSize(.large)
                     }
                 } else {
@@ -246,9 +246,9 @@ struct DedupView: View {
             case .merging(let d, let t, let freed):
                 progress("Merging", "\(freed.bytesString) shared so far", value: Double(d) / Double(max(t, 1)))
             case .finished(let freed, let failed):
-                Label("\(freed.bytesString) now shared", systemImage: "checkmark.seal.fill").font(.title2.bold()).foregroundStyle(Brand.accent)
+                Label("\(freed.bytesString) now shared", systemImage: "checkmark.seal.fill").font(.bTitle2.bold()).foregroundStyle(Brand.accent)
                 if failed > 0 { Text("\(failed) files were skipped (changed or on another volume).").foregroundStyle(.secondary) }
-                Text("Free space updates as macOS reclaims the blocks. Run Analyze again any time.").font(.callout).foregroundStyle(.secondary)
+                Text("Free space updates as macOS reclaims the blocks. Run Analyze again any time.").font(.bCallout).foregroundStyle(.secondary)
                 Button("Done") { model.phase = .idle }
             }
         }
@@ -257,9 +257,9 @@ struct DedupView: View {
 
     private func progress(_ title: String, _ detail: String, value: Double? = nil) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack { Text(title).font(.headline); Spacer(); Button("Stop") { model.cancel() } }
+            HStack { Text(title).font(.bHeadline); Spacer(); Button("Stop") { model.cancel() } }
             if let value { ProgressView(value: value) } else { ProgressView().progressViewStyle(.linear) }
-            Text(detail).font(.callout).foregroundStyle(.secondary).monospacedDigit()
+            Text(detail).font(.bCallout).foregroundStyle(.secondary).monospacedDigit()
         }
     }
 
@@ -279,10 +279,10 @@ struct DedupView: View {
 
     private func tip(_ title: String, _ body: String, _ snippet: String) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(.headline)
+            Text(title).font(.bHeadline)
             Text(body).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack(alignment: .top) {
-                Text(snippet).font(.system(.callout, design: .monospaced)).textSelection(.enabled)
+                Text(snippet).font(.code(12)).textSelection(.enabled)
                 Spacer()
                 Button("Copy") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(snippet, forType: .string) }.controlSize(.small)
             }.padding(10).background(.quaternary, in: RoundedRectangle(cornerRadius: 8))

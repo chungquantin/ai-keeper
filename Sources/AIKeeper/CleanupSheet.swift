@@ -46,7 +46,7 @@ struct CleanupSheet: View {
                     .font(.system(size: 40)).foregroundStyle(removing ? .red : .orange)
                 VStack(alignment: .leading) {
                     Text(removing ? "Remove \(targets.count) item\(targets.count == 1 ? "" : "s")?" : "Clean build artifacts?")
-                        .font(.title2.bold())
+                        .font(.bTitle2.bold())
                     Text("Frees about \(total.bytesString)").foregroundStyle(.secondary)
                 }
             }
@@ -56,7 +56,7 @@ struct CleanupSheet: View {
                     VStack(alignment: .leading) {
                         Text(e.name).lineLimit(1)
                         Text(removing ? e.path : e.artifacts.map(\.label).joined(separator: ", "))
-                            .font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                            .font(.bCaption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                     }
                     Spacer()
                     if removing { let (t, c) = e.statusPill; Pill(text: t, color: c) }
@@ -87,20 +87,20 @@ struct CleanupSheet: View {
 
             if !busy.isEmpty {
                 Label("\(busy.count) skipped: an agent is running in \(busy.map(\.name).prefix(2).joined(separator: ", ")). Stop it first.",
-                      systemImage: "bolt.slash.fill").font(.callout).foregroundStyle(.orange)
+                      systemImage: "bolt.slash.fill").font(.bCallout).foregroundStyle(.orange)
             }
             if !agentsHere.isEmpty {
                 Label("An agent is running in \(agentsHere.map(\.name).prefix(2).joined(separator: ", ")). A build in progress will fail and has to restart.",
-                      systemImage: "bolt.fill").font(.callout).foregroundStyle(.orange)
+                      systemImage: "bolt.fill").font(.bCallout).foregroundStyle(.orange)
             }
             if !conductorLive.isEmpty {
                 Label("\(conductorLive.count) workspace\(conductorLive.count == 1 ? " is" : "s are") still active in Conductor. Archive in Conductor instead if you want its record cleaned too.",
                       systemImage: "exclamationmark.triangle.fill")
-                    .font(.callout).foregroundStyle(.orange)
+                    .font(.bCallout).foregroundStyle(.orange)
             }
             if !options.permanent {
                 Label("Trash keeps the space used until you empty it.", systemImage: "info.circle")
-                    .font(.caption).foregroundStyle(.secondary)
+                    .font(.bCaption).foregroundStyle(.secondary)
             }
 
             HStack {
@@ -110,7 +110,7 @@ struct CleanupSheet: View {
                     job = store.startCleanup(CleanupPlan(mode: plan.mode, entries: targets), options: options)
                 }
                 .keyboardShortcut(.defaultAction)
-                .buttonStyle(.borderedProminent).tint(removing ? .red : .orange)
+                .buttonStyle(.brandProminent).tint(removing ? .red : .orange)
                 .disabled(targets.isEmpty)
             }
         }

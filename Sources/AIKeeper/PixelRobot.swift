@@ -331,6 +331,21 @@ enum PixelShots {
         for t in [0.8, 2.2, 3.6, 5.0] { save(SplashView(fixedTime: t).environmentObject(store), "splash-\(t)", 1060, 620) }
         for t in [1.0, 1.4] { save(RobotRunner(fixedTime: t).padding().background(Color(nsColor: .windowBackgroundColor)).environment(\.colorScheme, .dark), "runner-\(t)", 260, 80) }
         save(SleepingRobot().padding().background(Color(nsColor: .windowBackgroundColor)), "sleeping", 160, 120)
+        for scheme in [ColorScheme.light, .dark] {
+            let sample = VStack(alignment: .leading, spacing: 12) {
+                Text("You can get back").font(.bCallout).foregroundStyle(.secondary)
+                Text("107.9 GB").font(.figure(30))
+                PixelMeter(value: 0.62).frame(width: 260)
+                HStack { Pill(text: "Safe to remove", color: Brand.accent); Pill(text: "Uncommitted", color: .red) }
+                Button("Remove 3 workspaces") {}.buttonStyle(.brandProminent).tint(Brand.accent)
+            }.padding(20).panel().padding(24).background(Brand.surface).environment(\.colorScheme, scheme).font(.bBody)
+            save(sample, "brand-\(scheme == .dark ? "dark" : "light")", 360, 260)
+        }
+        let ids = ["claude", "codex", "conductor", "superset", "pi", "zcode", "cursor", "goose", "gemini", "aider", "opencode", "git"]
+        for scheme in [ColorScheme.light, .dark] {
+            save(HStack(spacing: 14) { ForEach(ids, id: \.self) { ToolIcon(id: $0, size: 30) } }.padding(16)
+                    .background(scheme == .dark ? Color.black : Color.white).foregroundStyle(scheme == .dark ? Color.white : Color.black), "logos-\(scheme == .dark ? "dark" : "light")", 640, 80)
+        }
     }
 }
 #endif

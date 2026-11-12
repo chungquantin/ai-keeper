@@ -38,6 +38,7 @@ jobs:
         run: |
           plutil -lint dist/AIKeeper.app/Contents/Info.plist
           test -f dist/AIKeeper.app/Contents/Resources/AppIcon.icns
+          test -f dist/AIKeeper.app/Contents/Resources/Fonts/BricolageGrotesque.ttf
           codesign --verify --deep --strict dist/AIKeeper.app
 
       - name: Smoke test the command line

@@ -21,7 +21,7 @@ struct CleanupChart: View {
                 Text(s.first.map { "freed since \($0.formatted(.dateTime.month(.abbreviated).year()))" } ?? "freed so far").foregroundStyle(.secondary)
             }
             if s.runs == 0 {
-                Text("Nothing cleaned yet. Each day you remove something gets a square here.").font(.callout).foregroundStyle(.secondary)
+                Text("Nothing cleaned yet. Each day you remove something gets a square here.").font(.bCallout).foregroundStyle(.secondary)
             }
             grid(weeks, s, peak)
             HStack(spacing: 18) {
@@ -31,9 +31,9 @@ struct CleanupChart: View {
                     if let b = s.best { stat("Best day", b.bytes.bytesString) }
                 }
                 Spacer()
-                Text(hoverText ?? "").font(.caption).foregroundStyle(.secondary).monospacedDigit()
+                Text(hoverText ?? "").font(.bCaption).foregroundStyle(.secondary).monospacedDigit()
                 legend
-            }.font(.caption)
+            }.font(.bCaption)
         }
         .onAppear { records = CleanLog.all() }
         .onChange(of: finishedJobs) { _ in records = CleanLog.all() }
@@ -47,7 +47,7 @@ struct CleanupChart: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: gap) {
                 ForEach(Array(weeks.enumerated()), id: \.offset) { i, w in
-                    Text(monthLabel(i, w, weeks)).font(.caption2).foregroundStyle(.secondary).fixedSize().frame(width: cell, alignment: .leading)
+                    Text(monthLabel(i, w, weeks)).font(.bCaption2).foregroundStyle(.secondary).fixedSize().frame(width: cell, alignment: .leading)
                 }
             }
             HStack(spacing: gap) {

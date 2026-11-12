@@ -134,19 +134,19 @@ struct StorageMapView: View {
         let d = store.disk
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text("Where your space goes").font(.headline)
+                Text("Where your space goes").font(.bHeadline)
                 Spacer()
                 mapStatus
                 Button { Task { await store.scanMap() } } label: { Label("Refresh", systemImage: "arrow.clockwise") }
                     .controlSize(.small).disabled(store.mapRefreshing)
                     .help("Measure the whole disk again. This takes a minute or two and runs in the background.")
             }
-            Text("\(d.used.bytesString) used · \(d.available.bytesString) free").font(.callout).foregroundStyle(.secondary)
+            Text("\(d.used.bytesString) used · \(d.available.bytesString) free").font(.bCallout).foregroundStyle(.secondary)
             if let m = store.map {
                 let groups = allGroups(m, used: d.used)
                 bar(groups, used: d.used)
                 legend(groups)
-                Text("Biggest items").font(.headline).padding(.top, 6)
+                Text("Biggest items").font(.bHeadline).padding(.top, 6)
                 VStack(spacing: 0) {
                     ForEach(m.hotspots) { h in
                         row(h, used: Double(max(d.used, 1)), maxSize: Double(m.hotspots.first?.size ?? 1))
@@ -155,7 +155,7 @@ struct StorageMapView: View {
                 }.panel()
                 if d.purgeable > 0 {
                     Label("\(d.purgeable.bytesString) of the used space is purgeable. macOS frees it automatically when it needs room.",
-                          systemImage: "info.circle").font(.caption).foregroundStyle(.secondary)
+                          systemImage: "info.circle").font(.bCaption).foregroundStyle(.secondary)
                 }
             } else {
                 HStack(spacing: 10) {
@@ -178,11 +178,11 @@ struct StorageMapView: View {
     /// Says how fresh the map is; it never refreshes itself after the first visit.
     @ViewBuilder private var mapStatus: some View {
         if store.mapRefreshing {
-            HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Measuring in the background…") }.font(.caption).foregroundStyle(.secondary)
+            HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Measuring in the background…") }.font(.bCaption).foregroundStyle(.secondary)
         } else if store.mapStale {
-            Label("Out of date after a cleanup", systemImage: "exclamationmark.circle").font(.caption).foregroundStyle(.orange)
+            Label("Out of date after a cleanup", systemImage: "exclamationmark.circle").font(.bCaption).foregroundStyle(.orange)
         } else if let d = store.mapDate {
-            Text("Measured \(d.formatted(.relative(presentation: .named)))").font(.caption).foregroundStyle(.secondary)
+            Text("Measured \(d.formatted(.relative(presentation: .named)))").font(.bCaption).foregroundStyle(.secondary)
         }
     }
 
@@ -198,8 +198,8 @@ struct StorageMapView: View {
                 Spacer(minLength: 0)
             }
             .frame(width: geo.size.width, alignment: .leading)
-            .clipShape(Capsule())
-            .background(Capsule().fill(.quaternary))
+            .clipShape(Rectangle())
+            .background(Rectangle().fill(.quaternary))
         }.frame(height: 12)
     }
 
@@ -210,7 +210,7 @@ struct StorageMapView: View {
                     Circle().fill(g.color.opacity(0.85)).frame(width: 9, height: 9).padding(.top, 5)
                     VStack(alignment: .leading, spacing: 0) {
                         HStack(spacing: 6) { Text(g.name).fontWeight(.medium); Text(g.size.bytesString).monospacedDigit().foregroundStyle(.secondary) }
-                        Text(g.detail).font(.caption).foregroundStyle(.tertiary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                        Text(g.detail).font(.bCaption).foregroundStyle(.tertiary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
@@ -222,27 +222,27 @@ struct StorageMapView: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(h.name).fontWeight(.medium)
-                    if h.parent != "~" { Text(h.parent).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head) }
+                    if h.parent != "~" { Text(h.parent).font(.bCaption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.head) }
                 }
-                if let hint = h.hint { Text(hint).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
-                Capsule().fill(h.cleanable ? Brand.reclaim : Color.secondary.opacity(0.55))
+                if let hint = h.hint { Text(hint).font(.bCallout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+                Rectangle().fill(h.cleanable ? Brand.reclaim : Color.secondary.opacity(0.55))
                     .frame(height: 4).frame(maxWidth: .infinity, alignment: .leading)
                     .scaleEffect(x: max(0.01, Double(h.size) / maxSize), anchor: .leading)
                     .padding(.top, 2)
             }
             VStack(alignment: .trailing, spacing: 1) {
                 Text(h.size.bytesString).monospacedDigit().fontWeight(.medium)
-                Text(String(format: "%.0f%% of disk", Double(h.size) / used * 100)).font(.caption).foregroundStyle(.secondary)
+                Text(String(format: "%.0f%% of disk", Double(h.size) / used * 100)).font(.bCaption).foregroundStyle(.secondary)
                 if let g = store.growth(of: h.path, current: h.size), g > 0 {
-                    Text("+\(g.bytesString) today").font(.caption).foregroundStyle(.orange)
+                    Text("+\(g.bytesString) today").font(.bCaption).foregroundStyle(.orange)
                 }
             }.frame(width: 90, alignment: .trailing)
             HStack(spacing: 6) {
                 Button("Explore") { explore(h.path) }.controlSize(.small)
                 if h.path.lowercased().contains("orbstack") || h.path.lowercased().contains("docker") {
-                    Button("Prune…") { open(.containers) }.controlSize(.small).buttonStyle(.borderedProminent).tint(Brand.accent)
+                    Button("Prune…") { open(.containers) }.controlSize(.small).buttonStyle(.brandProminent).tint(Brand.accent)
                 } else {
-                Button("Clean") { store.cleanHotspot(h) }.controlSize(.small).buttonStyle(.borderedProminent).tint(Brand.accent)
+                Button("Clean") { store.cleanHotspot(h) }.controlSize(.small).buttonStyle(.brandProminent).tint(Brand.accent)
                     .opacity(h.cleanable ? 1 : 0).disabled(!h.cleanable)
                 }
             }.frame(width: 160, alignment: .trailing)

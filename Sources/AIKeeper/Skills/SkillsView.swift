@@ -89,10 +89,10 @@ struct SkillsView: View {
             if !store.quarantinedSkills.isEmpty { Button("Removed (\(store.quarantinedSkills.count))") { showRemoved = true }.help("Skills you took out of use. You can restore them.") }
             if let p = store.skillScanProgress {
                 ProgressView(value: Double(p.done), total: Double(max(p.total, 1))).frame(width: 120)
-                Text("Scanning \(p.done) of \(p.total)").font(.callout).foregroundStyle(.secondary).monospacedDigit()
+                Text("Scanning \(p.done) of \(p.total)").font(.bCallout).foregroundStyle(.secondary).monospacedDigit()
                 Button("Stop") { store.stopSkillScan() }.help("Stops the scan. Finished skills keep their result.")
             } else {
-                Text("\(count) skills").font(.callout).foregroundStyle(.secondary)
+                Text("\(count) skills").font(.bCallout).foregroundStyle(.secondary)
                 Button(unscanned.isEmpty ? "Rescan all" : "Scan \(unscanned.count) new") {
                     Task { await store.scanSkills(unscanned.isEmpty ? store.skills : unscanned) }
                 }
@@ -104,10 +104,10 @@ struct SkillsView: View {
 
     private var actionBar: some View {
         HStack(spacing: 12) {
-            Text("\(selection.count) selected").font(.callout.weight(.medium))
+            Text("\(selection.count) selected").font(.bCallout.weight(.medium))
             Button("Clear") { selection = [] }.controlSize(.small)
             Spacer()
-            Text("Moves them to a quarantine you can restore from").font(.caption).foregroundStyle(.secondary)
+            Text("Moves them to a quarantine you can restore from").font(.bCaption).foregroundStyle(.secondary)
             Button("Remove…", role: .destructive) { pendingRemove = chosen }
         }.padding(.horizontal, 16).padding(.vertical, 8).background(.quaternary.opacity(0.4))
     }
@@ -134,8 +134,8 @@ struct SkillsView: View {
         HStack(spacing: 12) {
             Image(systemName: "shield.lefthalf.filled").foregroundStyle(.secondary)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Scan these skills for security risks").font(.callout.weight(.medium))
-                Text("Uses NVIDIA SkillSpector, which isn't installed yet. It looks for prompt injection, data exfiltration, risky scripts and more.").font(.caption).foregroundStyle(.secondary)
+                Text("Scan these skills for security risks").font(.bCallout.weight(.medium))
+                Text("Uses NVIDIA SkillSpector, which isn't installed yet. It looks for prompt injection, data exfiltration, risky scripts and more.").font(.bCaption).foregroundStyle(.secondary)
             }
             Spacer()
             Button(store.skillInstalling ? "Installing…" : "Install SkillSpector…") { confirmInstall = true }.disabled(store.skillInstalling)
@@ -148,7 +148,7 @@ struct SkillsView: View {
             Text("Scans are static: nothing in a skill is sent to a language model. SkillSpector checks the dependencies a skill lists against OSV.dev. Findings are heuristics, not verdicts.")
             Link("About SkillSpector", destination: URL(string: SkillScanner.projectURL)!)
         }
-        .font(.caption).foregroundStyle(.tertiary).padding(.horizontal, 16).padding(.vertical, 7).frame(maxWidth: .infinity, alignment: .leading)
+        .font(.bCaption).foregroundStyle(.tertiary).padding(.horizontal, 16).padding(.vertical, 7).frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .top) { Divider() }
     }
 }
@@ -164,14 +164,14 @@ struct SkillRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
                     Text(skill.name).lineLimit(1)
-                    if skill.hasScripts { Text("scripts").font(.caption2).padding(.horizontal, 5).padding(.vertical, 1).background(.quaternary, in: Capsule()).foregroundStyle(.secondary) }
+                    if skill.hasScripts { Text("scripts").font(.bCaption2).padding(.horizontal, 5).padding(.vertical, 1).background(.quaternary, in: Capsule()).foregroundStyle(.secondary) }
                 }
-                Text(skill.description.isEmpty ? "No description" : skill.description).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                Text(skill.description.isEmpty ? "No description" : skill.description).font(.bCaption).foregroundStyle(.secondary).lineLimit(1)
             }
             Spacer(minLength: 8)
             Text(skill.tools.joined(separator: ", ") + (skill.scope == .plugin ? " · plugin" : ""))
-                .font(.caption).foregroundStyle(.tertiary).lineLimit(1)
-            Text(verdict == .unscanned ? "Not scanned" : verdict.label).font(.caption).foregroundStyle(verdict == .danger ? Color.red : .secondary).frame(width: 92, alignment: .trailing)
+                .font(.bCaption).foregroundStyle(.tertiary).lineLimit(1)
+            Text(verdict == .unscanned ? "Not scanned" : verdict.label).font(.bCaption).foregroundStyle(verdict == .danger ? Color.red : .secondary).frame(width: 92, alignment: .trailing)
             Text(score.map { "\($0)" } ?? "").monospacedDigit().foregroundStyle(.tertiary).frame(width: 28, alignment: .trailing)
         }
         .padding(.vertical, 2)
@@ -190,9 +190,9 @@ struct SkillDetail: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(skill.name).font(.title2.weight(.semibold)).textSelection(.enabled)
+                    Text(skill.name).font(.bTitle2.weight(.semibold)).textSelection(.enabled)
                     Text(skill.tools.joined(separator: ", ") + (skill.plugin.map { " · plugin \($0)" + (skill.pluginVersion.map { " \($0)" } ?? "") } ?? ""))
-                        .font(.callout).foregroundStyle(.secondary)
+                        .font(.bCallout).foregroundStyle(.secondary)
                 }
                 if !skill.description.isEmpty { Text(skill.description).textSelection(.enabled) }
                 facts
@@ -208,11 +208,11 @@ struct SkillDetail: View {
 
     private var facts: some View {
         Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 14, verticalSpacing: 6) {
-            GridRow { Text("Location").foregroundStyle(.secondary); Text(Fmt.tilde(skill.realPath)).font(.system(.caption, design: .monospaced)).textSelection(.enabled) }
+            GridRow { Text("Location").foregroundStyle(.secondary); Text(Fmt.tilde(skill.realPath)).font(.code(11)).textSelection(.enabled) }
             GridRow { Text("Contents").foregroundStyle(.secondary); Text("\(skill.files) files, \(skill.bytes.bytesString)" + (skill.hasScripts ? ", includes scripts" : "")) }
             GridRow { Text("Changed").foregroundStyle(.secondary); Text(skill.modified.formatted(.relative(presentation: .named))) }
-            if skill.locations.count > 1 { GridRow(alignment: .top) { Text("Linked from").foregroundStyle(.secondary); Text(skill.locations.map(Fmt.tilde).joined(separator: "\n")).font(.system(.caption, design: .monospaced)).textSelection(.enabled) } }
-        }.font(.callout)
+            if skill.locations.count > 1 { GridRow(alignment: .top) { Text("Linked from").foregroundStyle(.secondary); Text(skill.locations.map(Fmt.tilde).joined(separator: "\n")).font(.code(11)).textSelection(.enabled) } }
+        }.font(.bCallout)
     }
 
     @ViewBuilder private var scanSection: some View {
@@ -220,29 +220,29 @@ struct SkillDetail: View {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: c.verdict.symbol).font(.title).foregroundStyle(c.verdict.color)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(c.verdict.label).font(.headline)
-                    Text("Score \(c.score) of 100 · SkillSpector \(c.scannerVersion) · \(c.scannedAt.formatted(.relative(presentation: .named)))").font(.caption).foregroundStyle(.secondary)
+                    Text(c.verdict.label).font(.bHeadline)
+                    Text("Score \(c.score) of 100 · SkillSpector \(c.scannerVersion) · \(c.scannedAt.formatted(.relative(presentation: .named)))").font(.bCaption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Button("Scan again") { Task { await store.scanSkills([skill]) } }.controlSize(.small).disabled(scanning || store.skillScanner == nil)
             }
-            if !c.complete { Label("The scan couldn't inspect everything, so a clean result isn't a guarantee.", systemImage: "exclamationmark.circle").font(.callout).foregroundStyle(.orange) }
+            if !c.complete { Label("The scan couldn't inspect everything, so a clean result isn't a guarantee.", systemImage: "exclamationmark.circle").font(.bCallout).foregroundStyle(.orange) }
             if c.issues.isEmpty { Text("No findings.").foregroundStyle(.secondary) }
             ForEach(Array(c.issues.prefix(40).enumerated()), id: \.element.id) { i, issue in IssueCard(issue: issue, expanded: i == 0) }
-            if c.issues.count > 40 { Text("And \(c.issues.count - 40) more. Run keeper skills show \(skill.name) --json for all of them.").font(.caption).foregroundStyle(.secondary) }
-            if !c.issues.isEmpty { Text("Findings are heuristics. Read the lines they point at before you decide.").font(.caption).foregroundStyle(.tertiary) }
+            if c.issues.count > 40 { Text("And \(c.issues.count - 40) more. Run keeper skills show \(skill.name) --json for all of them.").font(.bCaption).foregroundStyle(.secondary) }
+            if !c.issues.isEmpty { Text("Findings are heuristics. Read the lines they point at before you decide.").font(.bCaption).foregroundStyle(.tertiary) }
         } else if let err = store.skillErrors[skill.realPath] {
             Label(err, systemImage: "xmark.octagon").foregroundStyle(.red)
             Button("Try again") { Task { await store.scanSkills([skill]) } }.disabled(scanning)
         } else if store.skillScanner == nil {
             VStack(alignment: .leading, spacing: 10) {
-                Label("Not scanned", systemImage: "questionmark.circle").font(.headline)
+                Label("Not scanned", systemImage: "questionmark.circle").font(.bHeadline)
                 Text("Install NVIDIA SkillSpector to check this skill for prompt injection, data exfiltration and risky scripts.").foregroundStyle(.secondary)
                 Button("Install SkillSpector…") { confirmInstall = true }.disabled(store.skillInstalling)
             }
         } else {
             VStack(alignment: .leading, spacing: 10) {
-                Label("Not scanned", systemImage: "questionmark.circle").font(.headline)
+                Label("Not scanned", systemImage: "questionmark.circle").font(.bHeadline)
                 Button(scanning ? "Scanning…" : "Scan this skill") { Task { await store.scanSkills([skill]) } }.disabled(scanning)
             }
         }
@@ -260,20 +260,20 @@ struct IssueCard: View {
     var body: some View {
         DisclosureGroup(isExpanded: $expanded) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("\(issue.file)\(issue.line > 0 ? ":\(issue.line)" : "")").font(.system(.caption, design: .monospaced)).foregroundStyle(.secondary).textSelection(.enabled)
-                if !issue.explanation.isEmpty { Text(issue.explanation).font(.callout).textSelection(.enabled) }
+                Text("\(issue.file)\(issue.line > 0 ? ":\(issue.line)" : "")").font(.code(11)).foregroundStyle(.secondary).textSelection(.enabled)
+                if !issue.explanation.isEmpty { Text(issue.explanation).font(.bCallout).textSelection(.enabled) }
                 if let code = issue.snippet, !code.isEmpty {
                     Text(code).font(.system(size: 11, design: .monospaced)).textSelection(.enabled).lineLimit(10)
                         .padding(8).frame(maxWidth: .infinity, alignment: .leading).background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 6))
                 }
-                if !issue.remediation.isEmpty { Text("Fix: \(issue.remediation)").font(.caption).foregroundStyle(.secondary) }
+                if !issue.remediation.isEmpty { Text("Fix: \(issue.remediation)").font(.bCaption).foregroundStyle(.secondary) }
             }.padding(.top, 6)
         } label: {
             HStack(spacing: 8) {
                 Circle().fill(color).frame(width: 7, height: 7)
-                Text(issue.finding.isEmpty ? issue.category : issue.finding).font(.callout.weight(.medium)).lineLimit(1)
+                Text(issue.finding.isEmpty ? issue.category : issue.finding).font(.bCallout.weight(.medium)).lineLimit(1)
                 Spacer()
-                Text("\(issue.severity.capitalized) · \(issue.rule) · \(Int(issue.confidence * 100))%").font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                Text("\(issue.severity.capitalized) · \(issue.rule) · \(Int(issue.confidence * 100))%").font(.bCaption).foregroundStyle(.secondary).lineLimit(1)
             }
         }
     }
@@ -288,8 +288,8 @@ struct QuarantineSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Removed skills").font(.title3.weight(.semibold))
-                    Text("Restoring puts the folder, and the links other tools use, back where they were.").font(.callout).foregroundStyle(.secondary)
+                    Text("Removed skills").font(.bTitle3.weight(.semibold))
+                    Text("Restoring puts the folder, and the links other tools use, back where they were.").font(.bCallout).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
@@ -299,7 +299,7 @@ struct QuarantineSheet: View {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(q.name)
-                        Text("Removed \(q.removedAt.formatted(.relative(presentation: .named)))" + (q.topFinding.map { " · \($0)" } ?? "")).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        Text("Removed \(q.removedAt.formatted(.relative(presentation: .named)))" + (q.topFinding.map { " · \($0)" } ?? "")).font(.bCaption).foregroundStyle(.secondary).lineLimit(1)
                     }
                     Spacer()
                     Button("Restore") { error = store.restoreSkill(q); Task { await store.loadSkills() } }
@@ -307,7 +307,7 @@ struct QuarantineSheet: View {
                 }
             }
             .overlay { if store.quarantinedSkills.isEmpty { ContentUnavailableView("Nothing removed", systemImage: "checkmark.shield") } }
-            if let error { Text(error).font(.callout).foregroundStyle(.red).padding(12) }
+            if let error { Text(error).font(.bCallout).foregroundStyle(.red).padding(12) }
         }
         .frame(width: 560, height: 420)
     }

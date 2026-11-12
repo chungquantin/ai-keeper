@@ -144,7 +144,7 @@ struct SessionsView: View {
                 Toggle("Folder deleted", isOn: $orphansOnly).toggleStyle(.checkbox)
                 Spacer()
                 if searching { ProgressView().controlSize(.small) }
-                Text("\(rows.count) sessions · \(rows.reduce(Int64(0)) { $0 + $1.bytes }.bytesString)").foregroundStyle(.secondary).font(.callout)
+                Text("\(rows.count) sessions · \(rows.reduce(Int64(0)) { $0 + $1.bytes }.bytesString)").foregroundStyle(.secondary).font(.bCallout)
             }.padding(.horizontal, 16).padding(.vertical, 10)
             Divider()
             List(rows) { s in
@@ -155,7 +155,7 @@ struct SessionsView: View {
                         HStack(spacing: 8) {
                             Text("\(s.project) · \(s.last.formatted(.relative(presentation: .named)))")
                             if !s.cwdExists { Pill(text: "Folder deleted", color: .gray) }
-                        }.font(.caption).foregroundStyle(.secondary)
+                        }.font(.bCaption).foregroundStyle(.secondary)
                     }
                     Spacer()
                     Text(String(format: "$%.2f", s.cost)).monospacedDigit().foregroundStyle(.secondary)

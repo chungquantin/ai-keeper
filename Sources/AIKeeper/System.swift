@@ -373,8 +373,8 @@ struct Meter: View {
     var body: some View {
         GeometryReader { g in
             ZStack(alignment: .leading) {
-                Capsule().fill(.quaternary)
-                Capsule().fill(color).frame(width: max(4, g.size.width * min(max(value, 0), 1)))
+                Rectangle().fill(.quaternary)
+                Rectangle().fill(color).frame(width: max(4, g.size.width * min(max(value, 0), 1)))
             }
         }.frame(height: 8)
     }
@@ -391,7 +391,7 @@ struct SystemCard<Content: View>: View {
     @ViewBuilder var content: Content
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label(title, systemImage: symbol).font(.headline)
+            Label(title, systemImage: symbol).font(.bHeadline)
             content
         }
         .padding(16).frame(maxWidth: .infinity, alignment: .topLeading).panel(14)
@@ -438,7 +438,7 @@ struct SystemView: View {
         let i = m.machine
         let up = Int(i.uptime), days = up / 86_400, hours = up % 86_400 / 3600
         return Text([i.model, i.chip, mem(i.memory) + " memory", i.os, "up \(days > 0 ? "\(days)d " : "")\(hours)h"].filter { !$0.isEmpty }.joined(separator: " · "))
-            .font(.callout).foregroundStyle(.secondary)
+            .font(.bCallout).foregroundStyle(.secondary)
     }
 
     private func hero(_ h: Health) -> some View {
@@ -470,7 +470,7 @@ struct SystemView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("\(Int(s.cpuTotal * 100))%").font(.figure(30)).monospacedDigit()
                 Spacer()
-                Text(String(format: "Load %.2f  %.2f  %.2f", s.load.0, s.load.1, s.load.2)).font(.callout).foregroundStyle(.secondary).monospacedDigit()
+                Text(String(format: "Load %.2f  %.2f  %.2f", s.load.0, s.load.1, s.load.2)).font(.bCallout).foregroundStyle(.secondary).monospacedDigit()
             }
             Sparkline(values: m.cpuHistory, ceiling: 1, color: load(s.cpuTotal))
             // One bar per core: busy cores stand out at a glance.
@@ -482,7 +482,7 @@ struct SystemView: View {
                     }.frame(height: 30)
                 }
             }
-            Text("\(s.cores.count) cores").font(.caption).foregroundStyle(.tertiary)
+            Text("\(s.cores.count) cores").font(.bCaption).foregroundStyle(.tertiary)
         }
     }
 
@@ -497,7 +497,7 @@ struct SystemView: View {
             Meter(value: s.memFraction, color: load(s.memFraction, warn: 0.8, bad: 0.92))
             fact("Available", mem(s.memAvailable))
             VStack(alignment: .leading, spacing: 5) {
-                HStack { Text("Swap").foregroundStyle(.secondary); Spacer(); Text("\(mem(s.swapUsed)) of \(mem(s.swapTotal))").monospacedDigit() }.font(.callout)
+                HStack { Text("Swap").foregroundStyle(.secondary); Spacer(); Text("\(mem(s.swapUsed)) of \(mem(s.swapTotal))").monospacedDigit() }.font(.bCallout)
                 Meter(value: s.swapFraction, color: s.swapUsed > 8_000_000_000 ? .red : s.swapUsed > 4_000_000_000 ? .orange : Brand.accent)
             }
         }
@@ -542,13 +542,13 @@ struct SystemView: View {
 
     private func ioRow(_ label: String, _ bps: Double, _ history: [Double], _ color: Color) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            HStack { Text(label).foregroundStyle(.secondary); Spacer(); Text(rate(bps)).monospacedDigit() }.font(.callout)
+            HStack { Text(label).foregroundStyle(.secondary); Spacer(); Text(rate(bps)).monospacedDigit() }.font(.bCallout)
             Sparkline(values: history, color: color)
         }
     }
 
     private func fact(_ k: String, _ v: String) -> some View {
-        HStack { Text(k).foregroundStyle(.secondary); Spacer(); Text(v).monospacedDigit() }.font(.callout)
+        HStack { Text(k).foregroundStyle(.secondary); Spacer(); Text(v).monospacedDigit() }.font(.bCallout)
     }
 
     // MARK: Processes
@@ -558,7 +558,7 @@ struct SystemView: View {
         let maxV = Double(sortByMemory ? (list.first?.rss ?? 1) : Int64(list.first?.cpu ?? 1))
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Top apps").font(.headline)
+                Text("Top apps").font(.bHeadline)
                 Spacer()
                 Picker("", selection: $sortByMemory) { Text("Memory").tag(true); Text("CPU").tag(false) }
                     .pickerStyle(.segmented).frame(width: 160).labelsHidden()
@@ -568,7 +568,7 @@ struct SystemView: View {
                     HStack(spacing: 14) {
                         HStack(spacing: 6) { Text(g.name).fontWeight(.medium).lineLimit(1); if g.dev { Pill(text: "Dev tool", color: .blue) } }
                             .frame(width: 210, alignment: .leading)
-                        Capsule().fill(.secondary.opacity(0.55)).frame(height: 5).frame(maxWidth: .infinity, alignment: .leading)
+                        Rectangle().fill(.secondary.opacity(0.55)).frame(height: 5).frame(maxWidth: .infinity, alignment: .leading)
                             .scaleEffect(x: max(0.01, (sortByMemory ? Double(g.rss) : g.cpu) / max(maxV, 1)), anchor: .leading)
                         Text(String(format: "%.0f%%", g.cpu)).foregroundStyle(.secondary).monospacedDigit().frame(width: 52, alignment: .trailing)
                         Text(mem(g.rss)).monospacedDigit().frame(width: 76, alignment: .trailing)

@@ -147,10 +147,10 @@ struct AlertBanner: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: alert.kind == .budget ? "dollarsign.circle.fill" : "exclamationmark.triangle.fill")
-                .foregroundStyle(.orange).font(.title3)
+                .foregroundStyle(.orange).font(.bTitle3)
             VStack(alignment: .leading, spacing: 2) {
                 Text(alert.title).fontWeight(.semibold)
-                Text(alert.message).font(.callout).foregroundStyle(.secondary)
+                Text(alert.message).font(.bCallout).foregroundStyle(.secondary)
                     .lineLimit(3).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 12)
@@ -159,7 +159,7 @@ struct AlertBanner: View {
             } else {
                 if store.keptArtifactBytes > 0 {
                     Button("Clean build folders") { store.propose(.purgeArtifacts, for: store.buildHolders); store.alert = nil }
-                        .buttonStyle(.borderedProminent).tint(.orange)
+                        .buttonStyle(.brandProminent).tint(.orange)
                 }
                 Button("Agents") { go(.agents); store.alert = nil }
             }
@@ -188,7 +188,7 @@ struct FreeSpaceChart: View {
         let pts = Self.downsample(store.samples.filter { $0.t >= cutoff }, to: 240)
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Free space over time").font(.headline)
+                Text("Free space over time").font(.bHeadline)
                 Spacer()
                 Picker("", selection: $hours) { Text("24 hours").tag(24); Text("7 days").tag(168) }
                     .pickerStyle(.segmented).frame(width: 170).labelsHidden()
@@ -204,7 +204,7 @@ struct FreeSpaceChart: View {
                     }
                     RuleMark(y: .value("Floor", Double(store.floorBytes) / 1e9))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4])).foregroundStyle(.orange)
-                        .annotation(position: .top, alignment: .leading) { Text("alert floor").font(.caption2).foregroundStyle(.orange) }
+                        .annotation(position: .top, alignment: .leading) { Text("alert floor").font(.bCaption2).foregroundStyle(.orange) }
                 }
                 .chartYAxis { AxisMarks { v in AxisGridLine(); AxisValueLabel { if let d = v.as(Double.self) { Text("\(Int(d)) GB") } } } }
                 .frame(height: 140)
@@ -218,7 +218,7 @@ struct FreeSpaceChart: View {
                         Text(g.path.replacingOccurrences(of: home, with: "~")).lineLimit(1).truncationMode(.head)
                         Spacer()
                         Text("+\(g.delta.bytesString) since yesterday").foregroundStyle(.orange).monospacedDigit()
-                    }.font(.callout)
+                    }.font(.bCallout)
                 }
             }
         }

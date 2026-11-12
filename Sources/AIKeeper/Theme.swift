@@ -11,16 +11,17 @@ enum Brand {
 }
 
 extension View {
+    /// A raised surface with the brand's notched corners (the radius argument is kept so call sites read the same).
     func panel(_ radius: CGFloat = 12) -> some View {
-        background(.background.secondary, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(.separator, lineWidth: 0.5))
+        background(.background.secondary, in: NotchShape(cut: radius >= 10 ? 5 : 4))
+            .overlay(NotchShape(cut: radius >= 10 ? 5 : 4).strokeBorder(.separator, lineWidth: 0.5))
     }
 }
 
 extension Font {
-    /// Numerals set in New York: figures read like a ledger rather than a dashboard.
+    /// Big numbers are set in the pixel face, the same as on the website.
     static func figure(_ size: CGFloat, _ weight: Font.Weight = .semibold) -> Font {
-        .system(size: size, weight: weight, design: .serif)
+        pixel(size * 1.3)
     }
 }
 
@@ -41,8 +42,8 @@ struct Pill: View {
     var truncates = false
     var body: some View {
         HStack(spacing: 5) {
-            Circle().fill(color).frame(width: 6, height: 6)
-            Text(text).font(.caption).lineLimit(1).truncationMode(.tail)
+            Rectangle().fill(color).frame(width: 6, height: 6)   // a pixel, not a dot
+            Text(text).font(.bCaption).lineLimit(1).truncationMode(.tail)
                 .foregroundStyle(color == .red ? Color.red : Color.secondary)
         }
         .modifier(PillFit(truncates: truncates, text: text))
@@ -66,9 +67,9 @@ struct StatStrip: View {
         HStack(spacing: 0) {
             ForEach(items.indices, id: \.self) { i in
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(items[i].title).font(.callout).foregroundStyle(.secondary)
+                    Text(items[i].title).font(.bCallout).foregroundStyle(.secondary)
                     Text(items[i].value).font(.figure(30)).monospacedDigit()
-                    Text(items[i].note ?? " ").font(.caption).foregroundStyle(.tertiary)
+                    Text(items[i].note ?? " ").font(.bCaption).foregroundStyle(.tertiary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 18).padding(.vertical, 14)
@@ -84,9 +85,9 @@ struct SectionTitle: View {
     var trailing: String?
     var body: some View {
         HStack {
-            Text(text).font(.headline)
+            Text(text).font(.bHeadline)
             Spacer()
-            if let trailing { Text(trailing).font(.callout).foregroundStyle(.secondary) }
+            if let trailing { Text(trailing).font(.bCallout).foregroundStyle(.secondary) }
         }
     }
 }

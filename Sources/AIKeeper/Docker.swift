@@ -68,13 +68,13 @@ struct DockerView: View {
                         }
                     }.panel()
 
-                    Text("Clean up").font(.headline)
+                    Text("Clean up").font(.bHeadline)
                     VStack(spacing: 0) {
                         ForEach(actions) { a in
                             HStack(alignment: .top) {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(a.title).fontWeight(.medium)
-                                    Text(a.detail).font(.callout).foregroundStyle(a.dangerous ? Color.orange : .secondary)
+                                    Text(a.detail).font(.bCallout).foregroundStyle(a.dangerous ? Color.orange : .secondary)
                                 }
                                 Spacer()
                                 if running == a.id { ProgressView().controlSize(.small) }
@@ -84,10 +84,10 @@ struct DockerView: View {
                         }
                     }.panel()
                     if !log.isEmpty {
-                        Text(log).font(.system(.caption, design: .monospaced)).textSelection(.enabled)
+                        Text(log).font(.code(11)).textSelection(.enabled)
                             .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(.quaternary, in: RoundedRectangle(cornerRadius: 8))
                     }
-                    Text("OrbStack returns freed space to macOS automatically. Docker Desktop may keep it until you restart it.").font(.caption).foregroundStyle(.tertiary)
+                    Text("OrbStack returns freed space to macOS automatically. Docker Desktop may keep it until you restart it.").font(.bCaption).foregroundStyle(.tertiary)
                 }
             }.padding(28).frame(maxWidth: 860, alignment: .leading).frame(maxWidth: .infinity)
         }

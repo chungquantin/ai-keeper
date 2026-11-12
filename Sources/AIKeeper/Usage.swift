@@ -439,7 +439,7 @@ struct UsageView: View {
                         breakdown("By project", Dictionary(grouping: rows, by: \.project))
                     }
                     Text("Costs are estimates at public API list prices from local logs. Subscription plans bill differently. Claude cache writes use the 5-minute rate.")
-                        .font(.caption).foregroundStyle(.tertiary)
+                        .font(.bCaption).foregroundStyle(.tertiary)
                 }
             }.padding(24)
         }
@@ -469,7 +469,7 @@ struct UsageView: View {
                 Image(systemName: "dollarsign.circle").foregroundStyle(.secondary)
                 Text("Set a daily or weekly budget in Settings (⌘,) to get an alert before spend runs away.").foregroundStyle(.secondary)
                 Spacer()
-            }.font(.callout).padding(14).panel()
+            }.font(.bCallout).padding(14).panel()
         }
     }
 
@@ -478,7 +478,7 @@ struct UsageView: View {
         return VStack(alignment: .leading, spacing: 5) {
             HStack { Text(title).fontWeight(.medium); Spacer()
                 Text(String(format: "$%.2f of $%.0f", value, budget)).monospacedDigit().foregroundStyle(f >= 1 ? Color.red : .secondary) }
-            ProgressView(value: min(f, 1)).tint(f >= 1 ? .red : f >= 0.8 ? .orange : Brand.accent)
+            PixelMeter(value: min(f, 1), tint: f >= 1 ? .red : f >= 0.8 ? .orange : Brand.accent)
         }
     }
 
@@ -492,8 +492,8 @@ struct UsageView: View {
     private func limit(_ title: String, _ pct: Double, _ resets: Date) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack { Text(title).fontWeight(.medium); Spacer(); Text("\(Int(pct))% used").monospacedDigit().foregroundStyle(.secondary) }
-            ProgressView(value: min(pct / 100, 1)).tint(pct >= 90 ? .red : pct >= 70 ? .orange : Brand.accent)
-            Text(resets > .now ? "Resets \(resets.formatted(.relative(presentation: .named)))" : "Window has reset").font(.caption).foregroundStyle(.tertiary)
+            PixelMeter(value: min(pct / 100, 1), tint: pct >= 90 ? .red : pct >= 70 ? .orange : Brand.accent)
+            Text(resets > .now ? "Resets \(resets.formatted(.relative(presentation: .named)))" : "Window has reset").font(.bCaption).foregroundStyle(.tertiary)
         }.frame(maxWidth: .infinity)
     }
 
@@ -504,13 +504,13 @@ struct UsageView: View {
         let list = store.sessions.filter { $0.last >= cutoff && (tool == nil || $0.agent == tool) }
             .sorted { $0.cost > $1.cost }.prefix(6)
         return VStack(alignment: .leading, spacing: 10) {
-            Text("Most expensive sessions").font(.headline)
+            Text("Most expensive sessions").font(.bHeadline)
             VStack(spacing: 0) {
                 ForEach(Array(list)) { s in
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(s.title).lineLimit(1)
-                            Text("\(s.agent.rawValue) · \(s.project) · \(s.last.formatted(.relative(presentation: .named)))").font(.caption).foregroundStyle(.secondary)
+                            Text("\(s.agent.rawValue) · \(s.project) · \(s.last.formatted(.relative(presentation: .named)))").font(.bCaption).foregroundStyle(.secondary)
                         }
                         Spacer()
                         Text(String(format: "$%.2f", s.cost)).monospacedDigit().fontWeight(.medium)
@@ -534,7 +534,7 @@ struct UsageView: View {
             Bar(day: $0[0].day, family: $0[0].family, v: value($0))
         }
         return VStack(alignment: .leading) {
-            Text("Daily \(metric.rawValue.lowercased())").font(.headline)
+            Text("Daily \(metric.rawValue.lowercased())").font(.bHeadline)
             Chart(bars) { b in
                 BarMark(x: .value("Day", b.day, unit: .day), y: .value(metric.rawValue, b.v)).foregroundStyle(by: .value("Model", b.family))
             }
@@ -552,7 +552,7 @@ struct UsageView: View {
         let items = groups.map { (name: $0.key, v: value($0.value)) }.sorted { $0.v > $1.v }.prefix(8)
         let maxV = items.first?.v ?? 1
         return VStack(alignment: .leading, spacing: 10) {
-            Text(title).font(.headline)
+            Text(title).font(.bHeadline)
             ForEach(Array(items), id: \.name) { i in
                 VStack(alignment: .leading, spacing: 3) {
                     HStack {
@@ -560,7 +560,7 @@ struct UsageView: View {
                         Spacer()
                         Text(metric == .cost ? String(format: "$%.2f", i.v) : compact(Int(i.v))).monospacedDigit()
                     }
-                    Capsule().fill(.secondary.opacity(0.6)).frame(height: 5)
+                    Rectangle().fill(.secondary.opacity(0.6)).frame(height: 5)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .scaleEffect(x: max(0.01, i.v / maxV), anchor: .leading)
                 }

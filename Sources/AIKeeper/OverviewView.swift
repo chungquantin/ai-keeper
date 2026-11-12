@@ -78,7 +78,7 @@ struct OverviewView: View {
                 } else {
                     Text("Workspaces scanned " + (store.lastScan.map { $0.formatted(.relative(presentation: .named)) } ?? "never"))
                 }
-            }.font(.callout).foregroundStyle(.secondary)
+            }.font(.bCallout).foregroundStyle(.secondary)
             Spacer()
             Button { Task { await store.rescan() } } label: { Label(store.isScanning ? "Scanning…" : "Rescan everything", systemImage: "arrow.clockwise") }
                 .disabled(store.isScanning || store.mapRefreshing)
@@ -92,7 +92,7 @@ struct OverviewView: View {
         let parts = store.hasData ? store.reclaimable.byteParts : (number: "—", unit: "")
         return VStack(alignment: .leading, spacing: 10) {
             Text(store.isScanning ? "Measuring your workspaces…" : "You can get back")
-                .font(.title3).foregroundStyle(.secondary)
+                .font(.bTitle3).foregroundStyle(.secondary)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(parts.number).font(.figure(88, .medium)).monospacedDigit()
                     .contentTransition(.numericText()).animation(reduceMotion ? nil : .smooth, value: store.reclaimable)
@@ -104,7 +104,7 @@ struct OverviewView: View {
                 if store.keptArtifactBytes > 0 {
                     Button("Clean build folders · \(store.keptArtifactBytes.bytesString)") {
                         store.propose(.purgeArtifacts, for: store.buildHolders)
-                    }.buttonStyle(.borderedProminent).tint(Brand.accent).controlSize(.large)
+                    }.buttonStyle(.brandProminent).tint(Brand.accent).controlSize(.large)
                 }
                 if !store.removableWorkspaces.isEmpty {
                     Button("Review \(store.removableWorkspaces.count) deprecated workspaces") {
@@ -137,8 +137,8 @@ struct OverviewView: View {
                             .frame(width: max(0, (geo.size.width - 6) * Double(c.bytes) / total))
                     }
                 }
-                .clipShape(Capsule())
-                .background(Capsule().fill(.quaternary))
+                .clipShape(Rectangle())
+                .background(Rectangle().fill(.quaternary))
             }.frame(height: 10)
 
             VStack(spacing: 0) {
@@ -148,11 +148,11 @@ struct OverviewView: View {
                             Circle().fill(c.color).frame(width: 9, height: 9)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(c.title).fontWeight(.medium)
-                                Text(c.detail).font(.caption).foregroundStyle(.secondary)
+                                Text(c.detail).font(.bCaption).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Text(c.bytes.bytesString).monospacedDigit().font(.body)
-                            Image(systemName: "chevron.right").font(.caption.weight(.semibold)).foregroundStyle(.tertiary)
+                            Text(c.bytes.bytesString).monospacedDigit().font(.bBody)
+                            Image(systemName: "chevron.right").font(.bCaption.weight(.semibold)).foregroundStyle(.tertiary)
                         }
                         .padding(.horizontal, 16).padding(.vertical, 11)
                         .contentShape(Rectangle())
@@ -181,14 +181,14 @@ struct OverviewView: View {
                     Rectangle().fill(Brand.reclaim).frame(width: w * reclaim / total)
                     Spacer(minLength: 0)
                 }
-                .clipShape(Capsule())
-                .background(Capsule().fill(.quaternary))
+                .clipShape(Rectangle())
+                .background(Rectangle().fill(.quaternary))
             }.frame(height: 10)
             HStack(spacing: 18) {
                 legend(.secondary.opacity(0.35), "Everything else")
                 legend(.secondary.opacity(0.75), "Workspaces you keep")
                 legend(Brand.reclaim, "Reclaimable")
-            }.font(.caption)
+            }.font(.bCaption)
         }
     }
 
@@ -208,17 +208,17 @@ struct OverviewView: View {
                     HStack(spacing: 14) {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(g.name).fontWeight(.medium).lineLimit(1)
-                            Text("\(g.count) workspace\(g.count == 1 ? "" : "s")").font(.caption).foregroundStyle(.secondary)
+                            Text("\(g.count) workspace\(g.count == 1 ? "" : "s")").font(.bCaption).foregroundStyle(.secondary)
                         }.frame(width: 190, alignment: .leading)
                         GeometryReader { geo in
                             ZStack(alignment: .leading) {
-                                Capsule().fill(.secondary.opacity(0.55)).frame(width: geo.size.width * Double(g.total) / maxV)
-                                Capsule().fill(Brand.reclaim).frame(width: geo.size.width * Double(g.reclaim) / maxV)
+                                Rectangle().fill(.secondary.opacity(0.55)).frame(width: geo.size.width * Double(g.total) / maxV)
+                                Rectangle().fill(Brand.reclaim).frame(width: geo.size.width * Double(g.reclaim) / maxV)
                             }.frame(maxHeight: .infinity)
                         }.frame(height: 18)
                         VStack(alignment: .trailing, spacing: 1) {
                             Text(g.total.bytesString).monospacedDigit()
-                            Text(g.reclaim > 0 ? "−\(g.reclaim.bytesString)" : " ").font(.caption).foregroundStyle(Brand.reclaim).monospacedDigit()
+                            Text(g.reclaim > 0 ? "−\(g.reclaim.bytesString)" : " ").font(.bCaption).foregroundStyle(Brand.reclaim).monospacedDigit()
                         }.frame(width: 80, alignment: .trailing)
                     }
                     .padding(.horizontal, 16).padding(.vertical, 9)
