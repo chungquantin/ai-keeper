@@ -1,5 +1,9 @@
 # AI Keeper
 
+https://github.com/user-attachments/assets/de70d3b0-d4b6-49fe-9f42-064d94749875
+
+
+
 A macOS app that shows where your disk space and AI-agent spend are going, and cleans up safely.
 It manages the worktrees that coding agents leave behind, watches running agents, and explains what is using your Mac.
 
