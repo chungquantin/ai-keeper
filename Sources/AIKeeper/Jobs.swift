@@ -185,7 +185,7 @@ struct JobPanel: View {
                     Text(c.label.isEmpty ? "Getting ready" : c.label).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                 }
                 Spacer()
-                Text("\(Int(c.fraction * 100))%").font(.figure(44)).monospacedDigit().contentTransition(.numericText())
+                Text("\(Int(c.fraction * 100))%").font(.figure(44)).monospacedDigit()
             }
             VStack(alignment: .leading, spacing: 8) {
                 PixelMeter(value: c.fraction, tint: Brand.accent)

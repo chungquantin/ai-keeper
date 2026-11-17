@@ -95,7 +95,7 @@ struct OverviewView: View {
                 .font(.bTitle3).foregroundStyle(.secondary)
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(parts.number).font(.figure(88, .medium)).monospacedDigit()
-                    .contentTransition(.numericText()).animation(reduceMotion ? nil : .smooth, value: store.reclaimable)
+
                 Text(parts.unit).font(.figure(34, .regular)).foregroundStyle(.secondary)
             }
             .minimumScaleFactor(0.6).lineLimit(1)

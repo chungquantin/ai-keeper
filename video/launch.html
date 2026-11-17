@@ -310,6 +310,30 @@ function render(t) {
   const fi = 1 - seg(t, 0, .35), fo = seg(t, 29.6, 30); if (fi > 0 || fo > 0) { ctx.fillStyle = `rgba(8,13,70,${Math.max(fi, fo)})`; ctx.fillRect(0, 0, 1920, 1080); }
 }
 function drawOfficeDim(t) { drawOffice(t, false); dim(.9); }
+/* A still banner for the app (16:9): the scene mid-cleanup with the headline on top. window.renderBanner() */
+function renderBanner() {
+  ctx.clearRect(0, 0, 1920, 1080);
+  const t = 6.1, free = freeGB(t);
+  drawScene(t, t);
+  ctx.drawImage(SHADE, 0, 0);
+  // logo and name
+  notch(120, 84, 96, 96, COBALT, 10); sprite(LOGO, 23.34, 16.67, false, 4);
+  text('AI Keeper', 240, 152, `800 60px ${F.disp}`, '#fff');
+  // headline
+  text('Your coding agents', 120, 330, `800 118px ${F.disp}`, '#fff');
+  text('leave gigabytes behind.', 120, 448, `800 118px ${F.disp}`, '#fff');
+  text('Find what is safe to delete, and clear it in the background.', 124, 520, `500 38px ${F.disp}`, '#dfe5ff');
+  // install line
+  notch(120, 556, 620, 76, '#090f3f', 12); text('$ brew install --cask ai-keeper', 154, 606, `500 30px ${F.mono}`, '#fff');
+  // gauge and address
+  notch(1380, 60, 460, 96, '#ffffff'); text('free', 1410, 118, `400 32px ${F.pix}`, INK);
+  ctx.fillStyle = '#dfe5ff'; ctx.fillRect(1490, 96, 180, 18); ctx.fillStyle = COBALT; ctx.fillRect(1490, 96, 180 * clamp(free / 270), 18);
+  text(free.toFixed(1) + ' GB', 1700, 118, `400 36px ${F.pix}`, INK, 'left');
+  text('Free and open source for Mac', 1840, 210, `500 32px ${F.disp}`, '#fff', 'right');
+  text('github.com/chungquantin/ai-keeper', 1840, 252, `400 36px ${F.pix}`, AMBER, 'right');
+}
+window.renderBanner = renderBanner;
+
 window.render = render;
 window.ready = Promise.all([imgsLoaded, document.fonts.load(`800 40px "Bricolage Grotesque"`), document.fonts.load(`500 40px "Bricolage Grotesque"`), document.fonts.load(`700 40px "Bricolage Grotesque"`), document.fonts.load(`400 40px "Jersey 15"`), document.fonts.load(`400 40px "JetBrains Mono"`), document.fonts.load(`500 40px "JetBrains Mono"`)]).then(() => document.fonts.ready);
 const q = new URLSearchParams(location.search).get('t'); if (q != null) window.ready.then(() => render(parseFloat(q)));

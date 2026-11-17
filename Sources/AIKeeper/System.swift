@@ -445,7 +445,7 @@ struct SystemView: View {
         HStack(alignment: .center, spacing: 28) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Health").foregroundStyle(.secondary)
-                Text("\(h.score)").font(.figure(76, .medium)).monospacedDigit().contentTransition(.numericText())
+                Text("\(h.score)").font(.figure(76, .medium)).monospacedDigit()
                     .animation(.smooth, value: h.score)
                 HStack(spacing: 6) { Circle().fill(h.color).frame(width: 8, height: 8); Text(h.reason).fontWeight(.medium) }
             }.frame(minWidth: 150, alignment: .leading)
