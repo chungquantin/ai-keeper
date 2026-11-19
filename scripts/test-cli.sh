@@ -282,5 +282,35 @@ check "version found through symlinks" '[ "$("$BINDIR/keeper2" version)" = "keep
 check "history logs real removals"     '"$K" history --json | python3 -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if d[\"total_freed_bytes\"]>0 and d[\"cleanups\"]>=1 and d[\"current_streak_days\"]==1 else 1)"'
 check "history draws the chart"        '"$K" history --weeks 12 | grep -q "freed" && "$K" history --weeks 12 | grep -q "streak"'
 check "status shows the running total" '"$K" status | grep -q "cleaned"'
+
+# Update: a fake installed app, and a fake release served from local files (no network). Every failure must leave the old app alone.
+FIX="$WORK/release"; UAPP="$WORK/Applications/AI Keeper.app"; mkdir -p "$FIX/v9.9.9" "$WORK/Applications" "$WORK/newapp"
+make_app() { # path version
+  mkdir -p "$1/Contents/MacOS"; cp /usr/bin/true "$1/Contents/MacOS/AIKeeper"
+  printf '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>CFBundleExecutable</key><string>AIKeeper</string><key>CFBundleIdentifier</key><string>dev.aikeeper.updatetest</string><key>CFBundleShortVersionString</key><string>%s</string></dict></plist>' "$2" > "$1/Contents/Info.plist"
+  codesign -s - --force --deep "$1" >/dev/null 2>&1
+}
+appver() { plutil -extract CFBundleShortVersionString raw "$UAPP/Contents/Info.plist" 2>/dev/null; }
+make_app "$UAPP" 0.0.1
+make_app "$WORK/newapp/AI Keeper.app" 9.9.9
+(cd "$WORK/newapp" && ditto -c -k --keepParent "AI Keeper.app" "$FIX/v9.9.9/AI-Keeper-9.9.9.zip")
+shasum -a 256 "$FIX/v9.9.9/AI-Keeper-9.9.9.zip" | cut -d' ' -f1 > "$FIX/v9.9.9/AI-Keeper-9.9.9.zip.sha256"
+upd() { AIKEEPER_UPDATE_BASE="file://$FIX" AIKEEPER_UPDATE_LATEST="${LATEST:-9.9.9}" AIKEEPER_UPDATE_APP="$UAPP" "$K" update "$@"; }
+check "update: a development build has nothing to update" '[ "$(code "$K" update --check)" = 1 ]'
+check "update: --check reports a newer version"   'upd --check --json | python3 -c "import json,sys; d=json.load(sys.stdin); sys.exit(0 if d[\"update_available\"] is True and d[\"latest_version\"]==\"9.9.9\" and d[\"current_version\"]==\"0.0.1\" and d[\"updated\"] is False else 1)"'
+check "update: without --yes it changes nothing"  'upd </dev/null >/dev/null 2>&1; [ "$(appver)" = 0.0.1 ]'
+cp "$FIX/v9.9.9/AI-Keeper-9.9.9.zip.sha256" "$WORK/sha.good"; printf '%064d\n' 0 > "$FIX/v9.9.9/AI-Keeper-9.9.9.zip.sha256"
+check "update: a wrong checksum installs nothing" '[ "$(code upd --yes)" = 1 ] && [ "$(appver)" = 0.0.1 ] && [ ! -e "$UAPP.update-old" ]'
+cp "$WORK/sha.good" "$FIX/v9.9.9/AI-Keeper-9.9.9.zip.sha256"
+check "update: --yes installs the new version"    'upd --yes >/dev/null 2>&1 && [ "$(appver)" = 9.9.9 ] && [ ! -e "$UAPP.update-old" ]'
+check "update: the installed app still verifies"  'codesign --verify --deep --strict "$UAPP"'
+check "update: already current says so"           'upd | grep -q "up to date"'
+make_app "$UAPP" 0.2.10
+check "update: 0.2.10 is newer than 0.2.9"        'LATEST=0.2.9 upd --check --json | python3 -c "import json,sys; sys.exit(0 if json.load(sys.stdin)[\"update_available\"] is False else 1)"'
+check "update: 0.2.10 is older than 0.3.0"        'LATEST=0.3.0 upd --check --json | python3 -c "import json,sys; sys.exit(0 if json.load(sys.stdin)[\"update_available\"] is True else 1)"'
+make_app "$UAPP" 0.0.1; cp /bin/sleep "$UAPP/Contents/MacOS/AIKeeper"; codesign -s - --force --deep "$UAPP" >/dev/null 2>&1
+"$UAPP/Contents/MacOS/AIKeeper" 60 & OPENPID=$!; sleep 0.5
+check "update: an open app is never replaced"     '[ "$(code upd --yes)" = 1 ] && [ "$(appver)" = 0.0.1 ]'
+kill "$OPENPID" 2>/dev/null; wait "$OPENPID" 2>/dev/null
 echo "keeper CLI: $pass passed, $fail failed"
 [ "$fail" = 0 ]

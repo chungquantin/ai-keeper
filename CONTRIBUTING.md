@@ -43,7 +43,7 @@ AI Keeper deletes things, so these rules are not negotiable and a change must no
 - Unsaved work (uncommitted files, unpushed commits) is saved to the vault before a workspace is removed.
 - A workspace with a running agent is skipped. Main checkouts are never removed.
 - Paths are validated before anything is removed (a removal refuses a path outside your home folder), and the skills scanner refuses symlinks.
-- The app makes no network requests of its own.
+- The app makes no network requests of its own. `keeper update` is the one exception, and it only runs when the user types it; it must keep verifying the published checksum and the signature before it replaces anything.
 
 ## Pull requests
 

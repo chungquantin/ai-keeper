@@ -12,7 +12,7 @@ https://github.com/user-attachments/assets/de70d3b0-d4b6-49fe-9f42-064d94749875
 Claude Code, Codex, Conductor and other coding agents leave on your Mac, shows which of them are safe to delete and why, and clears
 them in the background. It also watches running agents, tracks what they cost, and checks the skills they load for risky scripts.
 
-Everything runs on your Mac. There is no account, and the app makes no network requests of its own.
+Everything runs on your Mac. There is no account, and the app makes no network requests of its own. (The one exception is `keeper update`, which contacts GitHub when you run it.)
 
 > [!TIP]
 > **Questions or ideas?** Open an [issue](https://github.com/chungquantin/ai-keeper/issues/new/choose) and pick the form that fits.
@@ -88,6 +88,7 @@ keeper status              # disk, what you can get back, agents, spend
 keeper remove --all-safe   # a preview; add --yes to move them to the Trash
 keeper skills scan --all   # check every skill your agents can load
 keeper history             # how often you cleaned up, and the total freed
+keeper update              # check for a newer release and install it
 ```
 
 Anything that deletes is a **dry run until you add `--yes`**, and every command takes `--json` for scripts. See [docs/CLI.md](docs/CLI.md) for all commands, the skills scanner and the MCP server.
@@ -100,6 +101,7 @@ Anything that deletes is a **dry run until you add `--yes`**, and every command 
 - A cleanup will not start in a folder where an agent is running.
 - Nothing leaves your Mac. The app itself makes no network requests; it runs `git`, and the GitHub CLI if you have it, to read pull request status.
   The optional skills scanner is a separate tool, and it looks up the packages a skill lists on [OSV.dev](https://osv.dev).
+  `keeper update` fetches the latest release from GitHub, only when you run it.
 
 ## FAQ
 
@@ -111,6 +113,10 @@ and unsaved work is saved to a vault you can restore from. See [Safety](#safety)
 ### Why does macOS say the app can't be opened?
 
 The releases are not notarized yet. Use **Open Anyway** in System Settings, or install with Homebrew or the install script. See [Download](#download).
+
+### How do I update?
+
+Run `keeper update`. It asks before installing, uses Homebrew if Homebrew installed the app, and otherwise downloads the release, checks its published SHA-256 and signature, and swaps it in, keeping the old app until the new one is in place. `keeper update --check` only reports. Quit the app first.
 
 ### Do I need the GitHub CLI?
 

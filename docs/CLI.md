@@ -23,6 +23,7 @@ keeper docker prune all-safe --yes         # build cache, unused images, stopped
 keeper skills                              # every installed skill; `skills scan --all`, `skills show <name>`
 keeper skills remove --risk danger         # preview; --yes quarantines them, `skills restore <name>` undoes it
 keeper tools                               # which agent tools are detected and enabled
+keeper update                              # check for a newer release and install it (--check only reports)
 ```
 
 | Section in the app | Command |
@@ -35,6 +36,7 @@ keeper tools                               # which agent tools are detected and 
 | Recently removed | `vault` |
 | Skills | `skills` |
 | Tools, Settings | `tools`, `config` |
+| Updates | `update` |
 
 `keeper help <command>` shows every option. Shell completions: `keeper completions zsh|bash|fish`. Exit codes: 0 done, 1 failed or everything you named was skipped, 2 wrong usage.
 
@@ -56,3 +58,11 @@ claude mcp add keeper -- ~/.local/bin/keeper mcp
 ```
 
 Homebrew installs `keeper` (and `aikeeper`, the old name, as an alias). Installed the app by hand? Run `keeper install`, or use Settings → Agent access. `./scripts/test-cli.sh` runs the CLI end to end against a throwaway repo.
+
+## Updating
+
+`keeper update` looks for the latest release on GitHub. It is the only command that uses the network, and only when you run it.
+
+- It shows what it found and asks before installing. In a script, add `--yes`. `--check` only reports (with `--json`: `current_version`, `latest_version`, `update_available`).
+- If Homebrew installed the app, it runs `brew upgrade --cask`. Otherwise (the zip or the install script) it downloads `AI-Keeper-<version>.zip` from the release, checks it against the SHA-256 published beside it and with `codesign`, then swaps the app in. The old app is kept until the new one is in place, and an app that is open is never replaced. `--direct` skips Homebrew.
+- It updates the installed app that the command belongs to. For a development build there is nothing to update.

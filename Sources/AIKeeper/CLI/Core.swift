@@ -204,7 +204,7 @@ enum CLI {
 
     static var all: [Command] {
         StatusCommands.all + HistoryCommands.all + WorkspaceCommands.all + CleanCommands.all + AgentCommands.all + UsageCommands.all
-            + SkillCommands.all + DiskCommands.all + SystemCommands.all + SafetyCommands.all + SetupCommands.all
+            + SkillCommands.all + DiskCommands.all + SystemCommands.all + SafetyCommands.all + SetupCommands.all + UpdateCommands.all
     }
 
     /// The same binary is the app, `keeper` and `aikeeper`. Run by the command names it is linked as, it never opens the window.

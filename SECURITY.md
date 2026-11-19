@@ -20,6 +20,6 @@ AI Keeper deletes and moves files, and runs other programs, so the problems we m
 - removing or overwriting anything outside the folder a cleanup was meant to touch, including through symlinks or crafted names;
 - running commands built from untrusted names, paths, branch names or skill contents;
 - skipping the dry run, the confirmation or the recovery vault;
-- leaking information off the Mac. The app makes no network requests of its own, so any network traffic from it is a bug.
+- leaking information off the Mac. The app makes no network requests of its own, so any network traffic from it is a bug. The one exception is `keeper update`, which contacts GitHub only when you run it; problems in how it downloads or verifies an update are in scope.
 
 Findings from the skills scanner are heuristics and not vulnerabilities in AI Keeper.
