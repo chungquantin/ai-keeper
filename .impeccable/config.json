@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "site/index.html"
+        ],
+        "createdAt": "2026-11-25T14:45:57.343Z",
+        "reason": "agent verified: a real-layout scan of the rendered page at 1280x800 and 390x844 reports no cramped-padding; the static scan cannot see that .wrap insets content via width: min(1120px, 100% - 40px) instead of padding"
+      }
+    ]
+  }
+}
