@@ -33,9 +33,7 @@ enum TodayData {
         return items
     }
 
-    @MainActor static func spentToday(_ store: Store) -> Double {
-        store.usage.filter { Calendar.current.isDateInToday($0.day) }.reduce(0) { $0 + $1.cost }
-    }
+    @MainActor static func spentToday(_ store: Store) -> Double { store.spentToday }
 }
 
 // MARK: Briefing
@@ -140,79 +138,135 @@ struct TodayBriefing: View {
 struct TodayReclaim: View {
     @EnvironmentObject var store: Store
     @EnvironmentObject var nav: NavState
+    @State private var docker: Int64?          // reclaimable Docker and OrbStack bytes; nil until measured
+    @State private var dockerState = "Measuring"
 
     private struct Cat: Identifiable {
-        let id: String; let title: String; let why: String; let color: Color; let bytes: Int64
-        let safe: Bool; let action: String; let run: () -> Void
+        let id: String; let title: String; let why: String; let color: Color; let bytes: Int64?
+        let counted: Bool; let safe: Bool; let action: String; let run: () -> Void
     }
 
     private var cats: [Cat] {
         [
-            Cat(id: "build", title: "Build folders", why: "target, node_modules and .next. Your next build recreates them.", color: Brand.reclaim,
-                bytes: store.keptArtifactBytes, safe: true, action: "Clean") { store.propose(.purgeArtifacts, for: store.buildHolders) },
-            Cat(id: "ws", title: "Deprecated workspaces", why: "\(store.removableWorkspaces.count) worktrees that are merged, closed or idle.", color: Brand.accent,
-                bytes: store.total(store.removableWorkspaces), safe: true, action: "Review") { nav.go(.deprecated) },
-            Cat(id: "left", title: "Leftovers", why: "Chat history of deleted projects, caches and logs.", color: Brand.merged,
-                bytes: store.total(store.orphanSessions) + store.total(store.caches), safe: false, action: "Review") { nav.go(.leftovers) },
+            Cat(id: "build", title: "Build folders", why: "target and node_modules. Your next build recreates them.", color: Brand.reclaim,
+                bytes: store.keptArtifactBytes, counted: true, safe: true, action: "Clean") { store.propose(.purgeArtifacts, for: store.buildHolders) },
+            Cat(id: "ws", title: "Merged workspaces", why: "\(store.removableWorkspaces.count) worktrees whose pull requests merged or closed.", color: Brand.accent,
+                bytes: store.total(store.removableWorkspaces), counted: true, safe: true, action: "Review") { nav.go(.deprecated) },
+            Cat(id: "left", title: "Leftovers", why: "Folders agents left behind in old projects.", color: Brand.merged,
+                bytes: store.total(store.orphanSessions) + store.total(store.caches), counted: true, safe: false, action: "Review") { nav.go(.leftovers) },
+            Cat(id: "docker", title: "Containers", why: "Not counted in the \(store.reclaimable.bytesString). Docker and OrbStack images you are not running.", color: AgentColor.codex,
+                bytes: docker, counted: false, safe: false, action: "Prune") { nav.open(.cleanup, .containers) },
+            Cat(id: "dups", title: "Duplicates", why: "Not counted in the \(store.reclaimable.bytesString). Identical files that can share one copy.", color: AgentColor.pi,
+                bytes: store.dedup.report?.reclaim, counted: false, safe: true, action: store.dedup.report == nil ? "Scan" : "Merge") { nav.diskDuplicates = true; nav.open(.cleanup, .disk) },
         ]
     }
 
     var body: some View {
         let cats = self.cats
-        let total = max(cats.reduce(0) { $0 + $1.bytes }, 1)
-        let safeBytes = cats.filter(\.safe).reduce(0) { $0 + $1.bytes }
+        let counted = cats.filter(\.counted)
+        let total = max(counted.reduce(0) { $0 + ($1.bytes ?? 0) }, 1)
+        let safeBytes = cats.filter { $0.counted && $0.safe }.reduce(0) { $0 + ($1.bytes ?? 0) }
         Page {
             Card(padding: 22) {
                 HStack(alignment: .center, spacing: 28) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(store.hasData ? store.reclaimable.byteParts.number : "—").font(.figure(56)).monospacedDigit()
                         Text(store.reclaimable.byteParts.unit).font(.figure(22)).foregroundStyle(.secondary)
-                    }
+                    }.fixedSize()
                     VStack(alignment: .leading, spacing: 10) {
                         GeometryReader { g in
                             HStack(spacing: 2) {
-                                ForEach(cats) { c in Rectangle().fill(c.color).frame(width: max(0, (g.size.width - 4) * Double(c.bytes) / Double(total))) }
-                            }.clipShape(RoundedRectangle(cornerRadius: 7)).background(RoundedRectangle(cornerRadius: 7).fill(Brand.muted))
-                        }.frame(height: 14)
-                        Legend(items: cats.map { ("\($0.title) \($0.bytes.bytesString)", $0.color) })
-                    }
-                    Button("Clean everything safe · \(safeBytes.bytesString)") {
-                        store.propose(.purgeArtifacts, for: store.buildHolders)
-                    }.buttonStyle(.brandProminent).controlSize(.large).disabled(safeBytes == 0)
+                                ForEach(counted) { c in Rectangle().fill(c.color).frame(width: max(0, (g.size.width - 4) * Double(c.bytes ?? 0) / Double(total))) }
+                            }.clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                        }.frame(height: 10)
+                        Legend(items: cats.map { c in ("\(c.title) \(c.bytes.map { $0.bytesString } ?? "…")", c.color) })
+                    }.frame(maxWidth: .infinity)
+                    Button("Clean everything safe · \(safeBytes.bytesString)") { store.propose(.purgeArtifacts, for: store.buildHolders) }
+                        .buttonStyle(.brandProminent).controlSize(.large).disabled(safeBytes == 0).fixedSize()
                 }
             }
-            VStack(alignment: .leading, spacing: 16) {
+            AdaptiveRow(spacing: 16, minChild: 380) {
                 Card(padding: 0) {
                     VStack(alignment: .leading, spacing: 0) {
-                        CardTitle(title: "What it is, and how safe").padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 6)
-                        RowList(items: cats) { c in
-                            ListRow(title: c.title, subtitle: c.why) { Circle().fill(c.color).frame(width: 9, height: 9) } trail: {
-                                HStack(spacing: 12) {
-                                    Tag(text: c.safe ? "Safe" : "Check first", tone: c.safe ? .blue : .amber)
-                                    Text(c.bytes.bytesString).font(.bBody).monospacedDigit().frame(width: 70, alignment: .trailing)
-                                    Button(c.action) { c.run() }.controlSize(.small).frame(width: 64)
+                        CardTitle(title: "What it is, and how safe").padding(.horizontal, 20).padding(.top, 16).padding(.bottom, 8)
+                        ForEach(cats) { c in
+                            HStack(spacing: 12) {
+                                Circle().fill(c.color).frame(width: 7, height: 7)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(c.title).font(.bBody.weight(.medium))
+                                    Text(c.why).font(.bCaption).foregroundStyle(.secondary).lineLimit(2).fixedSize(horizontal: false, vertical: true)
                                 }
+                                Spacer(minLength: 8)
+                                Tag(text: c.safe ? "Safe" : "Check first", tone: c.safe ? .blue : .amber)
+                                Text(c.bytes.map { $0.bytesString } ?? (c.id == "docker" ? dockerState : "Not scanned")).font(.bBody).monospacedDigit()
+                                    .frame(width: 78, alignment: .trailing).foregroundStyle(c.bytes == nil ? Color.secondary : Color.primary)
+                                Button(c.action) { c.run() }.buttonStyle(.brandOutline).frame(width: 74)
                             }
+                            .padding(.horizontal, 20).padding(.vertical, 11).overlay(alignment: .top) { Divider() }
                         }
-                        Divider()
-                        HStack {
-                            Button { nav.open(.cleanup, .containers) } label: { Label("Docker and OrbStack images", systemImage: "shippingbox") }.buttonStyle(.link)
-                            Button { nav.diskDuplicates = true; nav.open(.cleanup, .disk) } label: { Label("Duplicate files", systemImage: "square.on.square") }.buttonStyle(.link)
-                            Spacer()
-                            Text("Not counted above").font(.bCaption).foregroundStyle(.secondary)
-                        }.padding(.horizontal, 20).padding(.vertical, 10)
                     }
                 }
-                CleanupChart()
-                Card {
-                    HStack(spacing: 14) {
-                        Note(text: "Your Mac refills with build folders as agents work. A weekly clean keeps it small.")
-                        Button("Clean every Friday") {}.controlSize(.large)
-                    }
-                }
+                ReclaimHistory().frame(width: 360)
             }
         }
+        .task { await measureDocker() }
     }
+
+    /// Docker and OrbStack report their reclaimable space as text ("12.3GB (45%)"); sum it without blocking the window.
+    private func measureDocker() async {
+        if Demo.enabled { docker = 62_400_000_000; return }
+        let r = await Task.detached(priority: .utility) { DockerCLI.usage() }.value
+        if r.error != nil { dockerState = "Not running"; return }
+        docker = r.rows.reduce(0) { $0 + Self.parseBytes($1.reclaimable) }
+    }
+
+    static func parseBytes(_ s: String) -> Int64 {
+        let t = s.split(separator: " ").first.map(String.init) ?? s
+        let units: [(String, Double)] = [("TB", 1e12), ("GB", 1e9), ("MB", 1e6), ("kB", 1e3), ("KB", 1e3), ("B", 1)]
+        for (u, m) in units where t.hasSuffix(u) { return Int64((Double(t.dropLast(u.count)) ?? 0) * m) }
+        return 0
+    }
+}
+
+/// "Space you got back": the cleanup log as a grid of weeks, with what to do next. Real data from the cleanup log.
+struct ReclaimHistory: View {
+    @EnvironmentObject var store: Store
+    @State private var records: [CleanRecord] = CleanLog.all()
+    private let weekCount = 20
+    private var finishedJobs: Int { store.jobs.filter { $0.state == .finished }.count }
+
+    var body: some View {
+        let s = CleanLog.summary(records)
+        let weeks = CleanLog.weeks(count: weekCount)
+        let peak = weeks.flatMap { $0 }.compactMap { $0.flatMap { s.days[$0]?.bytes } }.max() ?? 0
+        Card(padding: 18) {
+            VStack(alignment: .leading, spacing: 12) {
+                CardTitle(title: "Space you got back", note: s.runs == 0 ? nil : "Last \(weekCount) weeks · \(s.totalBytes.bytesString)")
+                if s.runs == 0 {
+                    Text("Nothing cleaned yet. Each day you remove something gets a square here.").font(.bCaption).foregroundStyle(.secondary)
+                }
+                HStack(alignment: .top, spacing: 4) {
+                    ForEach(weeks.indices, id: \.self) { w in
+                        VStack(spacing: 4) {
+                            ForEach(0..<7, id: \.self) { d in
+                                if let day = weeks[w][d] {
+                                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                                        .fill(level(CleanLog.level(s.days[day]?.bytes ?? 0, peak: peak)))
+                                        .aspectRatio(1, contentMode: .fit)
+                                } else { Color.clear.aspectRatio(1, contentMode: .fit) }
+                            }
+                        }.frame(maxWidth: .infinity)
+                    }
+                }.accessibilityHidden(true)
+                Note(text: "Your Mac refills with build folders as agents work. A weekly clean keeps it small.")
+                Button { } label: { Text("Clean every Friday").frame(maxWidth: .infinity) }.buttonStyle(.brandOutline)
+            }
+        }
+        .onAppear { records = CleanLog.all() }
+        .onChange(of: finishedJobs) { _, _ in records = CleanLog.all() }
+    }
+
+    private func level(_ l: Int) -> Color { l == 0 ? Brand.muted : Brand.accent.opacity([0, 0.25, 0.45, 0.7, 1][l]) }
 }
 
 // MARK: Optimize (sample data)
@@ -289,7 +343,7 @@ struct TodayActivity: View {
 
     var body: some View {
         let live = store.agents.filter { $0.kind != .mcp }
-        let recent = Array(store.sessions.sorted { $0.last > $1.last }.prefix(8))
+        let recent = store.sessions.newest(8)
         Page {
             AdaptiveRow(spacing: 16) {
                 Card(padding: 0) {

@@ -77,6 +77,10 @@ extension Brand {
     static let destructive = Color.dynamic(light: 0xD70015, dark: 0xFF6961)
     static let destructiveTint = Color.dynamic(light: 0xD70015, lightAlpha: 0.08, dark: 0xFF6961, darkAlpha: 0.18)
     static let surface = background
+    /// The 1pt ring of `shadow-card`: lighter than a divider, so a card reads as lifted rather than outlined.
+    static let edge = Color.dynamic(light: 0x000000, lightAlpha: 0.05, dark: 0xFFFFFF, darkAlpha: 0.08)
+    static let liftNear = Color.dynamic(light: 0x000000, lightAlpha: 0.04, dark: 0x000000, darkAlpha: 0.40)
+    static let liftFar = Color.dynamic(light: 0x000000, lightAlpha: 0.07, dark: 0x000000, darkAlpha: 0.45)
 }
 
 /// The primary button: `primary` (cobalt unless a tint is set), continuous corners, scales to 97% when pressed.
@@ -100,6 +104,24 @@ struct BrandProminentStyle: ButtonStyle {
     }
 }
 extension ButtonStyle where Self == BrandProminentStyle { static var brandProminent: BrandProminentStyle { BrandProminentStyle() } }
+
+/// The outline button (`btn-outline`): card surface, a faint ring, 8pt continuous corners. For the secondary action on a row.
+struct BrandOutlineStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var enabled
+    func makeBody(configuration: Configuration) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 9, style: .continuous)
+        configuration.label
+            .font(.brand(13, .medium)).foregroundStyle(Color.primary)
+            .padding(.horizontal, 12).frame(height: 28)
+            .background(Brand.card, in: shape)
+            .overlay(shape.strokeBorder(Brand.border, lineWidth: 1))
+            .overlay(shape.fill(Color.primary.opacity(configuration.isPressed ? 0.08 : 0)))
+            .opacity(enabled ? 1 : 0.4)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .contentShape(shape)
+    }
+}
+extension ButtonStyle where Self == BrandOutlineStyle { static var brandOutline: BrandOutlineStyle { BrandOutlineStyle() } }
 
 /// A meter made of squares, like the gauges on the website: filled in the tint colour, the rest dim.
 struct PixelMeter: View {

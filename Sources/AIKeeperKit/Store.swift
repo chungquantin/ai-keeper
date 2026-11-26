@@ -55,7 +55,10 @@ final class Store: ObservableObject {
     @Published var mapDate: Date?
     nonisolated(unsafe) static weak var current: Store?
     @Published var agents: [AgentProc] = []
-    @Published var usage: [UsageRow] = []
+    @Published var usage: [UsageRow] = [] { didSet { refreshSpend() } }
+    /// Spend today and over the last 7 days, worked out once when usage changes, not every time a page redraws.
+    @Published private(set) var spentToday = 0.0
+    @Published private(set) var spentWeek = 0.0
     @Published var usageLoading = false
     @Published var map: StorageMapResult?
     @Published var mapRefreshing = false
@@ -183,6 +186,18 @@ final class Store: ObservableObject {
         toolsChanged = false
         loadUsage()
         await rescan()
+    }
+
+    private func refreshSpend() {
+        let rows = usage
+        Task.detached(priority: .utility) {
+            let cal = Calendar.current
+            let start = cal.startOfDay(for: Date()), weekStart = cal.date(byAdding: .day, value: -7, to: Date()) ?? Date()
+            var today = 0.0, week = 0.0
+            for r in rows { if r.day >= weekStart { let c = r.cost; week += c; if r.day >= start { today += c } } }
+            let t = today, w = week
+            await MainActor.run { self.spentToday = t; self.spentWeek = w }
+        }
     }
 
     /// Look for installed tools, then measure their data folders in the background.

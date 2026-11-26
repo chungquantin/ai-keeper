@@ -146,7 +146,8 @@ struct TabStrip: View {
         .padding(.leading, 12).padding(.trailing, 14).frame(height: 38)
         .background {
             if on { RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.card)
-                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.border)) }
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.edge))
+                .shadow(color: Brand.liftNear, radius: 1, y: 1).shadow(color: Brand.liftFar, radius: 8, y: 5) }
         }
         .contentShape(Rectangle())
     }

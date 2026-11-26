@@ -13,7 +13,10 @@ struct PaletteView: View {
         let id: String; let group: String; let title: String; let subtitle: String; let symbol: String; let kind: String; let run: () -> Void
     }
 
-    private var all: [Result] {
+    @State private var all: [Result] = []
+
+    /// Built once when the palette opens, not on every keystroke: with 100,000 sessions it must not sort them each time.
+    private func build() -> [Result] {
         var r: [Result] = []
         for a in Area.allCases {
             for t in a.tabs {
@@ -31,7 +34,7 @@ struct PaletteView: View {
         for e in store.entries.filter({ $0.kind == .workspace }).prefix(300) {
             r.append(Result(id: "ws-\(e.id)", group: "Workspaces", title: e.name, subtitle: "\(e.repoName) · \((e.size ?? 0).bytesString)", symbol: "square.stack.3d.up", kind: "Workspace") { nav.go(.all); store.requestedSelection = e.id })
         }
-        for s in store.sessions.sorted(by: { $0.last > $1.last }).prefix(100) {
+        for s in store.sessions.newest(100) {
             r.append(Result(id: "ses-\(s.id)", group: "Sessions", title: s.title.isEmpty ? s.project : s.title, subtitle: "\(s.agent.rawValue) · \(s.project)", symbol: "text.justify.left", kind: "Session") { nav.open(.sessions, .history) })
         }
         return r
@@ -88,7 +91,7 @@ struct PaletteView: View {
         }
         .frame(width: 640)
         .background(Brand.popover)
-        .onAppear { focused = true }
+        .onAppear { focused = true; all = build() }
         .onKeyPress(.downArrow) { picked = min(picked + 1, max(results.count - 1, 0)); return .handled }
         .onKeyPress(.upArrow) { picked = max(picked - 1, 0); return .handled }
     }

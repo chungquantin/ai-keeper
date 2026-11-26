@@ -1,9 +1,110 @@
 import SwiftUI
 
+/// Everything the History page shows, worked out off the main thread. The window never filters, sorts, groups or counts sessions itself:
+/// with 100,000 of them that would freeze it on every redraw. It only draws the rows that are on screen.
+@MainActor
+final class SessionHistoryModel: ObservableObject {
+    enum Item: Identifiable {
+        case header(id: String, label: String, count: Int)
+        case session(SessionInfo)
+        var id: String { switch self { case .header(let id, _, _): id; case .session(let s): s.id } }
+    }
+
+    @Published private(set) var items: [Item] = []
+    @Published private(set) var shown = 0
+    @Published private(set) var bytes: Int64 = 0
+    @Published private(set) var chart: [[Double]] = Array(repeating: [0, 0, 0], count: 60)
+    @Published private(set) var total = 0
+    private var byID: [String: SessionInfo] = [:]
+    private var folderExists: [String: Bool] = [:]
+    private var generation = 0
+
+    func session(_ id: String?) -> SessionInfo? { id.flatMap { byID[$0] } }
+    var first: SessionInfo? { for case .session(let s) in items.prefix(2) { return s }; return nil }
+    func exists(_ s: SessionInfo) -> Bool { folderExists[s.cwd] ?? true }
+
+    struct Inputs { let tool: AgentTool?; let orphansOnly: Bool; let query: String; let matches: Set<String>? }
+
+    func update(_ sessions: [SessionInfo], _ i: Inputs) async {
+        generation += 1
+        let g = generation, cached = folderExists
+        let t0 = Date()
+        let out = await Task.detached(priority: .userInitiated) { Self.compute(sessions, i, cached) }.value
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["AIKEEPER_TIMING"] != nil { FileHandle.standardError.write(Data("HISTORY \(sessions.count) sessions: \(Int(Date().timeIntervalSince(t0) * 1000)) ms in the background\n".utf8)) }
+        #endif
+        guard g == generation else { return }   // a newer request is already on its way
+        items = out.items; shown = out.shown; bytes = out.bytes; chart = out.chart; total = sessions.count
+        byID = out.byID; folderExists = out.folderExists
+    }
+
+    private struct Output { let items: [Item]; let shown: Int; let bytes: Int64; let chart: [[Double]]; let byID: [String: SessionInfo]; let folderExists: [String: Bool] }
+
+    nonisolated private static func compute(_ all: [SessionInfo], _ i: Inputs, _ cached: [String: Bool]) -> Output {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        // Does the folder still exist? One check per distinct folder, not per session, and remembered between runs.
+        var exists = cached
+        for cwd in Set(all.map(\.cwd)) where exists[cwd] == nil { exists[cwd] = FileManager.default.fileExists(atPath: cwd) }
+        // Start of day for a date, remembered per 15-minute slot: every time zone's midnight falls on one, so the answer cannot differ inside a slot.
+        var dayCache: [Int: Date] = [:]
+        func dayStart(_ d: Date) -> Date {
+            let k = Int(d.timeIntervalSince1970 / 900)
+            if let v = dayCache[k] { return v }
+            let v = cal.startOfDay(for: d); dayCache[k] = v; return v
+        }
+        // The 60-day activity chart counts every session, not just the filtered ones.
+        var counts = [[Double]](repeating: [0, 0, 0], count: 60)
+        for s in all {
+            let d = Int((today.timeIntervalSince(dayStart(s.last)) / 86_400).rounded())
+            guard d >= 0, d < 60 else { continue }
+            counts[59 - d][s.agent == .claude ? 0 : s.agent == .codex ? 1 : 2] += 1
+        }
+        let q = i.query
+        let rows = all.filter { s in
+            if let t = i.tool, s.agent != t { return false }
+            if i.orphansOnly, exists[s.cwd] == true { return false }
+            if q.isEmpty { return true }
+            if let m = i.matches { return m.contains(s.file) || s.title.localizedCaseInsensitiveContains(q) }
+            return s.title.localizedCaseInsensitiveContains(q) || s.project.localizedCaseInsensitiveContains(q)
+        }.sorted { $0.last > $1.last }
+        var items: [Item] = []; items.reserveCapacity(rows.count + 400)
+        var bytes: Int64 = 0, day: Date?, label = "", n = 0, headerAt = 0
+        var byID: [String: SessionInfo] = [:]; byID.reserveCapacity(rows.count)
+        for s in rows {
+            let d = dayStart(s.last)
+            if d != day {
+                if day != nil, case .header(let id, let l, _) = items[headerAt] { items[headerAt] = .header(id: id, label: l, count: n) }
+                day = d; n = 0; headerAt = items.count
+                label = Self.dayLabel(d, today: today, cal: cal)
+                items.append(.header(id: "day-\(d.timeIntervalSince1970)", label: label, count: 0))
+            }
+            n += 1; bytes += s.bytes; byID[s.id] = s; items.append(.session(s))
+        }
+        if day != nil, case .header(let id, let l, _) = items[headerAt] { items[headerAt] = .header(id: id, label: l, count: n) }
+        return Output(items: items, shown: rows.count, bytes: bytes, chart: counts, byID: byID, folderExists: exists)
+    }
+
+    nonisolated private static func dayLabel(_ d: Date, today: Date, cal: Calendar) -> String {
+        if d == today { return "Today" }
+        if cal.date(byAdding: .day, value: -1, to: today) == d { return "Yesterday" }
+        let f = DateFormatter(); f.dateFormat = "EEEE, d MMM"
+        return f.string(from: d)
+    }
+}
+
+/// Formatters are slow to make and cheap to reuse; a scrolling list asks for them dozens of times a second.
+private enum SessionFmt {
+    static let time: DateFormatter = { let f = DateFormatter(); f.timeStyle = .short; f.dateStyle = .none; return f }()
+    static let relative: RelativeDateTimeFormatter = { let f = RelativeDateTimeFormatter(); f.unitsStyle = .abbreviated; return f }()
+    static let count: NumberFormatter = { let f = NumberFormatter(); f.numberStyle = .decimal; return f }()
+}
+
 /// Sessions › History. Real sessions from the agents' logs, in the redesigned layout: an activity chart,
 /// filters, rows grouped by day, and a panel for the one you pick. Outcomes and summaries are sample data until they can be worked out.
 struct SessionHistoryView: View {
     @EnvironmentObject var store: Store
+    @StateObject private var model = SessionHistoryModel()
     @State private var query = ""
     @State private var tool: AgentTool?
     @State private var orphansOnly = false
@@ -16,47 +117,38 @@ struct SessionHistoryView: View {
 
     enum SessionSheet: Identifiable { case share(SessionInfo), compare(SessionInfo); var id: String { switch self { case .share: "s"; case .compare: "c" } } }
 
-    private var rows: [SessionInfo] {
-        store.sessions.filter { s in
-            (tool == nil || s.agent == tool) && (!orphansOnly || !s.cwdExists) &&
-            (query.isEmpty || matches == nil ? (query.isEmpty || s.title.localizedCaseInsensitiveContains(query) || s.project.localizedCaseInsensitiveContains(query))
-                                             : (matches!.contains(s.file) || s.title.localizedCaseInsensitiveContains(query)))
-        }.sorted { $0.last > $1.last }
-    }
-
-    /// Sample outcome, steady for a given session so the screen does not flicker between redraws.
+    /// Sample outcome, steady for a given session across launches (Swift's own hash is reseeded every run, so it cannot be used).
     static func outcome(_ s: SessionInfo) -> (String, Tone) {
-        let h = abs(s.sessionID.hashValue) % 10
+        var h: UInt64 = 0xcbf29ce484222325
+        for b in s.sessionID.utf8 { h = (h ^ UInt64(b)) &* 0x100000001b3 }
         if Date().timeIntervalSince(s.last) < 900 { return ("Running", .blue) }
-        switch h { case 0, 1, 2, 3, 4: return ("Merged", .violet); case 5, 6: return ("Abandoned", .gray); case 7: return ("Failed", .red); default: return ("Open", .blue) }
+        switch h % 10 { case 0, 1, 2, 3, 4: return ("Merged", .violet); case 5, 6: return ("Abandoned", .gray); case 7: return ("Failed", .red); default: return ("Open", .blue) }
     }
 
-    private func dayLabel(_ d: Date) -> String {
-        let c = Calendar.current
-        if c.isDateInToday(d) { return "Today" }
-        if c.isDateInYesterday(d) { return "Yesterday" }
-        return d.formatted(.dateTime.weekday(.wide).month().day())
+    /// Changes when anything that decides which rows are shown changes. The model reruns only then, and never on a plain redraw.
+    private var key: [AnyHashable] {
+        [store.sessions.count, store.sessions.first?.last.timeIntervalSince1970 ?? 0, tool?.rawValue ?? "", orphansOnly, query, matches?.count ?? -1]
     }
 
     var body: some View {
-        let rows = self.rows
-        let pick = rows.first { $0.id == selected } ?? rows.first
+        let pick = model.session(selected) ?? model.first
         GeometryReader { geo in
-        HStack(spacing: 0) {
-            VStack(spacing: 0) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 14) {
-                        activity
-                        filters(rows)
-                        table(rows, pick: pick)
-                    }.padding(.horizontal, 28).padding(.vertical, 14)
+            HStack(spacing: 0) {
+                VStack(spacing: 14) {
+                    activity
+                    filters
+                    table(pick: pick)
+                }.padding(.horizontal, 28).padding(.vertical, 14)
+                if let pick, geo.size.width >= 980 {
+                    Divider()
+                    inspector(pick).frame(width: 340)
                 }
             }
-            if let pick, geo.size.width >= 980 {
-                Divider()
-                inspector(pick).frame(width: 340)
-            }
         }
+        .task(id: key) {
+            if !query.isEmpty { try? await Task.sleep(for: .milliseconds(150)) }   // wait for a pause in typing
+            if Task.isCancelled { return }
+            await model.update(store.sessions, .init(tool: tool, orphansOnly: orphansOnly, query: query, matches: matches))
         }
         .onChange(of: query) { _, q in search(q) }
         .sheet(item: $sheet) { sh in
@@ -73,29 +165,23 @@ struct SessionHistoryView: View {
         } message: { Text(pendingDelete?.title ?? "") }
     }
 
-    // MARK: Activity chart (real: sessions per day by agent)
+    // MARK: Activity chart (real: sessions per day by agent, counted once in the model)
 
     private var activity: some View {
-        let cal = Calendar.current
-        let today = cal.startOfDay(for: Date())
-        let days = (0..<60).reversed().compactMap { cal.date(byAdding: .day, value: -$0, to: today) }
-        let data: [[Double]] = days.map { d in
-            [AgentTool.claude, .codex, .pi].map { t in Double(store.sessions.filter { $0.agent == t && cal.isDate($0.last, inSameDayAs: d) }.count) }
-        }
-        return Card(padding: 14) {
+        Card(padding: 14) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .firstTextBaseline) {
-                    (Text("\(store.sessions.count)").font(.bBody.weight(.bold)) + Text(" sessions in the last 60 days").font(.bBody).foregroundStyle(.secondary))
+                    (Text(SessionFmt.count.string(from: NSNumber(value: model.total)) ?? "\(model.total)").font(.bBody.weight(.bold)) + Text(" sessions, \(SessionFmt.count.string(from: NSNumber(value: Int(model.chart.reduce(0) { $0 + $1.reduce(0, +) }))) ?? "0") in 60 days").font(.bBody).foregroundStyle(.secondary)).lineLimit(1).fixedSize()
                     SampleChip(text: "Outcomes are samples").fixedSize()
                     Spacer()
                     Legend(items: [("Claude", AgentColor.claude), ("Codex", AgentColor.codex), ("Pi", AgentColor.pi)])
                 }
-                StackedBars(data: data, colors: [AgentColor.claude, AgentColor.codex, AgentColor.pi], height: 54)
+                StackedBars(data: model.chart, colors: [AgentColor.claude, AgentColor.codex, AgentColor.pi], height: 54)
             }
         }
     }
 
-    private func filters(_ rows: [SessionInfo]) -> some View {
+    private var filters: some View {
         HStack(spacing: 10) {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
@@ -109,62 +195,52 @@ struct SessionHistoryView: View {
                 .pickerStyle(.segmented).labelsHidden().frame(width: 230)
             Toggle("Folder deleted", isOn: $orphansOnly).toggleStyle(.checkbox).fixedSize()
             Spacer(minLength: 0)
+            Text("\(SessionFmt.count.string(from: NSNumber(value: model.shown)) ?? "") shown · \(model.bytes.bytesString)").font(.bCaption).foregroundStyle(.secondary).fixedSize()
         }
     }
 
-    // MARK: Table
+    // MARK: Table (virtualized: a List only builds the rows that are on screen)
 
-    private func table(_ rows: [SessionInfo], pick: SessionInfo?) -> some View {
-        let groups = Dictionary(grouping: rows) { Calendar.current.startOfDay(for: $0.last) }.sorted { $0.key > $1.key }
-        return Card(padding: 0) {
-            VStack(spacing: 0) {
-                HStack(spacing: 14) {
-                    Text("Started").frame(width: 56, alignment: .leading); Text("Title"); Spacer()
-                    Text("Agent").frame(width: 80, alignment: .leading); Text("Outcome").frame(width: 90, alignment: .leading)
-                    Text("Cost").frame(width: 56, alignment: .trailing); Text("Updated").frame(width: 86, alignment: .trailing)
-                }.font(.brand(11, .medium)).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.vertical, 8)
-                Divider()
-                if rows.isEmpty {
-                    Text(store.usageLoading ? "Reading sessions…" : "No sessions match.").font(.bCaption).foregroundStyle(.secondary).padding(24)
-                }
-                ForEach(groups, id: \.key) { day, list in
-                    Text(dayLabel(day)).font(.brand(12, .semibold)).foregroundStyle(.secondary)
-                        .padding(.horizontal, 16).padding(.vertical, 6).frame(maxWidth: .infinity, alignment: .leading).background(Brand.muted)
-                    ForEach(list) { s in
-                        let o = Self.outcome(s)
-                        Button { selected = s.id } label: {
-                            HStack(spacing: 14) {
-                                Text(s.first.formatted(date: .omitted, time: .shortened)).font(.bCaption).foregroundStyle(.secondary).frame(width: 56, alignment: .leading)
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(s.title.isEmpty ? s.project : s.title).font(.bBody.weight(.medium)).lineLimit(1)
-                                    HStack(spacing: 6) {
-                                        Text(s.project)
-                                        if !s.cwdExists { Tag(text: "Folder deleted", tone: .gray) }
-                                    }.font(.bCaption).foregroundStyle(.secondary)
+    private func table(pick: SessionInfo?) -> some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 14) {
+                Text("Started").frame(width: 56, alignment: .leading); Text("Title"); Spacer()
+                Text("Agent").frame(width: 80, alignment: .leading); Text("Outcome").frame(width: 90, alignment: .leading)
+                Text("Cost").frame(width: 56, alignment: .trailing); Text("Updated").frame(width: 86, alignment: .trailing)
+            }.font(.brand(11, .medium)).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.vertical, 8)
+            Divider()
+            if model.items.isEmpty {
+                Text(store.usageLoading ? "Reading sessions…" : "No sessions match.").font(.bCaption).foregroundStyle(.secondary).padding(24).frame(maxHeight: .infinity, alignment: .top)
+            } else {
+                List {
+                    ForEach(model.items) { item in
+                        switch item {
+                        case .header(_, let label, let count):
+                            HStack { Text(label).font(.brand(12, .semibold)); Text("\(count)").font(.brand(11)).foregroundStyle(.tertiary); Spacer() }
+                                .foregroundStyle(.secondary).padding(.horizontal, 16).padding(.vertical, 6).frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Brand.muted)
+                                .listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Color.clear)
+                        case .session(let s):
+                            SessionRow(s: s, folderExists: model.exists(s), selected: pick?.id == s.id)
+                                .contentShape(Rectangle())
+                                .onTapGesture { selected = s.id }
+                                .contextMenu {
+                                    Button("Resume in Terminal") { Resume.open(s) }.disabled(!model.exists(s))
+                                    Button("Reveal log in Finder") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: s.file)]) }
+                                    Button("Copy session ID") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(s.sessionID, forType: .string) }
+                                    Divider()
+                                    Button("Move log to Trash…", role: .destructive) { pendingDelete = s }
                                 }
-                                Spacer()
-                                HStack(spacing: 6) { Circle().fill(AgentColor.of(s.agent.rawValue)).frame(width: 7, height: 7); Text(s.agent.rawValue).font(.bCaption).foregroundStyle(.secondary) }.frame(width: 80, alignment: .leading)
-                                Tag(text: o.0, tone: o.1).frame(width: 90, alignment: .leading)
-                                Text(String(format: "$%.2f", s.cost)).font(.bBody).monospacedDigit().frame(width: 56, alignment: .trailing)
-                                Text(s.last.formatted(.relative(presentation: .numeric, unitsStyle: .abbreviated))).font(.bCaption).foregroundStyle(.secondary).frame(width: 86, alignment: .trailing)
-                            }
-                            .padding(.horizontal, 16).padding(.vertical, 9)
-                            .background(pick?.id == s.id ? Brand.primaryTint : .clear)
-                            .contentShape(Rectangle())
+                                .listRowInsets(EdgeInsets()).listRowSeparator(.visible).listRowBackground(Color.clear)
                         }
-                        .buttonStyle(.plain)
-                        .contextMenu {
-                            Button("Resume in Terminal") { Resume.open(s) }.disabled(!s.cwdExists)
-                            Button("Reveal log in Finder") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: s.file)]) }
-                            Button("Copy session ID") { NSPasteboard.general.clearContents(); NSPasteboard.general.setString(s.sessionID, forType: .string) }
-                            Divider()
-                            Button("Move log to Trash…", role: .destructive) { pendingDelete = s }
-                        }
-                        Divider().padding(.leading, 16)
                     }
                 }
+                .listStyle(.plain).scrollContentBackground(.hidden)
             }
         }
+        .frame(maxHeight: .infinity)
+        .panel()
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     // MARK: Detail panel
@@ -187,7 +263,7 @@ struct SessionHistoryView: View {
                 Spacer(minLength: 8)
                 VStack(spacing: 8) {
                     Button { Resume.open(s) } label: { Text("Resume in Terminal").frame(maxWidth: .infinity) }
-                        .buttonStyle(.brandProminent).controlSize(.large).disabled(!s.cwdExists)
+                        .buttonStyle(.brandProminent).controlSize(.large).disabled(!model.exists(s))
                     HStack(spacing: 8) {
                         Button { sheet = .compare(s) } label: { Text("Compare").frame(maxWidth: .infinity) }
                         Button { sheet = .share(s) } label: { Text("Share").frame(maxWidth: .infinity) }
@@ -204,7 +280,7 @@ struct SessionHistoryView: View {
                 .font(.bBody).fixedSize(horizontal: false, vertical: true)
             VStack(spacing: 0) {
                 kv("Duration", "\(minutes) min"); kv("Cost", String(format: "$%.2f", s.cost)); kv("Tokens", s.tokens >= 1_000_000 ? String(format: "%.1fM", Double(s.tokens) / 1e6) : "\(s.tokens / 1000)K")
-                kv("Project", s.project); kv("Log size", s.bytes.bytesString); kv("Folder", s.cwdExists ? "Still on disk" : "Deleted")
+                kv("Project", s.project); kv("Log size", s.bytes.bytesString); kv("Folder", model.exists(s) ? "Still on disk" : "Deleted")
             }
             VStack(alignment: .leading, spacing: 6) {
                 Text("Compared with your usual").font(.bHeadline)
@@ -378,5 +454,32 @@ struct CompareSheet: View {
                     Text(m[i].1).font(.brand(18, .semibold)).foregroundStyle(m[i].2 ? AgentColor.good : (m[i].1 == "1 failing" ? Brand.destructive : Color.primary)) }.frame(maxWidth: .infinity, alignment: .leading) } }
             }
         }
+    }
+}
+
+/// One row of the history list. Cheap on purpose: it is made for every row that scrolls into view.
+private struct SessionRow: View {
+    let s: SessionInfo
+    let folderExists: Bool
+    let selected: Bool
+    var body: some View {
+        let o = SessionHistoryView.outcome(s)
+        HStack(spacing: 14) {
+            Text(SessionFmt.time.string(from: s.first)).font(.bCaption).foregroundStyle(.secondary).frame(width: 56, alignment: .leading)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(s.title.isEmpty ? s.project : s.title).font(.bBody.weight(.medium)).lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(s.project)
+                    if !folderExists { Tag(text: "Folder deleted", tone: .gray) }
+                }.font(.bCaption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            HStack(spacing: 6) { Circle().fill(AgentColor.of(s.agent.rawValue)).frame(width: 7, height: 7); Text(s.agent.rawValue).font(.bCaption).foregroundStyle(.secondary) }.frame(width: 80, alignment: .leading)
+            Tag(text: o.0, tone: o.1).frame(width: 90, alignment: .leading)
+            Text(String(format: "$%.2f", s.cost)).font(.bBody).monospacedDigit().frame(width: 56, alignment: .trailing)
+            Text(SessionFmt.relative.localizedString(for: s.last, relativeTo: Date())).font(.bCaption).foregroundStyle(.secondary).frame(width: 86, alignment: .trailing)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 9)
+        .background(selected ? Brand.primaryTint : Color.clear)
     }
 }

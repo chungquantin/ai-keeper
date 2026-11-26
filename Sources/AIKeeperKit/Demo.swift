@@ -185,6 +185,17 @@ extension Store {
                         project: ["api-server", "web-app", "mobile-app"][i % 3], first: ago(hours: Double(i) * 20 + 3), last: ago(hours: Double(i) * 20 + 1),
                         cost: [18.4, 12.9, 9.6, 7.2, 5.1, 3.8][i], tokens: [38_000_000, 26_000_000, 21_000_000, 15_000_000, 11_000_000, 8_000_000][i], bytes: 4_000_000)
         }
+        // AIKEEPER_DEMO_SESSIONS=100000 adds that many invented sessions, to check the History page stays fast at scale.
+        if let n = Int(ProcessInfo.processInfo.environment["AIKEEPER_DEMO_SESSIONS"] ?? ""), n > 0 {
+            let words = ["Fix", "Add", "Refactor", "Investigate", "Migrate", "Write", "Review", "Debug"], things = ["billing webhook", "search index", "auth middleware", "flaky test", "release notes", "queue worker", "cache layer", "onboarding flow"]
+            let agents: [AgentTool] = [.claude, .claude, .claude, .codex, .pi]
+            sessions += (0..<n).map { i in
+                let h = Double(i) * 0.05 + 4
+                return SessionInfo(file: "/demo/bulk-\(i)", sessionID: "bulk-\(i)", agent: agents[i % agents.count], title: "\(words[i % words.count]) the \(things[(i / 3) % things.count]) (\(i))",
+                                   cwd: "\(Demo.user)/Developer/\(["api-server", "web-app", "mobile-app", "docs-site"][i % 4])\(i % 40)", project: ["api-server", "web-app", "mobile-app", "docs-site"][i % 4],
+                                   first: ago(hours: h + 1), last: ago(hours: h), cost: Double(i % 97) / 7, tokens: 1_000_000 + i % 9_000_000, bytes: 500_000)
+            }
+        }
         loadDemoSkills()
         codexLimits = CodexLimits(primaryPct: 34, primaryResets: now.addingTimeInterval(2.5 * 3600), weeklyPct: 22, weeklyResets: now.addingTimeInterval(3 * 86_400))
     }

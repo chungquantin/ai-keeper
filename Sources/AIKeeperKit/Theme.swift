@@ -14,11 +14,14 @@ enum Brand {
 }
 
 extension View {
-    /// A card: `card` surface, continuous corners (14pt unless given), a one-pixel edge. `raised` adds the soft lift for the one card that matters.
+    /// A card, as `shadow-card` draws it: the `card` surface, continuous corners, a faint 1pt ring, a tight 1pt shadow and a soft lift below.
+    /// `raised` adds more lift for the one card that matters.
     func panel(_ radius: CGFloat = 14, raised: Bool = false) -> some View {
-        background(Brand.card, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Brand.border, lineWidth: 1))
-            .shadow(color: .black.opacity(raised ? 0.10 : 0), radius: raised ? 12 : 0, y: raised ? 6 : 0)
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        return background(Brand.card, in: shape)
+            .overlay(shape.strokeBorder(Brand.edge, lineWidth: 1))
+            .shadow(color: Brand.liftNear, radius: 1, y: 1)
+            .shadow(color: Brand.liftFar.opacity(raised ? 1.6 : 1), radius: raised ? 12 : 8, y: raised ? 8 : 5)
     }
 }
 

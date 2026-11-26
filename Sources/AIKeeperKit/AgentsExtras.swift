@@ -90,10 +90,7 @@ struct BudgetsView: View {
     @AppStorage("budget.daily") private var daily = 0.0
     @AppStorage("budget.weekly") private var weekly = 0.0
     private var spentToday: Double { TodayData.spentToday(store) }
-    private var spentWeek: Double {
-        let from = Calendar.current.date(byAdding: .day, value: -7, to: Date()) ?? Date()
-        return store.usage.filter { $0.day >= from }.reduce(0) { $0 + $1.cost }
-    }
+    private var spentWeek: Double { store.spentWeek }
 
     var body: some View {
         Page(title: "Budgets", subtitle: "Spend limits for you, then for each agent") {
