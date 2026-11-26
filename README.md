@@ -154,7 +154,9 @@ To report a security problem, follow [SECURITY.md](SECURITY.md).
 ## Layout
 
 ```
-Sources/AIKeeper   the app and the keeper command (scanner, cleanup engine, monitors, SwiftUI views, terminal UI)
+Sources/AIKeeperKit   the app and the keeper command (scanner, cleanup engine, monitors, SwiftUI views and their previews, terminal UI)
+Sources/AIKeeper      a one-line launcher for AIKeeperKit
+Previews/             Xcode previews of every component and page, on demo data (open Previews/Package.swift)
 assets/            app icon, bundled fonts and tool logos, and the scripts that draw them
 scripts/           bundle, package (universal, signed zip), install, cask update, tests, the launch film
 Casks/             Homebrew cask (this repo is its own tap)

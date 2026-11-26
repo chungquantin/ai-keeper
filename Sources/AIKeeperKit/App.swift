@@ -1,13 +1,12 @@
 import ServiceManagement
 import SwiftUI
 
-@main
-struct AIKeeperApp: App {
+public struct AIKeeperApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var store = Store()
     @StateObject private var nav = NavState()
 
-    init() {
+    public init() {
         Migration.run()   // before anything reads settings
         var cliExit: Int32 = 0
         if CLI.handle(CommandLine.arguments, exitCode: &cliExit) { exit(cliExit) }
@@ -193,7 +192,7 @@ struct AIKeeperApp: App {
         }
     }
 
-    var body: some Scene {
+    public var body: some Scene {
         WindowGroup(id: "main") {
             RootView()
                 .environmentObject(store)

@@ -56,3 +56,8 @@ AI Keeper deletes things, so these rules are not negotiable and a change must no
 ## Releases
 
 Maintainers cut releases by pushing a `v*` tag. See the Releasing section of the [README](README.md).
+
+## Previews
+
+Every component and page has an Xcode preview, on invented demo data. Run `open Previews/Package.swift`, pick a file in `Previews/Sources/AIKeeperPreviews`, and use the canvas.
+Without Xcode, `./scripts/check-previews.sh` type-checks them. Add a `#Preview` when you add a view.
