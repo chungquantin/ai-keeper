@@ -1,7 +1,7 @@
 import SwiftUI
 
 extension SkillVerdict {
-    var color: Color { [Brand.accent, .orange, .red, .gray][rawValue] }
+    var color: Color { [Brand.accent, Brand.reclaim, .red, .gray][rawValue] }
     var symbol: String { ["checkmark.shield", "exclamationmark.triangle", "xmark.shield", "questionmark.circle"][rawValue] }
 }
 
@@ -44,7 +44,7 @@ struct SkillsView: View {
                     SkillRow(skill: s, verdict: verdict(s), score: SkillScanner.current(s, in: store.skillScans)?.score).tag(s.id)
                         .contextMenu { Button("Move to quarantine…") { pendingRemove = selection.contains(s.id) ? chosen : [s] } }
                 }
-                    .listStyle(.inset(alternatesRowBackgrounds: true))
+                    .listStyle(.inset).scrollContentBackground(.hidden)
                     .overlay {
                         if rows.isEmpty {
                             ContentUnavailableView(store.skillsLoaded ? "No skills match" : "Looking for skills…", systemImage: "checkmark.shield",
@@ -226,7 +226,7 @@ struct SkillDetail: View {
                 Spacer()
                 Button("Scan again") { Task { await store.scanSkills([skill]) } }.controlSize(.small).disabled(scanning || store.skillScanner == nil)
             }
-            if !c.complete { Label("The scan couldn't inspect everything, so a clean result isn't a guarantee.", systemImage: "exclamationmark.circle").font(.bCallout).foregroundStyle(.orange) }
+            if !c.complete { Label("The scan couldn't inspect everything, so a clean result isn't a guarantee.", systemImage: "exclamationmark.circle").font(.bCallout).foregroundStyle(Brand.reclaimText) }
             if c.issues.isEmpty { Text("No findings.").foregroundStyle(.secondary) }
             ForEach(Array(c.issues.prefix(40).enumerated()), id: \.element.id) { i, issue in IssueCard(issue: issue, expanded: i == 0) }
             if c.issues.count > 40 { Text("And \(c.issues.count - 40) more. Run keeper skills show \(skill.name) --json for all of them.").font(.bCaption).foregroundStyle(.secondary) }
@@ -255,7 +255,7 @@ struct IssueCard: View {
 
     init(issue: SkillIssue, expanded: Bool) { self.issue = issue; _expanded = State(initialValue: expanded) }
 
-    private var color: Color { issue.rank >= 3 ? .red : issue.rank == 2 ? .orange : .secondary }
+    private var color: Color { issue.rank >= 3 ? .red : issue.rank == 2 ? Brand.reclaim : .secondary }
 
     var body: some View {
         DisclosureGroup(isExpanded: $expanded) {

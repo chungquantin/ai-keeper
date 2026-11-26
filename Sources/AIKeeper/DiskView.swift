@@ -210,9 +210,9 @@ struct DiskView: View {
         return List {
             ForEach(model.nodes) { n in
                 HStack(spacing: 10) {
-                    Image(systemName: n.isDir ? "folder.fill" : "doc").foregroundStyle(n.isDir ? Color.blue : .secondary).frame(width: 20)
+                    Image(systemName: n.isDir ? "folder.fill" : "doc").foregroundStyle(n.isDir ? Brand.mutedForeground : .secondary).frame(width: 20)
                     Text(n.name).lineLimit(1).frame(minWidth: 140, alignment: .leading)
-                    if let h = n.hint { Pill(text: h, color: .orange) }
+                    if let h = n.hint { Pill(text: h, color: Brand.reclaim) }
                     GeometryReader { geo in
                         Rectangle().fill(.indigo.opacity(0.8))
                             .frame(width: geo.size.width * Double(n.size ?? 0) / total, height: 6)
@@ -230,7 +230,7 @@ struct DiskView: View {
                 .contextMenu { actions(n) }
             }
         }
-        .listStyle(.inset(alternatesRowBackgrounds: true))
+        .listStyle(.inset).scrollContentBackground(.hidden)
         .overlay { if model.nodes.isEmpty && !model.measuring { ContentUnavailableView("Empty or no access", systemImage: "folder") } }
     }
 
@@ -255,7 +255,7 @@ struct DiskView: View {
                     Text((n.size ?? 0).bytesString).monospacedDigit()
                 }.contextMenu { actions(n) }
             }
-            .listStyle(.inset(alternatesRowBackgrounds: true))
+            .listStyle(.inset).scrollContentBackground(.hidden)
             .overlay { if model.scanningLarge { ProgressView() } else if model.large.isEmpty {
                 ContentUnavailableView("No results yet", systemImage: "magnifyingglass", description: Text("Press Search to look for big files."))
             } }

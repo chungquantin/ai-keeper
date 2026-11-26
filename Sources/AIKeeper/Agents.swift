@@ -24,7 +24,7 @@ enum AgentKind: String, CaseIterable {
     var symbol: String { self == .mcp ? "puzzlepiece.extension" : "terminal" }
     var color: Color {
         switch self {
-        case .claude: .orange
+        case .claude: Brand.reclaim
         case .codex: Color(red: 0.20, green: 0.25, blue: 0.33)
         case .gemini: .blue
         case .aider: .purple
@@ -196,7 +196,7 @@ struct AgentsView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(a.kind.rawValue).fontWeight(.medium)
-                    if a.orphaned { Pill(text: "Orphaned", color: .orange) }
+                    if a.orphaned { Pill(text: "Orphaned", color: Brand.reclaim) }
                     else if a.kind != .mcp { statePill(a) }
                 }
                 Text(ws.map { "\($0.repoName) · \($0.name)" } ?? a.cwd?.replacingOccurrences(of: home, with: "~") ?? a.command)
@@ -225,7 +225,7 @@ struct AgentsView: View {
 
     @ViewBuilder private func statePill(_ a: AgentProc) -> some View {
         switch a.state {
-        case .needsInput: Pill(text: "Needs you", color: .orange)
+        case .needsInput: Pill(text: "Needs you", color: Brand.reclaim)
         case .working: Pill(text: "Working", color: Brand.accent)
         case .idle: Pill(text: a.lastEvent.map { "Idle \(Date().timeIntervalSince($0).shortDuration)" } ?? "Idle", color: .gray)
         case .unknown: Pill(text: a.isActive ? "Active" : "Idle", color: a.isActive ? Brand.accent : .gray)

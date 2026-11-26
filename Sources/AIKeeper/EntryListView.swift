@@ -126,6 +126,7 @@ struct EntryListView: View {
             }.width(min: 110, ideal: 125)
         }
         .scrollContentBackground(.hidden)   // the table sits on the design system's background
+        .alternatingRowBackgrounds(.disabled)   // hairline rows on a card, not zebra stripes
         .contextMenu(forSelectionType: Entry.ID.self) { ids in
             let list = store.entries.filter { ids.contains($0.id) }
             if let first = list.first, list.count == 1 {
@@ -282,9 +283,9 @@ struct DetailView: View {
                 else if PRService.gh != nil { Button { Task { await store.fetchPRs() } } label: { Image(systemName: "arrow.clockwise") }.buttonStyle(.borderless).help("Refresh pull requests") }
             }
             VStack(spacing: 0) {
-                fact("Working tree", g.dirtyCount == 0 ? "Clean" : "\(g.dirtyCount) uncommitted", g.dirtyCount == 0 ? Brand.accent : .orange)
+                fact("Working tree", g.dirtyCount == 0 ? "Clean" : "\(g.dirtyCount) uncommitted", g.dirtyCount == 0 ? Brand.accent : Brand.reclaim)
                 Divider()
-                fact("Pushed", g.unpushed == 0 ? "All on a remote" : "\(g.unpushed) only here", g.unpushed == 0 ? Brand.accent : .orange)
+                fact("Pushed", g.unpushed == 0 ? "All on a remote" : "\(g.unpushed) only here", g.unpushed == 0 ? Brand.accent : Brand.reclaim)
                 Divider()
                 fact("Versus \(g.defaultBranch)", versus(g, pr: e.pr), (g.merged || (e.pr?.state == "MERGED" && g.unpushedAfterMerge == 0)) ? Brand.accent : .secondary)
                 if let s = g.lastSubject, !s.isEmpty {
@@ -362,12 +363,12 @@ struct DetailView: View {
                     HStack(spacing: 2) {
                         Rectangle().fill(.secondary.opacity(0.5))
                             .frame(width: geo.size.width * Double(max(0, size - e.artifactBytes)) / Double(size))
-                        Rectangle().fill(Color.orange)
+                        Rectangle().fill(Brand.reclaim)
                     }.clipShape(Rectangle())
                 }.frame(height: 6)
                 ForEach(e.artifacts.prefix(6)) { a in
                     HStack(spacing: 8) {
-                        Image(systemName: "shippingbox").foregroundStyle(.orange).frame(width: 16)
+                        Image(systemName: "shippingbox").foregroundStyle(Brand.reclaimText).frame(width: 16)
                         Text(a.path.replacingOccurrences(of: e.path + "/", with: ""))
                             .lineLimit(1).truncationMode(.head)
                             .frame(maxWidth: .infinity, alignment: .leading)

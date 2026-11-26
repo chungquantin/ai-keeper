@@ -147,7 +147,7 @@ struct AlertBanner: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: alert.kind == .budget ? "dollarsign.circle.fill" : "exclamationmark.triangle.fill")
-                .foregroundStyle(.orange).font(.bTitle3)
+                .foregroundStyle(Brand.reclaimText).font(.bTitle3)
             VStack(alignment: .leading, spacing: 2) {
                 Text(alert.title).fontWeight(.semibold)
                 Text(alert.message).font(.bCallout).foregroundStyle(.secondary)
@@ -159,7 +159,7 @@ struct AlertBanner: View {
             } else {
                 if store.keptArtifactBytes > 0 {
                     Button("Clean build folders") { store.propose(.purgeArtifacts, for: store.buildHolders); store.alert = nil }
-                        .buttonStyle(.brandProminent).tint(.orange)
+                        .buttonStyle(.brandProminent).tint(Brand.reclaim)
                 }
                 Button("Agents") { go(.agents); store.alert = nil }
             }
@@ -167,7 +167,7 @@ struct AlertBanner: View {
         }
         .padding(.horizontal, 16).padding(.vertical, 10)
         // Opaque: a see-through banner let the content underneath print through the text.
-        .background(Color(nsColor: .windowBackgroundColor).overlay(Color.orange.opacity(0.12)))
+        .background(Color(nsColor: .windowBackgroundColor).overlay(Brand.reclaim.opacity(0.12)))
         .overlay(alignment: .bottom) { Divider() }
     }
 }
@@ -203,7 +203,7 @@ struct FreeSpaceChart: View {
                         LineMark(x: .value("Time", s.t), y: .value("Free GB", Double(s.free) / 1e9)).foregroundStyle(Brand.accent)
                     }
                     RuleMark(y: .value("Floor", Double(store.floorBytes) / 1e9))
-                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4])).foregroundStyle(.orange)
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4])).foregroundStyle(Brand.reclaimText)
                         .annotation(position: .top, alignment: .leading) { Text("alert floor").font(.bCaption2).foregroundStyle(Brand.reclaimText) }
                 }
                 .chartYAxis { AxisMarks { v in AxisGridLine(); AxisValueLabel { if let d = v.as(Double.self) { Text("\(Int(d)) GB") } } } }
@@ -214,7 +214,7 @@ struct FreeSpaceChart: View {
                 Divider()
                 ForEach(growers, id: \.path) { g in
                     HStack {
-                        Image(systemName: "arrow.up.right").foregroundStyle(.orange)
+                        Image(systemName: "arrow.up.right").foregroundStyle(Brand.reclaimText)
                         Text(g.path.replacingOccurrences(of: home, with: "~")).lineLimit(1).truncationMode(.head)
                         Spacer()
                         Text("+\(g.delta.bytesString) since yesterday").foregroundStyle(Brand.reclaimText).monospacedDigit()

@@ -170,7 +170,7 @@ struct SessionsView: View {
                     Button("Move log to Trash…", role: .destructive) { pendingDelete = s }
                 }
             }
-            .listStyle(.inset(alternatesRowBackgrounds: true))
+            .listStyle(.inset).scrollContentBackground(.hidden)
             .overlay { if rows.isEmpty { ContentUnavailableView(store.usageLoading ? "Reading sessions…" : "No sessions match", systemImage: "bubble.left.and.text.bubble.right") } }
         }
         .searchable(text: $query, prompt: "Search titles, or text inside conversations")

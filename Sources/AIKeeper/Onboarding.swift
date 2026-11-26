@@ -13,7 +13,7 @@ enum FolderPicker {
     }
 }
 
-/// One tool, with its detection status. Used in onboarding and on the Tools page.
+/// One tool, with its detection status. Used in onboarding and under Agents, Tools.
 struct ToolRow: View {
     let det: Detection
     @Binding var isOn: Bool
@@ -213,7 +213,7 @@ enum ProjectRoots {
     }
 }
 
-// MARK: - Tools page
+// MARK: - Tools (Agents, Detect and choose tools)
 
 struct ToolsView: View {
     @EnvironmentObject var store: Store
@@ -227,7 +227,7 @@ struct ToolsView: View {
                         Label("Tool selection changed.", systemImage: "arrow.triangle.2.circlepath").fontWeight(.medium)
                         Spacer()
                         Button("Rescan now") { Task { store.toolsChanged = false; store.loadUsage(); await store.rescan() } }.buttonStyle(.brandProminent)
-                    }.padding(14).background(.orange.opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
+                    }.padding(14).background(Brand.reclaim.opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
                 }
                 section("On this Mac", found)
                 if !other.isEmpty { section("Not found", other) }

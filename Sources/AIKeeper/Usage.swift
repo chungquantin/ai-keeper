@@ -477,7 +477,7 @@ struct UsageView: View {
         return VStack(alignment: .leading, spacing: 5) {
             HStack { Text(title).fontWeight(.medium); Spacer()
                 Text(String(format: "$%.2f of $%.0f", value, budget)).monospacedDigit().foregroundStyle(f >= 1 ? Color.red : .secondary) }
-            PixelMeter(value: min(f, 1), tint: f >= 1 ? .red : f >= 0.8 ? .orange : Brand.accent)
+            PixelMeter(value: min(f, 1), tint: f >= 1 ? .red : f >= 0.8 ? Brand.reclaim : Brand.accent)
         }
     }
 
@@ -491,7 +491,7 @@ struct UsageView: View {
     private func limit(_ title: String, _ pct: Double, _ resets: Date) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             HStack { Text(title).fontWeight(.medium); Spacer(); Text("\(Int(pct))% used").monospacedDigit().foregroundStyle(.secondary) }
-            PixelMeter(value: min(pct / 100, 1), tint: pct >= 90 ? .red : pct >= 70 ? .orange : Brand.accent)
+            PixelMeter(value: min(pct / 100, 1), tint: pct >= 90 ? .red : pct >= 70 ? Brand.reclaim : Brand.accent)
             Text(resets > .now ? "Resets \(resets.formatted(.relative(presentation: .named)))" : "Window has reset").font(.bCaption).foregroundStyle(.tertiary)
         }.frame(maxWidth: .infinity)
     }

@@ -225,10 +225,10 @@ struct AIKeeperApp: App {
             }
         }
 
-        Settings { SettingsView().environmentObject(store) }
+        Settings { SettingsView().environmentObject(store).tint(Brand.accent).font(.bBody) }
 
         MenuBarExtra {
-            MenuContent().environmentObject(store)
+            MenuContent().environmentObject(store).tint(Brand.accent).font(.bBody)
         } label: {
             Image(systemName: store.agents.contains { $0.state == .needsInput } ? "exclamationmark.bubble.fill"
                   : store.agents.contains { $0.kind != .mcp } ? "bolt.horizontal.circle.fill" : "externaldrive.badge.checkmark")
@@ -351,7 +351,7 @@ struct ScanFooter: View {
                     Text("Measuring \(d) of \(t)").monospacedDigit()
                 case .done, .idle:
                     Text(store.lastScan.map { "Scanned \($0.formatted(.relative(presentation: .named)))" } ?? "Not scanned yet")
-                        .foregroundStyle(store.lastScan.map { Date().timeIntervalSince($0) > 3600 } ?? true ? Color.orange : .secondary)
+                        .foregroundStyle(store.lastScan.map { Date().timeIntervalSince($0) > 3600 } ?? true ? Brand.reclaim : .secondary)
                 }
             }.font(.bCaption).foregroundStyle(.secondary)
             Spacer()
@@ -490,7 +490,7 @@ struct SettingsView: View {
                 if let e = loginError { Text(e).font(.bCaption).foregroundStyle(.red) }
             }
             SwiftUI.Section("Tools") {
-                Text("\(store.enabledTools.count) tools tracked. Change them on the Tools page in the sidebar.").font(.bCaption).foregroundStyle(.secondary)
+                Text("\(store.enabledTools.count) tools tracked. Change them under Agents, Tools.").font(.bCaption).foregroundStyle(.secondary)
                 Button("Run setup again") { store.needsOnboarding = true }
             }
             SwiftUI.Section("Disk guard") {

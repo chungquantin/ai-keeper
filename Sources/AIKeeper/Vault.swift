@@ -241,8 +241,8 @@ struct VaultView: View {
                 Text(i.name).fontWeight(.medium)
                 Text(i.path.replacingOccurrences(of: home, with: "~")).font(.bCaption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
                 HStack(spacing: 10) {
-                    if i.hasBundle { Pill(text: "Unpushed commits", color: .blue) }
-                    if i.hasPatch { Pill(text: "Uncommitted changes", color: .orange) }
+                    if i.hasBundle { Pill(text: "Unpushed commits", color: Brand.accent) }
+                    if i.hasPatch { Pill(text: "Uncommitted changes", color: Brand.reclaim) }
                     if i.hasUntracked { Pill(text: "Untracked files", color: .teal) }
                 }.padding(.top, 2)
                 ForEach(i.notes, id: \.self) { Text($0).font(.bCaption).foregroundStyle(Brand.reclaimText) }

@@ -88,6 +88,38 @@ enum Screenshots {
             nav.showPalette = true
             await pause(1.2)
             if let sheet = window.attachedSheet { await settle(sheet); captureWindow(sheet, to: url("palette")) }
+            nav.showPalette = false
+            await pause(0.8)
+            // Dialogs: the confirm sheet and onboarding are attached sheets.
+            nav.open(.cleanup, .workspaces)
+            await pause(1.5)
+            let safe = store.entries.filter { ["feat-search-index", "experiment-graphql", "chore-deps-update"].contains($0.name) }
+            store.plan = CleanupPlan(mode: .removeWorkspaces, entries: safe)
+            await pause(1.8)
+            if let sheet = window.attachedSheet { await settle(sheet); captureWindow(sheet, to: url("dialog-confirm")) }
+            store.plan = nil
+            await pause(1.0)
+            store.needsOnboarding = true
+            await pause(1.8)
+            if let sheet = window.attachedSheet { await settle(sheet); captureWindow(sheet, to: url("dialog-onboarding")) }
+            store.needsOnboarding = false
+            await pause(1.0)
+            // Windows of their own: Settings, the menu-bar popover and the progress panel.
+            func shoot<V: View>(_ v: V, _ name: String, width: CGFloat) async {
+                let host = NSHostingView(rootView: v.environmentObject(store).frame(width: width).background(Color(nsColor: .windowBackgroundColor)))
+                let size = host.fittingSize
+                let w = NSWindow(contentRect: NSRect(origin: .zero, size: size), styleMask: [.titled, .fullSizeContentView], backing: .buffered, defer: false)
+                w.titlebarAppearsTransparent = true; w.titleVisibility = .hidden
+                [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton].forEach { w.standardWindowButton($0)?.isHidden = true }
+                w.contentView = host; w.setContentSize(size); w.center()
+                await settle(w)
+                captureWindow(w, to: url(name))
+                w.orderOut(nil)
+            }
+            await shoot(SettingsView(), "dialog-settings", width: 520)
+            await shoot(MenuContent(), "dialog-menubar", width: 260)
+            let job = store.addDemoJob()
+            await shoot(JobPanel(job: job, onClose: {}).padding(EdgeInsets(top: 0, leading: 28, bottom: 28, trailing: 28)), "dialog-progress", width: 560)
             exit(0)
         }
 

@@ -214,7 +214,7 @@ struct JobPanel: View {
     private func finished(_ o: CleanupOutcome) -> some View {
         let ok = o.failures.isEmpty && !o.cancelled
         return VStack(spacing: 14) {
-            Image(systemName: ok ? "checkmark.seal.fill" : "exclamationmark.triangle.fill").font(.system(size: 54)).foregroundStyle(ok ? Brand.accent : .orange)
+            Image(systemName: ok ? "checkmark.seal.fill" : "exclamationmark.triangle.fill").font(.system(size: 54)).foregroundStyle(ok ? Brand.accent : Brand.reclaim)
             Text("\(o.freed.bytesString) freed").font(.figure(40))
             if o.cancelled { Text("Stopped early. Whatever was left is still on disk.").foregroundStyle(.secondary) }
             if !job.options.permanent { Text("Moved to Trash. Empty it to get the space back.").foregroundStyle(.secondary) }
@@ -333,7 +333,7 @@ private struct JobRow: View {
                 let o = job.outcome ?? CleanupOutcome()
                 HStack {
                     Image(systemName: o.failures.isEmpty && !o.cancelled ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                        .foregroundStyle(o.failures.isEmpty && !o.cancelled ? Brand.accent : .orange)
+                        .foregroundStyle(o.failures.isEmpty && !o.cancelled ? Brand.accent : Brand.reclaim)
                     Text("\(o.freed.bytesString) freed" + (o.cancelled ? " · stopped" : o.failures.isEmpty ? "" : " · \(o.failures.count) failed")).font(.bCallout)
                     Spacer()
                     Button("Dismiss") { store.dismissJob(job) }.controlSize(.small)

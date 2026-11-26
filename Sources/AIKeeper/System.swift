@@ -237,7 +237,7 @@ struct Health {
     var reason = "Healthy"
     var tips: [Tip] = []
     struct Tip: Identifiable { let id = UUID(); let text: String; var action: String?; var target: Section? }
-    var color: Color { score >= 80 ? Brand.accent : score >= 60 ? .orange : .red }
+    var color: Color { score >= 80 ? Brand.accent : score >= 60 ? Brand.reclaim : .red }
 
     static func evaluate(_ s: SystemSnapshot, topCPU: String?, topMemory: String?) -> Health {
         var penalties: [(Int, String)] = []
@@ -384,7 +384,7 @@ struct Meter: View {
 private func mem(_ b: Int64) -> String { ByteCountFormatter.string(fromByteCount: b, countStyle: .memory) }
 
 private func rate(_ bps: Double) -> String { ByteCountFormatter.string(fromByteCount: Int64(bps), countStyle: .decimal) + "/s" }
-private func load(_ v: Double, warn: Double = 0.7, bad: Double = 0.9) -> Color { v >= bad ? .red : v >= warn ? .orange : Brand.accent }
+private func load(_ v: Double, warn: Double = 0.7, bad: Double = 0.9) -> Color { v >= bad ? .red : v >= warn ? Brand.reclaim : Brand.accent }
 
 struct SystemCard<Content: View>: View {
     let title: String, symbol: String
@@ -491,13 +491,13 @@ struct SystemView: View {
                 Text(mem(s.memUsed)).font(.figure(30)).monospacedDigit()
                 Text("of \(mem(s.memTotal))").foregroundStyle(.secondary)
                 Spacer()
-                Pill(text: s.pressure >= 4 ? "Critical" : s.pressure >= 2 ? "Under pressure" : "Healthy", color: s.pressure >= 4 ? .red : s.pressure >= 2 ? .orange : Brand.accent)
+                Pill(text: s.pressure >= 4 ? "Critical" : s.pressure >= 2 ? "Under pressure" : "Healthy", color: s.pressure >= 4 ? .red : s.pressure >= 2 ? Brand.reclaim : Brand.accent)
             }
             Meter(value: s.memFraction, color: load(s.memFraction, warn: 0.8, bad: 0.92))
             fact("Available", mem(s.memAvailable))
             VStack(alignment: .leading, spacing: 5) {
                 HStack { Text("Swap").foregroundStyle(.secondary); Spacer(); Text("\(mem(s.swapUsed)) of \(mem(s.swapTotal))").monospacedDigit() }.font(.bCallout)
-                Meter(value: s.swapFraction, color: s.swapUsed > 8_000_000_000 ? .red : s.swapUsed > 4_000_000_000 ? .orange : Brand.accent)
+                Meter(value: s.swapFraction, color: s.swapUsed > 8_000_000_000 ? .red : s.swapUsed > 4_000_000_000 ? Brand.reclaim : Brand.accent)
             }
         }
     }
@@ -511,8 +511,8 @@ struct SystemView: View {
             }
             Meter(value: s.diskTotal > 0 ? Double(s.diskUsed) / Double(s.diskTotal) : 0,
                   color: load(s.diskTotal > 0 ? Double(s.diskUsed) / Double(s.diskTotal) : 0, warn: 0.85, bad: 0.92))
-            ioRow("Read", s.readBps, m.readHistory, .blue)
-            ioRow("Write", s.writeBps, m.writeHistory, .orange)
+            ioRow("Read", s.readBps, m.readHistory, Brand.accent)
+            ioRow("Write", s.writeBps, m.writeHistory, Brand.reclaim)
         }
     }
 
@@ -524,7 +524,7 @@ struct SystemView: View {
                 Spacer()
                 if let mins = b.minutesRemaining { Text("\(mins / 60)h \(mins % 60)m \(b.charging ? "to full" : "left")").foregroundStyle(.secondary).monospacedDigit() }
             }
-            Meter(value: b.level, color: b.level < 0.15 && !b.onAC ? .red : b.level < 0.3 && !b.onAC ? .orange : Brand.accent)
+            Meter(value: b.level, color: b.level < 0.15 && !b.onAC ? .red : b.level < 0.3 && !b.onAC ? Brand.reclaim : Brand.accent)
             if let h = b.healthPercent { fact("Battery health", "\(h)%") }
             if let c = b.cycles { fact("Charge cycles", "\(c)") }
             if let t = b.temperatureC { fact("Temperature", String(format: "%.1f °C", t)) }
@@ -533,8 +533,8 @@ struct SystemView: View {
 
     private func network(_ s: SystemSnapshot) -> some View {
         SystemCard(title: "Network", symbol: "arrow.up.arrow.down") {
-            ioRow("Down", s.netDown, m.downHistory, .blue)
-            ioRow("Up", s.netUp, m.upHistory, .orange)
+            ioRow("Down", s.netDown, m.downHistory, Brand.accent)
+            ioRow("Up", s.netUp, m.upHistory, Brand.reclaim)
             if let n = s.netInterface { fact("Interface", n + (s.netIP.map { " · \($0)" } ?? "")) }
         }
     }
@@ -565,7 +565,7 @@ struct SystemView: View {
             VStack(spacing: 0) {
                 ForEach(Array(list)) { g in
                     HStack(spacing: 14) {
-                        HStack(spacing: 6) { Text(g.name).fontWeight(.medium).lineLimit(1); if g.dev { Pill(text: "Dev tool", color: .blue) } }
+                        HStack(spacing: 6) { Text(g.name).fontWeight(.medium).lineLimit(1); if g.dev { Pill(text: "Dev tool", color: Brand.accent) } }
                             .frame(width: 210, alignment: .leading)
                         Rectangle().fill(.secondary.opacity(0.55)).frame(height: 5).frame(maxWidth: .infinity, alignment: .leading)
                             .scaleEffect(x: max(0.01, (sortByMemory ? Double(g.rss) : g.cpu) / max(maxV, 1)), anchor: .leading)

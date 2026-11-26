@@ -74,7 +74,7 @@ struct DockerView: View {
                             HStack(alignment: .top) {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(a.title).fontWeight(.medium)
-                                    Text(a.detail).font(.bCallout).foregroundStyle(a.dangerous ? Color.orange : .secondary)
+                                    Text(a.detail).font(.bCallout).foregroundStyle(a.dangerous ? Brand.reclaim : .secondary)
                                 }
                                 Spacer()
                                 if running == a.id { ProgressView().controlSize(.small) }

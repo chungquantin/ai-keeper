@@ -10,7 +10,7 @@ struct Neededness {
     var color: Color {
         switch level {
         case .needed: .gray
-        case .attention: .orange
+        case .attention: Brand.reclaim
         case .done: Brand.accent
         case .idle: .gray
         }
@@ -99,12 +99,12 @@ extension Entry {
             case "OPEN":
                 let c = pr.checks.map { $0 == "pass" ? " · passing" : $0 == "fail" ? " · failing" : " · running" } ?? ""
                 return ("PR #\(pr.number) open\(c)", pr.checks == "fail" ? .red : .gray)
-            case "MERGED": return ("PR #\(pr.number) merged" + (g.unpushedAfterMerge > 0 ? " + newer work" : ""), g.unpushedAfterMerge > 0 ? .orange : Brand.merged)
+            case "MERGED": return ("PR #\(pr.number) merged" + (g.unpushedAfterMerge > 0 ? " + newer work" : ""), g.unpushedAfterMerge > 0 ? Brand.reclaim : Brand.merged)
             default: return ("PR #\(pr.number) closed", .gray)
             }
         }
-        if g.dirtyCount > 0 { return ("\(g.dirtyCount) uncommitted", .orange) }
-        if g.unpushed > 0 { return ("\(g.unpushed) unpushed", .orange) }
+        if g.dirtyCount > 0 { return ("\(g.dirtyCount) uncommitted", Brand.reclaim) }
+        if g.unpushed > 0 { return ("\(g.unpushed) unpushed", Brand.reclaim) }
         if g.merged { return ("Merged", Brand.merged) }
         if g.aheadOfBase == 0 { return ("No changes", .gray) }
         return ("Pushed, no PR", .gray)
