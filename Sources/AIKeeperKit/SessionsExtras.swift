@@ -42,8 +42,7 @@ struct LogsView: View {
                     .padding(.horizontal, 10).frame(height: 30).frame(width: 340)
                     .background(Brand.card, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Brand.border))
-                Picker("Level", selection: $level) { ForEach(Level.allCases, id: \.self) { Text($0.rawValue).tag($0) } }
-                    .pickerStyle(.segmented).labelsHidden().frame(width: 240)
+                Seg(Level.allCases.map { ($0.rawValue, $0) }, selection: $level)
                 Spacer()
                 HStack(spacing: 6) { Circle().fill(paused ? Brand.mutedForeground : AgentColor.good).frame(width: 7, height: 7); Text(paused ? "Paused" : "Live").font(.bCaption) }
                 Button(paused ? "Resume" : "Pause") { paused.toggle() }.controlSize(.small)
@@ -70,7 +69,7 @@ struct LogsView: View {
                     ForEach(shown) { l in
                         HStack(alignment: .firstTextBaseline, spacing: 14) {
                             Text(l.time).font(.code(12)).foregroundStyle(.secondary).frame(width: 72, alignment: .leading)
-                            Text(l.level).font(.code(11).weight(.medium)).foregroundStyle(l.tone.fg).frame(width: 44, alignment: .leading)
+                            Text(l.level.uppercased()).font(.code(10).weight(.semibold)).foregroundStyle(l.tone.fg).frame(width: 44, alignment: .leading)
                             HStack(spacing: 6) { Circle().fill(AgentColor.of(l.source)).frame(width: 7, height: 7); Text(l.source).font(.bCaption) }.frame(width: 110, alignment: .leading)
                             Text(l.workspace).font(.code(12)).foregroundStyle(.secondary).frame(width: 120, alignment: .leading)
                             Text(l.message).font(.code(12)).lineLimit(1)
@@ -132,23 +131,30 @@ struct PromptsView: View {
                     .background(Brand.card, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Brand.border))
                 Spacer()
-                Picker("Sort", selection: $sort) { Text("Newest").tag(0); Text("Best result").tag(1); Text("Costliest").tag(2) }.pickerStyle(.segmented).labelsHidden().frame(width: 260)
+                Seg([("Newest", 0), ("Best result", 1), ("Costliest", 2)], selection: $sort)
             }
             Card(padding: 0) {
                 VStack(spacing: 0) {
+                    HStack(spacing: 14) {
+                        Text("Prompt"); Spacer()
+                        Text("Words").frame(width: 60, alignment: .trailing); Text("Turns").frame(width: 56, alignment: .trailing)
+                        Text("Cost").frame(width: 64, alignment: .trailing); Text("Outcome").frame(width: 96, alignment: .leading)
+                    }.font(.brand(11, .medium)).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.vertical, 8)
                     ForEach(shown) { p in
+                        Divider()
                         HStack(spacing: 14) {
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(p.text).font(.bBody.weight(.medium)).lineLimit(1)
                                 Text(p.meta).font(.bCaption).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Text("\(p.words) words").font(.bCaption).foregroundStyle(.secondary).frame(width: 70, alignment: .trailing)
-                            Text("\(p.turns) turns").font(.bCaption).foregroundStyle(.secondary).frame(width: 64, alignment: .trailing)
-                            Text(p.cost).font(.bBody).monospacedDigit().frame(width: 60, alignment: .trailing)
-                            Tag(text: p.outcome, tone: p.tone).frame(width: 90, alignment: .leading)
-                        }.padding(.horizontal, 16).padding(.vertical, 10)
-                        if p.id != shown.last?.id { Divider().padding(.leading, 16) }
+                            Text("\(p.words)").foregroundStyle(.secondary).monospacedDigit().frame(width: 60, alignment: .trailing)
+                            Text("\(p.turns)").foregroundStyle(.secondary).monospacedDigit().frame(width: 56, alignment: .trailing)
+                            Text(p.cost).font(.bBody.weight(.medium)).monospacedDigit().frame(width: 64, alignment: .trailing)
+                            Tag(text: p.outcome, tone: p.tone).frame(width: 96, alignment: .leading)
+                        }
+                        .padding(.horizontal, 16).padding(.vertical, 9)
+                        .background(p.id == shown.first?.id ? Brand.primaryTint : .clear)
                     }
                 }
             }

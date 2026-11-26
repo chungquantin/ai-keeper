@@ -82,7 +82,7 @@ struct Card<Content: View>: View {
     var padding: CGFloat = 18
     @ViewBuilder var content: Content
     var body: some View {
-        content.padding(padding).frame(maxWidth: .infinity, alignment: .leading).panel()
+        content.padding(padding).frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading).panel()
     }
 }
 
@@ -110,20 +110,11 @@ struct Page<Content: View>: View {
         GeometryReader { geo in
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    if title != nil || sample {
-                        HStack(alignment: .firstTextBaseline, spacing: 10) {
-                            if let title { Text(title).font(.brand(15, .semibold)) }
-                            if let subtitle { Text(subtitle).font(.bCaption).foregroundStyle(.secondary).lineLimit(1) }
-                            Spacer(minLength: 8)
-                            if sample { SampleChip().fixedSize() }
-                            if let action { Button(action) {}.controlSize(.small) }
-                        }
-                    }
                     content
                 }
                 .padding(.horizontal, geo.size.width < 760 ? 16 : 28).padding(.vertical, 16)
                 .frame(maxWidth: 1240, alignment: .leading)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .environment(\.pageWidth, geo.size.width)
         }
@@ -135,7 +126,7 @@ struct FilterPills: View {
     var body: some View {
         HStack(spacing: 8) {
             ForEach(items, id: \.self) { t in
-                HStack(spacing: 6) { Text(t); Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold)) }
+                HStack(spacing: 6) { Text(t) }
                     .font(.brand(12, .medium)).padding(.horizontal, 10).frame(height: 28)
                     .background(Brand.card, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Brand.border))
@@ -167,16 +158,16 @@ struct KPI: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .top, spacing: 4) {
-                Text(title).font(.bCaption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                Text(title).font(.bCaption).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.85)
                 Spacer(minLength: 2)
                 if let delta { Delta(text: delta, good: good).fixedSize() }
             }
-            Text(value).font(.brand(24, .semibold)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+            Text(value).font(.brand(26, .semibold)).kerning(-0.6).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
             Text(prior ?? " ").font(.bCaption).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
             if let spark { Spark(values: spark, color: good == false ? Brand.destructive : (good == true ? AgentColor.good : Brand.accent)).frame(height: 30).padding(.top, 6) }
         }
         .padding(.horizontal, 16).padding(.top, 14).padding(.bottom, spark == nil ? 14 : 0)
-        .frame(maxWidth: .infinity, alignment: .leading).clipped()
+        .frame(maxWidth: .infinity, minHeight: spark == nil ? 92 : 124, maxHeight: .infinity, alignment: .topLeading).clipped()
         .panel()
         .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.accent, lineWidth: selected ? 2 : 0))
     }
@@ -362,5 +353,47 @@ extension Sequence where Element == SessionInfo {
             if top.count > k { top.removeLast() }
         }
         return top
+    }
+}
+
+/// The segmented control from the design: a muted track, and the chosen segment raised in white. Never cobalt, so it does not compete with data.
+struct Seg<T: Hashable>: View {
+    let options: [(String, T)]
+    @Binding var selection: T
+    init(_ options: [(String, T)], selection: Binding<T>) { self.options = options; _selection = selection }
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(options.indices, id: \.self) { i in
+                let on = options[i].1 == selection
+                Button { selection = options[i].1 } label: {
+                    Text(options[i].0).font(.brand(12, .medium)).foregroundStyle(on ? Color.primary : Brand.mutedForeground)
+                        .padding(.horizontal, 12).frame(height: 26)
+                        .background {
+                            if on { RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Brand.card)
+                                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Brand.edge))
+                                .shadow(color: Brand.liftNear, radius: 1, y: 1) }
+                        }
+                        .contentShape(Rectangle())
+                }.buttonStyle(.plain).accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .padding(2).background(Brand.muted, in: RoundedRectangle(cornerRadius: 10, style: .continuous)).fixedSize()
+    }
+}
+
+/// A filter pill that opens a menu: "Last 30 days", "All agents".
+struct PillMenu<T: Hashable>: View {
+    let options: [(String, T)]
+    @Binding var selection: T
+    init(_ options: [(String, T)], selection: Binding<T>) { self.options = options; _selection = selection }
+    var body: some View {
+        Menu {
+            ForEach(options.indices, id: \.self) { i in Button(options[i].0) { selection = options[i].1 } }
+        } label: {
+            Text(options.first { $0.1 == selection }?.0 ?? "").font(.brand(12, .medium)).foregroundStyle(Color.primary)
+                .padding(.horizontal, 10).frame(height: 28)
+                .background(Brand.card, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Brand.border))
+        }.menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
     }
 }

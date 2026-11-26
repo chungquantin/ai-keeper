@@ -418,10 +418,9 @@ struct SystemView: View {
                     network(s)
                 }
                 processes
-            }.padding(24).frame(maxWidth: 1000, alignment: .leading).frame(maxWidth: .infinity)
+            }.padding(24).frame(maxWidth: 1240, alignment: .leading).frame(maxWidth: .infinity, alignment: .leading)
         }
         .toolbarClearance()
-        .navigationSubtitle("Live · updates every 2 seconds")
         .task { await m.run() }
         .confirmationDialog("Quit \(pending?.name ?? "")?", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
             Button("Quit \(pending?.pids.count ?? 0) processes", role: .destructive) {

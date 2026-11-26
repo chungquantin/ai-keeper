@@ -152,7 +152,6 @@ struct AgentsView: View {
             }.padding(24)
         }
         .toolbarClearance()
-        .navigationSubtitle("Live · refreshes every 4s")
         .confirmationDialog(
             "\(force ? "Force quit" : "Stop") \(pendingKill.count) process\(pendingKill.count == 1 ? "" : "es")?",
             isPresented: Binding(get: { !pendingKill.isEmpty }, set: { if !$0 { pendingKill = [] } }),
@@ -190,9 +189,9 @@ struct AgentsView: View {
     private func row(_ a: AgentProc) -> some View {
         let ws = store.workspace(for: a)
         return HStack(spacing: 12) {
-            Image(systemName: a.kind.symbol).foregroundStyle(.white)
+            ToolIcon(id: a.kind.toolID, fallback: a.kind.symbol, size: 18).foregroundStyle(Brand.mutedForeground)
                 .frame(width: 30, height: 30)
-                .background(a.kind.color.gradient, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .background(Brand.muted, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(a.kind.rawValue).fontWeight(.medium)

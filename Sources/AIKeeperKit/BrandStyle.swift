@@ -78,9 +78,10 @@ extension Brand {
     static let destructiveTint = Color.dynamic(light: 0xD70015, lightAlpha: 0.08, dark: 0xFF6961, darkAlpha: 0.18)
     static let surface = background
     /// The 1pt ring of `shadow-card`: lighter than a divider, so a card reads as lifted rather than outlined.
-    static let edge = Color.dynamic(light: 0x000000, lightAlpha: 0.05, dark: 0xFFFFFF, darkAlpha: 0.08)
-    static let liftNear = Color.dynamic(light: 0x000000, lightAlpha: 0.04, dark: 0x000000, darkAlpha: 0.40)
-    static let liftFar = Color.dynamic(light: 0x000000, lightAlpha: 0.07, dark: 0x000000, darkAlpha: 0.45)
+    static let edge = Color.dynamic(light: 0x191C21, lightAlpha: 0.10, dark: 0xFFFFFF, darkAlpha: 0.10)
+    static let liftNear = Color.dynamic(light: 0x000000, lightAlpha: 0.07, dark: 0x000000, darkAlpha: 0.45)
+    static let liftFar = Color.dynamic(light: 0x191C21, lightAlpha: 0.02, dark: 0x000000, darkAlpha: 0.20)
+    static let sidebar = Color.dynamic(light: 0xEDEDF0, dark: 0x18181A)
 }
 
 /// The primary button: `primary` (cobalt unless a tint is set), continuous corners, scales to 97% when pressed.
@@ -108,11 +109,13 @@ extension ButtonStyle where Self == BrandProminentStyle { static var brandPromin
 /// The outline button (`btn-outline`): card surface, a faint ring, 8pt continuous corners. For the secondary action on a row.
 struct BrandOutlineStyle: ButtonStyle {
     @Environment(\.isEnabled) private var enabled
+    @Environment(\.controlSize) private var size
     func makeBody(configuration: Configuration) -> some View {
-        let shape = RoundedRectangle(cornerRadius: 9, style: .continuous)
+        let small = size == .small || size == .mini, large = size == .large
+        let shape = RoundedRectangle(cornerRadius: large ? 12 : small ? 8 : 9, style: .continuous)
         configuration.label
-            .font(.brand(13, .medium)).foregroundStyle(Color.primary)
-            .padding(.horizontal, 12).frame(height: 28)
+            .font(.brand(large ? 14 : small ? 12 : 13, .medium)).foregroundStyle(Color.primary)
+            .padding(.horizontal, large ? 18 : small ? 10 : 12).frame(height: large ? 40 : small ? 26 : 28)
             .background(Brand.card, in: shape)
             .overlay(shape.strokeBorder(Brand.border, lineWidth: 1))
             .overlay(shape.fill(Color.primary.opacity(configuration.isPressed ? 0.08 : 0)))
@@ -128,13 +131,19 @@ struct PixelMeter: View {
     var value: Double
     var tint: Color = Brand.accent
     var height: CGFloat = 8
+    /// Paint the last filled square amber: the budget meter's "nearly there" mark.
+    var warnTail = false
+    /// A fixed count of wide segments that share the width (the budget meter). Nil keeps small squares.
+    var segments: Int? = nil
     var body: some View {
         Canvas { ctx, size in
-            let cell = height * 0.9, gap: CGFloat = 2, n = max(1, Int((size.width + gap) / (cell + gap)))
+            let gap: CGFloat = segments == nil ? 2 : 3
+            let n = segments ?? max(1, Int((size.width + gap) / (height * 0.9 + gap)))
+            let cell = segments == nil ? height * 0.9 : (size.width - gap * CGFloat(n - 1)) / CGFloat(n)
             let filled = Int((min(max(value, 0), 1) * Double(n)).rounded(value > 0 ? .up : .down))
             for i in 0..<n {
-                ctx.fill(Path(CGRect(x: CGFloat(i) * (cell + gap), y: (size.height - height) / 2, width: cell, height: height)),
-                         with: .color(i < filled ? tint : Color.primary.opacity(0.12)))
+                ctx.fill(Path(roundedRect: CGRect(x: CGFloat(i) * (cell + gap), y: (size.height - height) / 2, width: cell, height: height), cornerRadius: segments == nil ? 2 : 3),
+                         with: .color(i < filled ? (warnTail && i == filled - 1 ? Brand.reclaim : tint) : Color.primary.opacity(0.12)))
             }
         }
         .frame(height: height)

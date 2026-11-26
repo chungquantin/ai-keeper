@@ -89,10 +89,9 @@ struct DockerView: View {
                     }
                     Text("OrbStack returns freed space to macOS automatically. Docker Desktop may keep it until you restart it.").font(.bCaption).foregroundStyle(.tertiary)
                 }
-            }.padding(28).frame(maxWidth: 860, alignment: .leading).frame(maxWidth: .infinity)
+            }.padding(28).frame(maxWidth: 1240, alignment: .leading).frame(maxWidth: .infinity, alignment: .leading)
         }
         .toolbarClearance()
-        .toolbar { ToolbarItem { Button { Task { await refresh() } } label: { Label("Refresh", systemImage: "arrow.clockwise") }.disabled(loading) } }
         .task { await refresh() }
         .confirmationDialog(pending.map { "Prune \($0.title.lowercased())?" } ?? "", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {
             if let a = pending {

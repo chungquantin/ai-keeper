@@ -225,7 +225,7 @@ struct VaultView: View {
                         }
                     }.panel()
                 }
-            }.padding(28).frame(maxWidth: 860, alignment: .leading).frame(maxWidth: .infinity)
+            }.padding(28).frame(maxWidth: 1240, alignment: .leading).frame(maxWidth: .infinity, alignment: .leading)
         }
         .toolbarClearance()
         .alert("Restore", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {

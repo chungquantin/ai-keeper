@@ -38,6 +38,40 @@ enum Tab: String, Hashable, Identifiable {
     case tools = "Tools", skills = "Skills", mcp = "MCP servers", hooks = "Hooks", budgets = "Budgets"
     var id: String { rawValue }
 
+    /// One line under the title saying what the page is for.
+    var subtitle: String {
+        switch self {
+        case .briefing: "What needs you, and what you can get back or save"
+        case .reclaim: "Space you can safely get back"
+        case .optimize: "Changes that would save money"
+        case .activity: "What is running, and what ran recently"
+        case .history: "Every agent session on this Mac, searchable"
+        case .live: "Agents running right now"
+        case .logs: "Agent output, hooks and AI Keeper's own jobs"
+        case .prompts: "Every instruction you gave an agent, and how it turned out"
+        case .cost: "Estimated at public API list prices, from your local session logs"
+        case .speed: "How long agents take, and where the time goes"
+        case .reliability: "What fails, what loops, and what costs you retries"
+        case .context: "How full the window gets, and what the cache saves"
+        case .advisor: "What your own history says about which agent and tools to use"
+        case .machine: "What agents cost this Mac"
+        case .workspaces: "Worktrees and checkouts, with what is safe to remove"
+        case .leftovers: "Chat history of deleted projects, caches and logs"
+        case .disk: "Where the space goes, and files that can share one copy"
+        case .containers: "What Docker and OrbStack are holding"
+        case .removed: "Unsaved work kept from workspaces you removed"
+        case .tools: "Every agent on this Mac"
+        case .skills: "What your agents can load, checked for risky scripts"
+        case .mcp: "What each server adds to every session, and whether it is used"
+        case .hooks: "Commands that run around an agent's tool use"
+        case .budgets: "Spend limits for you, then for each agent"
+        }
+    }
+    var isSample: Bool { [.optimize, .logs, .prompts, .speed, .reliability, .context, .advisor, .mcp, .hooks].contains(self) }
+    var action: String? {
+        switch self { case .cost: "Export CSV"; case .speed: "Export"; case .reliability: "Set an alert"; case .advisor: "How this is worked out"; default: nil }
+    }
+
     var symbol: String {
         switch self {
         case .briefing: "sun.max"
@@ -147,7 +181,7 @@ struct TabStrip: View {
         .background {
             if on { RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.card)
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.edge))
-                .shadow(color: Brand.liftNear, radius: 1, y: 1).shadow(color: Brand.liftFar, radius: 8, y: 5) }
+                .shadow(color: Brand.liftNear, radius: 1.5, y: 1.5) }
         }
         .contentShape(Rectangle())
     }
@@ -170,7 +204,16 @@ struct AreaView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Color.clear.frame(height: 8)
+            // One bar: where you are, what it is for, and its one action. The window has no separate title.
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text(area.rawValue).font(.brand(15, .semibold))
+                Text(nav.currentTab.subtitle).font(.bCaption).foregroundStyle(.secondary).lineLimit(1)
+                Spacer(minLength: 8)
+                if nav.currentTab.isSample { SampleChip().fixedSize() }
+                if area == .today { Text(Date().formatted(.dateTime.weekday(.wide).month().day())).font(.bCaption).foregroundStyle(.secondary) }
+                if let a = nav.currentTab.action { Button(a) {}.buttonStyle(.brandOutline).controlSize(.small) }
+            }
+            .padding(.horizontal, 28).frame(height: 52)
             TabStrip(tabs: area.tabs,
                      selection: Binding(get: { nav.currentTab }, set: { nav.tab[area] = $0 }),
                      pills: area == .today, badge: badge, hot: { area == .today && $0 == .briefing })
@@ -178,6 +221,7 @@ struct AreaView: View {
                 HStack(spacing: 0) {
                     page(nav.currentTab)
                         .environment(\.embeddedInArea, true)
+                        .buttonStyle(.brandOutline)   // the quiet secondary button, unless a view asks for another
                         .id(nav.currentTab)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     if area == .insights, nav.currentTab == .speed, g.size.width >= 1120 {
@@ -185,12 +229,6 @@ struct AreaView: View {
                         WorthChanging().frame(width: 300)
                     }
                 }
-            }
-        }
-        .navigationTitle(area.rawValue)
-        .toolbar {
-            if area == .today {
-                ToolbarItem(placement: .automatic) { Text(Date().formatted(.dateTime.weekday(.wide).month().day())).font(.bCaption).foregroundStyle(.secondary) }
             }
         }
         .background(Brand.background)
@@ -219,7 +257,7 @@ struct AreaView: View {
         case .live: AgentsView()
         case .logs: LogsView()
         case .prompts: PromptsView()
-        case .cost: UsageView()
+        case .cost: CostView()
         case .speed: SpeedView()
         case .reliability: ReliabilityView()
         case .context: ContextView()
@@ -248,13 +286,11 @@ struct WorkspacesTab: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ReclaimStrip().padding(.horizontal, 28).padding(.top, 6)
+            ReclaimStrip().fixedSize(horizontal: false, vertical: true).padding(.horizontal, 28).padding(.top, 6)
             HStack(spacing: 10) {
-                Picker("Show", selection: Binding(
+                Seg([("All", 0), ("Safe to remove", 1), ("By tool", 2)], selection: Binding(
                     get: { nav.workspaceFilter == .deprecated ? 1 : (nav.workspaceFilter == .all ? 0 : 2) },
-                    set: { nav.workspaceFilter = $0 == 1 ? .deprecated : ($0 == 0 ? .all : (tools.first.map { Section.tool($0) } ?? Section.all)) })) {
-                    Text("All").tag(0); Text("Safe to remove").tag(1); Text("By tool").tag(2)
-                }.pickerStyle(.segmented).labelsHidden().frame(width: 270)
+                    set: { nav.workspaceFilter = $0 == 1 ? .deprecated : ($0 == 0 ? .all : (tools.first.map { Section.tool($0) } ?? Section.all)) }))
                 if case .tool(let cur) = nav.workspaceFilter {
                     Menu {
                         ForEach(tools, id: \.self) { s in Button(s.rawValue) { nav.workspaceFilter = .tool(s) } }
@@ -275,8 +311,7 @@ struct DiskTab: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Picker("View", selection: $nav.diskDuplicates) { Text("Analyzer").tag(false); Text("Duplicates").tag(true) }
-                    .pickerStyle(.segmented).labelsHidden().frame(width: 220)
+                Seg([("Analyzer", false), ("Duplicates", true)], selection: $nav.diskDuplicates)
                 Spacer()
             }.padding(.horizontal, 28).padding(.vertical, 10)
             if nav.diskDuplicates { DedupView(model: store.dedup) } else { DiskView(model: store.analyzer) }

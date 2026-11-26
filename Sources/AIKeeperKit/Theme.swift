@@ -18,10 +18,11 @@ extension View {
     /// `raised` adds more lift for the one card that matters.
     func panel(_ radius: CGFloat = 14, raised: Bool = false) -> some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        return background(Brand.card, in: shape)
+        // The shadow belongs to the surface only: 0 1px 0 (2%), then 0 2px 3px -1px (the tight one). The ring is drawn on top.
+        return background(shape.fill(Brand.card)
+                .shadow(color: Brand.liftFar, radius: 0, y: 1)
+                .shadow(color: Brand.liftNear.opacity(raised ? 1.6 : 1), radius: raised ? 4 : 1.5, y: raised ? 3 : 1.5))
             .overlay(shape.strokeBorder(Brand.edge, lineWidth: 1))
-            .shadow(color: Brand.liftNear, radius: 1, y: 1)
-            .shadow(color: Brand.liftFar.opacity(raised ? 1.6 : 1), radius: raised ? 12 : 8, y: raised ? 8 : 5)
     }
 }
 
@@ -49,7 +50,7 @@ struct Pill: View {
     var truncates = false
     var body: some View {
         HStack(spacing: 5) {
-            Rectangle().fill(color).frame(width: 6, height: 6)   // a pixel, not a dot
+            Circle().fill(color).frame(width: 7, height: 7)
             Text(text).font(.bCaption).lineLimit(1).truncationMode(.tail)
                 .foregroundStyle(color == .red ? Color.red : Color.secondary)
         }

@@ -24,7 +24,7 @@ struct FleetView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Picker("", selection: $showDetected) { Text("Fleet").tag(false); Text("Detect and choose tools").tag(true) }.pickerStyle(.segmented).labelsHidden().frame(width: 280)
+                Seg([("Fleet", false), ("Detect and choose tools", true)], selection: $showDetected)
                 Spacer()
                 Button("Pause all") {}.controlSize(.small)
             }.padding(.horizontal, 28).padding(.vertical, 10)

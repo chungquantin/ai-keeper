@@ -60,7 +60,6 @@ struct SkillsView: View {
             footnote
         }
         .navigationTitle("Skills")
-        .searchable(text: $query, prompt: "Search skills")
         .task { await store.loadSkills(); if let r = store.requestedSkill { selection = [r]; store.requestedSkill = nil } }
         .onChange(of: store.requestedSkill) { _, r in if let r { selection = [r]; store.requestedSkill = nil } }
         .confirmationDialog("Install NVIDIA SkillSpector?", isPresented: $confirmInstall, titleVisibility: .visible) {
@@ -83,6 +82,10 @@ struct SkillsView: View {
             Picker("", selection: $filter) { Text("All").tag(0); Text("Worth a look").tag(1); Text("Not scanned").tag(2) }
                 .pickerStyle(.segmented).frame(width: 290).labelsHidden()
             Picker("", selection: $tool) { ForEach(tools, id: \.self) { Text($0).tag($0) } }.frame(width: 140).labelsHidden()
+            HStack(spacing: 8) { Image(systemName: "magnifyingglass").foregroundStyle(.secondary); TextField("Search skills", text: $query).textFieldStyle(.plain) }
+                .padding(.horizontal, 10).frame(height: 28).frame(width: 200)
+                .background(Brand.card, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Brand.border))
             Button("Select high risk") { selection = Set(rows.filter { verdict($0) == .danger }.map(\.id)) }
                 .disabled(!rows.contains { verdict($0) == .danger }).help("Selects every skill rated Do not install, so you can read them and remove them together")
             Spacer()

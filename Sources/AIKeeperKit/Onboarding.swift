@@ -257,7 +257,7 @@ struct ToolsView: View {
                     Button("Run setup again") { store.needsOnboarding = true }
                     Button("Look for tools again") { Task { await store.detectTools() } }
                 }
-            }.padding(28).frame(maxWidth: 820, alignment: .leading).frame(maxWidth: .infinity)
+            }.padding(28).frame(maxWidth: 1240, alignment: .leading).frame(maxWidth: .infinity, alignment: .leading)
         }
         .task { if store.detections.isEmpty { await store.detectTools() } }
     }

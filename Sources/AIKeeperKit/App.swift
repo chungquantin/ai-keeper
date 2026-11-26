@@ -206,6 +206,7 @@ public struct AIKeeperApp: App {
                     await store.bootstrap()
                 }
         }
+        .windowStyle(.hiddenTitleBar)
         .windowToolbarStyle(.unified)
         .windowResizability(.contentMinSize)   // the window can never be narrower than its content needs
         .commands {
@@ -287,10 +288,12 @@ struct RootView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        NavigationSplitView {
+        HStack(spacing: 0) {
+            // A flat pane with a hairline, as designed: not the system's floating glass sidebar.
             SidebarView()
-                .navigationSplitViewColumnWidth(min: 210, ideal: 232, max: 280)
-        } detail: {
+                .frame(width: 232)
+                .background(Brand.sidebar)
+                .overlay(alignment: .trailing) { Rectangle().fill(Brand.border).frame(width: 1) }
             ZStack {
                 AreaView(area: nav.area)
             }
@@ -307,6 +310,7 @@ struct RootView: View {
             }
             .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: store.alert?.id)
         }
+        .ignoresSafeArea(.container, edges: .top)   // the header bar and the sidebar run to the top of the window
         .onChange(of: store.requestedSection) { _, s in if let s { nav.go(s); store.requestedSection = nil } }
         .overlay {
             if showSplash { SplashView(onSkip: { dismissSplash() }).environmentObject(store).transition(.opacity) }
@@ -368,6 +372,7 @@ struct SidebarView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            Color.clear.frame(height: 44)   // the traffic lights sit here
             scopePicker
             sidebarList
             ActivityBar()
@@ -411,7 +416,7 @@ struct SidebarView: View {
                         Spacer()
                         Text("⌘K").font(.bCaption)
                     }
-                    .foregroundStyle(Brand.mutedForeground).padding(.horizontal, 10).frame(height: 34).contentShape(Rectangle())
+                    .foregroundStyle(Brand.mutedForeground).padding(.horizontal, 10).frame(height: 30).contentShape(Rectangle())
                 }.buttonStyle(HoverRowStyle()).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
             }.padding(.horizontal, 10).padding(.top, 6)
         }
@@ -423,20 +428,19 @@ struct SidebarView: View {
         let on = nav.area == a
         return Button { nav.area = a } label: {
             HStack(spacing: 10) {
-                Image(systemName: a.symbol).font(.system(size: 14, weight: .medium)).frame(width: 18)
+                Image(systemName: a.symbol).font(.system(size: 13, weight: .regular)).frame(width: 18)
                     .foregroundStyle(on ? Brand.primaryText : Brand.mutedForeground)
-                Text(a.rawValue).font(.brand(13, on ? .semibold : .medium))
+                Text(a.rawValue).font(.brand(13, on ? .semibold : .regular))
                 Spacer(minLength: 4)
                 if let b = badge(a) {
-                    let hot = a == .cleanup || (a == .agents && b.contains("needs"))
+                    let hot = a == .agents && b.contains("needs")
                     Text(b).font(.brand(11, hot ? .semibold : .medium)).monospacedDigit()
-                        .padding(.horizontal, hot ? 7 : 0).padding(.vertical, hot ? 1 : 0)
-                        .background(hot ? Brand.reclaimTint : .clear, in: Capsule())
+                        
                         .foregroundStyle(hot ? Brand.reclaimText : Brand.mutedForeground)
                 }
             }
             .foregroundStyle(on ? Brand.primaryText : Color.primary)
-            .padding(.horizontal, 10).frame(height: 34)
+            .padding(.horizontal, 10).frame(height: 30)
             .background(on ? Brand.primaryTint : Color.clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
             .contentShape(Rectangle())
         }

@@ -201,7 +201,7 @@ struct DedupView: View {
                     .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 analyzer
                 tips
-            }.padding(28).frame(maxWidth: 860, alignment: .leading).frame(maxWidth: .infinity)
+            }.padding(28).frame(maxWidth: 1240, alignment: .leading).frame(maxWidth: .infinity, alignment: .leading)
         }
         .toolbarClearance()
         .confirmationDialog("Merge duplicate files?", isPresented: $confirm, titleVisibility: .visible) {

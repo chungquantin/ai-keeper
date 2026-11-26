@@ -135,7 +135,7 @@ struct SessionHistoryView: View {
         GeometryReader { geo in
             HStack(spacing: 0) {
                 VStack(spacing: 14) {
-                    activity
+                    activity.fixedSize(horizontal: false, vertical: true)
                     filters
                     table(pick: pick)
                 }.padding(.horizontal, 28).padding(.vertical, 14)
@@ -191,8 +191,7 @@ struct SessionHistoryView: View {
             .padding(.horizontal, 10).frame(height: 30).frame(minWidth: 160, maxWidth: 300)
             .background(Brand.card, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Brand.border))
-            Picker("", selection: $tool) { Text("All agents").tag(AgentTool?.none); ForEach(AgentTool.enabled, id: \.self) { Text($0.rawValue).tag(AgentTool?.some($0)) } }
-                .pickerStyle(.segmented).labelsHidden().frame(width: 230)
+            Seg([("All agents", AgentTool?.none)] + AgentTool.enabled.map { ($0.rawValue, AgentTool?.some($0)) }, selection: $tool)
             Toggle("Folder deleted", isOn: $orphansOnly).toggleStyle(.checkbox).fixedSize()
             Spacer(minLength: 0)
             Text("\(SessionFmt.count.string(from: NSNumber(value: model.shown)) ?? "") shown · \(model.bytes.bytesString)").font(.bCaption).foregroundStyle(.secondary).fixedSize()
@@ -254,7 +253,7 @@ struct SessionHistoryView: View {
                     Text(s.title.isEmpty ? s.project : s.title).font(.brand(16, .semibold)).fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: 6) { Tag(text: o.0, tone: o.1); Tag(text: s.agent.rawValue, tone: .gray) }
                 }
-                Picker("", selection: $detailTab) { Text("Highlights").tag(0); Text("Span tree").tag(1); Text("Messages").tag(2) }.pickerStyle(.segmented).labelsHidden()
+                Seg([("Highlights", 0), ("Span tree", 1), ("Messages", 2)], selection: $detailTab)
                 switch detailTab {
                 case 0: highlights(s, minutes: minutes)
                 case 1: spanTree

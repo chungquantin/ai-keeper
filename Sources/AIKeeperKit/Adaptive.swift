@@ -43,8 +43,10 @@ struct AdaptiveRow: Layout {
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         if let cols = widths(bounds.width, subviews) {
             var x = bounds.minX
+            // Cards on one row share the tallest one's height.
+            let rowHeight = zip(subviews, cols).map { $0.sizeThatFits(ProposedViewSize(width: $1, height: nil)).height }.max() ?? bounds.height
             for (s, w) in zip(subviews, cols) {
-                s.place(at: CGPoint(x: x, y: bounds.minY), anchor: .topLeading, proposal: ProposedViewSize(width: w, height: nil))
+                s.place(at: CGPoint(x: x, y: bounds.minY), anchor: .topLeading, proposal: ProposedViewSize(width: w, height: rowHeight))
                 x += w + spacing
             }
         } else {

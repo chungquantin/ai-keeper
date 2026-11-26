@@ -6,7 +6,7 @@ struct EntryListView: View {
     @State private var selection = Set<Entry.ID>()
     @State private var search = ""
     @State private var order = [KeyPathComparator(\Entry.sizeValue, order: .reverse)]
-    @State private var showInspector = false
+    @State private var showInspector = true   // the detail panel is part of the page, as designed; the toolbar button still hides it
     @State private var showStale = false
 
     private var rows: [Entry] {
@@ -34,6 +34,7 @@ struct EntryListView: View {
     var body: some View {
         let rows = self.rows
         VStack(spacing: 0) {
+            controls
             if rows.isEmpty {
                 ContentUnavailableView {
                     VStack(spacing: 10) {
@@ -44,13 +45,16 @@ struct EntryListView: View {
                     Text(store.isScanning ? "Results appear as they are measured." : "Nothing matches. Clear the search or change the view options.")
                 }
             } else {
+                // The table sits in a card, like every other list in the app.
                 table(rows)
+                    .background(Brand.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Brand.edge))
+                    .shadow(color: Brand.liftNear, radius: 1.5, y: 1.5)
+                    .padding(.horizontal, 28).padding(.top, 4).padding(.bottom, 10)
             }
             actionBar(rows)
         }
-        .navigationTitle(section.title)
-        .navigationSubtitle("\(rows.count) items · \(store.total(rows).bytesString)")
-        .searchable(text: $search, prompt: "Search name, repo or branch")
         .inspector(isPresented: $showInspector) {
             Group {
                 if selected.count == 1, let e = selected.first {
@@ -63,25 +67,35 @@ struct EntryListView: View {
                     }.padding(24).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .background(Color(nsColor: .windowBackgroundColor))
+            .background(Brand.card)
             .inspectorColumnWidth(min: 280, ideal: 330, max: 440)
         }
         .onChange(of: selection) { _, new in if new.count == 1 { showInspector = true } }
+        .task(id: rows.first?.id) { if selection.isEmpty, let first = rows.first { selection = [first.id] } }   // something is always open in the panel
         .onChange(of: store.requestedSelection) { _, id in
             if let id { selection = [id]; showInspector = true; store.requestedSelection = nil }
         }
-        .toolbar {
-            ToolbarItem { Button { showInspector.toggle() } label: { Label("Inspector", systemImage: "sidebar.right") } }
-            ToolbarItem {
-                Menu {
+    }
+
+    /// View options and the panel toggle, in the page (the window has no toolbar strip to put them in).
+    private var controls: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 8) { Image(systemName: "magnifyingglass").foregroundStyle(.secondary); TextField("Search name, repo or branch", text: $search).textFieldStyle(.plain) }
+                .padding(.horizontal, 10).frame(height: 28).frame(width: 240)
+                .background(Brand.card, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Brand.border))
+            Spacer()
+            Menu {
                     Stepper("Idle after \(store.staleDays) days", value: $store.staleDays, in: 3...180)
                     Toggle("Show \(staleCount) stale records", isOn: $showStale)
                     Divider()
                     Button(store.prRefreshing ? "Refreshing pull requests…" : "Refresh pull requests") { Task { await store.fetchPRs() } }
                         .disabled(store.prRefreshing || PRService.gh == nil)
-                } label: { Label("View options", systemImage: "line.3.horizontal.decrease.circle") }
-            }
+                } label: { Label("View options", systemImage: "line.3.horizontal.decrease.circle") }.menuStyle(.button).buttonStyle(.brandOutline).menuIndicator(.hidden).fixedSize()
+            Button { showInspector.toggle() } label: { Image(systemName: "sidebar.right") }.buttonStyle(.brandOutline).help("Show or hide details").accessibilityLabel("Details panel")
         }
+        .padding(.horizontal, 28)
+        .padding(.top, section == .leftovers ? 10 : 0).padding(.bottom, 8)
     }
 
     // MARK: Table
