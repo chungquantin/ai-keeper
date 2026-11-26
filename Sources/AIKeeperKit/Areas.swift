@@ -47,8 +47,8 @@ enum Tab: String, Hashable, Identifiable {
         case .activity: "What is running, and what ran recently"
         case .history: "Every agent session on this Mac, searchable"
         case .live: "Agents running right now"
-        case .logs: "Agent output, hooks and AI Keeper's own jobs"
-        case .prompts: "Every instruction you gave an agent, and how it turned out"
+        case .logs: "What failed, what you declined and what was compacted, across recent sessions"
+        case .prompts: "Every prompt you sent, and how long the agent worked on it"
         case .cost: "Estimated at public API list prices, from your local session logs"
         case .speed: "How long agents take, and where the time goes"
         case .reliability: "What fails, what loops, and what costs you retries"
@@ -67,9 +67,9 @@ enum Tab: String, Hashable, Identifiable {
         case .budgets: "Spend limits for you, then for each agent"
         }
     }
-    var isSample: Bool { [.optimize, .logs, .prompts, .speed, .reliability, .context, .advisor, .mcp, .hooks].contains(self) }
+    var isSample: Bool { false }
     var action: String? {
-        switch self { case .cost: "Export CSV"; case .speed: "Export"; case .reliability: "Set an alert"; case .advisor: "How this is worked out"; default: nil }
+        switch self { case .cost: "Export CSV"; default: nil }
     }
 
     var symbol: String {
@@ -211,7 +211,7 @@ struct AreaView: View {
                 Spacer(minLength: 8)
                 if nav.currentTab.isSample { SampleChip().fixedSize() }
                 if area == .today { Text(Date().formatted(.dateTime.weekday(.wide).month().day())).font(.bCaption).foregroundStyle(.secondary) }
-                if let a = nav.currentTab.action { Button(a) {}.buttonStyle(.brandOutline).controlSize(.small) }
+                if let a = nav.currentTab.action { Button(a) { UsageExport.save(store.usage) }.buttonStyle(.brandOutline).controlSize(.small) }
             }
             .padding(.horizontal, 28).frame(height: 52)
             TabStrip(tabs: area.tabs,
@@ -239,7 +239,7 @@ struct AreaView: View {
         switch t {
         case .briefing: return "\(TodayData.attention(store).count)"
         case .reclaim: return store.hasData ? store.reclaimable.bytesString : nil
-        case .optimize: return "$\(MockData.monthlySavings)"
+        case .optimize: return store.advice.monthly >= 1 ? String(format: "$%.0f", store.advice.monthly) : (store.advice.tips.isEmpty ? nil : "\(store.advice.tips.count)")
         case .activity:
             let n = store.agents.filter { $0.kind != .mcp }.count
             return n > 0 ? "\(n) live" : nil
@@ -346,28 +346,43 @@ struct ReclaimStrip: View {
     }
 }
 
-/// The right-hand panel on Speed, Reliability and Context: the few changes worth making. Sample data until the advisor is measured.
+/// The right-hand panel on Speed: the few changes worth making, from the same suggestions as Today › Optimize.
 struct WorthChanging: View {
+    @EnvironmentObject var store: Store
     @EnvironmentObject var nav: NavState
     var body: some View {
+        let tips = Array(store.advice.tips.prefix(4))
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Worth changing").font(.bHeadline)
-                    Text("From your last 30 days. Open Advisor for the full picture.").font(.bCaption).foregroundStyle(.secondary)
+                    Text("From your last 30 days.").font(.bCaption).foregroundStyle(.secondary)
                 }
-                SampleChip()
-                ForEach([("Send docs to Pi", "Same merged rate as Claude Code at a fifth of the cost.", "$18 a month", Tone.blue),
-                         ("Remove the linear MCP server", "Adds 3.8K tokens to every session and was never called.", "$9 a month", .blue),
-                         ("Start fresh at 70% context", "Long sessions cost 2.3× as much and finish less often.", "$18 a month", .amber)], id: \.0) { t in
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(alignment: .top) { Text(t.0).font(.bBody.weight(.semibold)); Spacer(minLength: 4); Tag(text: t.2, tone: t.3) }
-                        Text(t.1).font(.bCaption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                    }.padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Brand.muted, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                if tips.isEmpty { Text("Nothing to suggest yet.").font(.bCaption).foregroundStyle(.secondary) }
+                ForEach(tips) { t in
+                    Button { nav.open(t.area, t.tab) } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(alignment: .top) { Text(t.title).font(.bBody.weight(.semibold)).multilineTextAlignment(.leading); Spacer(minLength: 4); if let s = t.save { Tag(text: s, tone: .blue) } }
+                            Text(t.body).font(.bCaption).foregroundStyle(.secondary).lineLimit(3).multilineTextAlignment(.leading)
+                        }.padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Brand.muted, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }.buttonStyle(.plain)
                 }
                 Button { nav.open(.insights, .advisor) } label: { Text("Open Advisor").frame(maxWidth: .infinity) }.buttonStyle(.brandProminent).controlSize(.large)
-                Button { nav.open(.agents, .budgets) } label: { Text("Set a budget").frame(maxWidth: .infinity) }
             }.padding(20)
         }.background(Brand.card)
+    }
+}
+
+/// Export CSV on Cost: one row per day, agent and model.
+enum UsageExport {
+    @MainActor static func save(_ rows: [UsageRow]) {
+        let p = NSSavePanel(); p.nameFieldStringValue = "ai-keeper-usage.csv"; p.allowedContentTypes = [.commaSeparatedText]
+        guard p.runModal() == .OK, let url = p.url else { return }
+        var acc: [String: (Int, Int, Int, Int, Double)] = [:]
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
+        for r in rows { let k = "\(f.string(from: r.day)),\(r.agent.rawValue),\(r.model)"; var x = acc[k] ?? (0, 0, 0, 0, 0); x.0 += r.input; x.1 += r.output; x.2 += r.cacheRead; x.3 += r.cacheWrite; x.4 += r.cost; acc[k] = x }
+        var out = "day,agent,model,input_tokens,output_tokens,cache_read_tokens,cache_write_tokens,estimated_cost_usd\n"
+        for k in acc.keys.sorted() { let x = acc[k]!; out += "\(k),\(x.0),\(x.1),\(x.2),\(x.3),\(String(format: "%.4f", x.4))\n" }
+        try? out.write(to: url, atomically: true, encoding: .utf8)
     }
 }

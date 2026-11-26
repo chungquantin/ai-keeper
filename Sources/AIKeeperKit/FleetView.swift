@@ -12,7 +12,7 @@ struct FleetView: View {
     }
 
     private var rows: [Row] {
-        let budgets: [String: Double] = ["claude": 20, "codex": 10]
+        let budgets: [String: Double] = Dictionary(uniqueKeysWithValues: AgentTool.allCases.compactMap { a in let b = AgentBudget.get(a); return b > 0 ? (a.toolID, b) : nil })
         return store.detections.filter(\.found).map { d in
             let tool = AgentTool.allCases.first { $0.toolID == d.spec.id }
             let spend = tool.map { t in store.usage.filter { $0.agent == t && Calendar.current.isDateInToday($0.day) }.reduce(0) { $0 + $1.cost } } ?? 0
@@ -26,7 +26,6 @@ struct FleetView: View {
             HStack {
                 Seg([("Fleet", false), ("Detect and choose tools", true)], selection: $showDetected)
                 Spacer()
-                Button("Pause all") {}.controlSize(.small)
             }.padding(.horizontal, 28).padding(.vertical, 10)
             if showDetected { ToolsView() } else { fleet }
         }
@@ -53,7 +52,6 @@ struct FleetView: View {
                             if rows.isEmpty { Text("No tools detected yet.").font(.bCaption).foregroundStyle(.secondary).padding(20) }
                         }
                     }
-                    GuardrailsCard()
                 }.padding(.horizontal, 28).padding(.vertical, 6)
             }
             if let pick, geo.size.width >= 980 {
@@ -105,15 +103,20 @@ struct FleetView: View {
                     if let f = store.footprints[r.det.spec.id] { row("On disk", f.bytesString) }
                     row("Features", r.det.spec.capabilities.joined(separator: ", "))
                 }
-                VStack(alignment: .leading, spacing: 0) {
-                    HStack { Text("Set up").font(.bHeadline); Spacer(); SampleChip() }.padding(.bottom, 6)
-                    row("MCP servers", "github, linear, postgres"); row("Skills", "14 loaded, 3 never used"); row("Hooks", "2 on tool use"); row("Permissions", "Ask before shell")
+                if r.id == "claude" || r.id == "codex" {
+                    let agent = r.id == "claude" ? "Claude Code" : "Codex"
+                    let servers = store.mcpServers.filter { $0.agent == agent }
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("Set up").font(.bHeadline).padding(.bottom, 6)
+                        row("MCP servers", servers.isEmpty ? "None" : Array(Set(servers.map(\.name))).sorted().prefix(4).joined(separator: ", ") + (Set(servers.map(\.name)).count > 4 ? "…" : ""))
+                        row("Skills", "\(store.skills.filter { $0.tools.contains(agent) || $0.tools.contains("Shared") }.count)")
+                        if r.id == "claude" { row("Hooks", "\(store.hooks.count)") }
+                    }
+                    if r.id == "claude", let unused = Set(servers.map(\.name)).filter({ (store.advice.agg.mcp[$0] ?? 0) == 0 }).sorted().first, store.advice.agg.sessions > 0 {
+                        Note(text: "\(unused) was not called in any session in the last 30 days.")
+                    }
                 }
-                Note(text: "linear was never called in 60 days and adds 3.8K tokens to every session.")
-                VStack(spacing: 8) {
-                    Button { } label: { Text("Turn off linear").frame(maxWidth: .infinity) }
-                    Button { if let p = r.det.dataPath { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: p)]) } } label: { Text("Open config folder").frame(maxWidth: .infinity) }.disabled(r.det.dataPath == nil)
-                }
+                Button { if let p = r.det.dataPath { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: p)]) } } label: { Text("Open config folder").frame(maxWidth: .infinity) }.disabled(r.det.dataPath == nil)
             }.padding(20)
         }.background(Brand.card)
     }

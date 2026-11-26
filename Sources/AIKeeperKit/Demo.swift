@@ -196,6 +196,7 @@ extension Store {
                                    first: ago(hours: h + 1), last: ago(hours: h), cost: Double(i % 97) / 7, tokens: 1_000_000 + i % 9_000_000, bytes: 500_000)
             }
         }
+        traces = TraceIndexer.demo()
         loadDemoSkills()
         codexLimits = CodexLimits(primaryPct: 34, primaryResets: now.addingTimeInterval(2.5 * 3600), weeklyPct: 22, weeklyResets: now.addingTimeInterval(3 * 86_400))
     }

@@ -64,6 +64,19 @@ public struct AIKeeperApp: App {
             for g in p.groups.prefix(6) { print("  \(g.name) n=\(g.pids.count) \(g.rss.bytesString) cpu=\(String(format: "%.0f", g.cpu)) dev=\(g.dev)") }
             exit(0)
         }
+        // `AIKeeper --traces`: reads the session logs and prints totals only (never their text), to check the index and how long it takes.
+        if CommandLine.arguments.contains("--traces") {
+            let t0 = Date()
+            let all = TraceIndexer.load()
+            let a = TraceAgg.compute(all, from: Date().addingTimeInterval(-30 * 86_400), to: Date().addingTimeInterval(60))
+            print("TRACES \(all.count) sessions of \(TraceIndexer.files().count) logs in \(String(format: "%.1f", Date().timeIntervalSince(t0)))s")
+            print("  prompts=\(a.prompts) toolCalls=\(a.toolCalls) failed=\(a.toolErrors) (\(String(format: "%.1f", a.failRate * 100))%) denied=\(a.denials) edits=\(a.edits) loops=\(a.loops.count)")
+            print("  hooks: runs=\(a.hookRuns) failed=\(a.hookErrors) apiErrors=\(a.apiErrors) compactions=\(a.compactions) idleBreaks=\(a.idleBreaks) over150K=\(a.bigContext)")
+            print("  median session=\(Int(TraceAgg.median(a.sessionSeconds) / 60))min firstEdit=\(Int(TraceAgg.median(a.firstEdit)))s turn p50=\(Int(TraceAgg.median(a.turnSeconds)))s p95=\(Int(TraceAgg.percentile(a.turnSeconds, 0.95)))s out=\(Int(a.outputSpeed)) tok/s")
+            print("  commands=\(a.cmdRuns.count) failing=\(a.cmdFails.count) mcpServersUsed=\(a.mcp.count) skillsUsed=\(a.skills.count) hooksSeen=\(a.hooks.count)")
+            print("  config: mcp=\(AgentConfig.mcpServers().count) hooks=\(AgentConfig.hooks().count)")
+            exit(0)
+        }
         if CommandLine.arguments.contains("--tools") {
             let procs = Dictionary(grouping: AgentScanner.scan().filter { $0.kind != .mcp }, by: { $0.kind.toolID ?? "" }).mapValues(\.count)
             for d in ToolCatalog.detect(runningToolIDs: procs) { print("TOOL \(d.found ? "FOUND" : "  -  ") \(d.spec.name.padding(toLength: 12, withPad: " ", startingAt: 0)) running=\(d.running) \(d.evidence)") }

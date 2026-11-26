@@ -28,8 +28,13 @@ enum TodayData {
             items.append(.init(id: "skills", tone: .amber, title: "\(review.count) skill\(review.count == 1 ? " has" : "s have") risky scripts",
                                subtitle: review.prefix(3).map(\.name).joined(separator: ", "), action: "Look") { n, _ in n.open(.agents, .skills) })
         }
-        items.append(.init(id: "budget", tone: .red, title: "Spend is at 84% of today's budget",
-                           subtitle: "$25.29 of $30.00 · sample", action: "Adjust") { n, _ in n.open(.agents, .budgets) })
+        let budget = Demo.enabled ? 30 : UserDefaults.standard.double(forKey: "budget.daily")
+        if budget > 0, store.spentToday >= budget * 0.8 {
+            items.append(.init(id: "budget", tone: .red, title: "Spend is at \(Int(store.spentToday / budget * 100))% of today's budget",
+                               subtitle: String(format: "$%.2f of $%.2f", store.spentToday, budget), action: "Adjust") { n, _ in n.open(.agents, .budgets) })
+        }
+        let loops = store.advice.agg.loops.count
+        if loops > 0 { items.append(.init(id: "loops", tone: .amber, title: "\(loops) loop\(loops == 1 ? "" : "s") in the last 30 days", subtitle: store.advice.agg.loops[0].loop.detail, action: "See") { n, _ in n.open(.insights, .reliability) }) }
         return items
     }
 
@@ -104,14 +109,15 @@ struct TodayBriefing: View {
     }
 
     private var saveCard: some View {
-        Card(padding: 24) {
+        let adv = store.advice
+        return Card(padding: 24) {
             VStack(alignment: .leading, spacing: 12) {
-                HStack { Text("You could save").font(.bCallout).foregroundStyle(.secondary); Spacer(); SampleChip() }
+                Text(adv.monthly >= 1 ? "You could save" : "Worth changing").font(.bCallout).foregroundStyle(.secondary)
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("$\(MockData.monthlySavings)").font(.figure(64)).monospacedDigit()
-                    Text("a month").font(.figure(24)).foregroundStyle(.secondary)
+                    Text(adv.monthly >= 1 ? String(format: "$%.0f", adv.monthly) : "\(adv.tips.count)").font(.figure(64)).monospacedDigit()
+                    Text(adv.monthly >= 1 ? "a month" : adv.tips.count == 1 ? "suggestion" : "suggestions").font(.figure(24)).foregroundStyle(.secondary)
                 }
-                Text("By sending docs and tests to cheaper agents and dropping an unused MCP server. You spent \(String(format: "$%.2f", TodayData.spentToday(store))) today.")
+                Text((adv.tips.first.map { $0.title + ". " } ?? "Nothing to suggest yet. ") + "You spent \(String(format: "$%.2f", store.spentToday)) today.")
                     .font(.bCaption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 10) {
                     Button("See how") { nav.open(.today, .optimize) }.buttonStyle(.brandProminent).controlSize(.large)
@@ -259,7 +265,6 @@ struct ReclaimHistory: View {
                     }
                 }.accessibilityHidden(true)
                 Note(text: "Your Mac refills with build folders as agents work. A weekly clean keeps it small.")
-                Button { } label: { Text("Clean every Friday").frame(maxWidth: .infinity) }.buttonStyle(.brandOutline)
             }
         }
         .onAppear { records = CleanLog.all() }
@@ -269,63 +274,51 @@ struct ReclaimHistory: View {
     private func level(_ l: Int) -> Color { l == 0 ? Brand.muted : Brand.accent.opacity([0, 0.25, 0.45, 0.7, 1][l]) }
 }
 
-// MARK: Optimize (sample data)
+// MARK: Optimize: suggestions worked out from your sessions
 
 struct TodayOptimize: View {
+    @EnvironmentObject var store: Store
     @EnvironmentObject var nav: NavState
 
-    private struct Tip: Identifiable { let id = UUID(); let title: String; let body: String; let save: String; let action: String; let go: Area; let tab: Tab }
-    private struct TipGroup: Identifiable { let id = UUID(); let title: String; let symbol: String; let tone: Tone; let tips: [Tip] }
-
-    private let groups: [TipGroup] = [
-        TipGroup(title: "Pick the right agent", symbol: "bolt.horizontal", tone: .blue, tips: [
-            Tip(title: "Docs and release notes to Pi", body: "Same merged rate as Claude Code at a fifth of the cost.", save: "$18 a month", action: "Make Pi the default", go: .insights, tab: .advisor),
-            Tip(title: "Tests to Codex", body: "83% merged against 69%, and 27% cheaper.", save: "$12 a month", action: "See the evidence", go: .insights, tab: .advisor)]),
-        TipGroup(title: "Trim the harness", symbol: "checkmark.shield", tone: .amber, tips: [
-            Tip(title: "Turn off the linear server", body: "Never called in 60 days, and adds 3.8K tokens to every session.", save: "$9 a month", action: "Open MCP servers", go: .agents, tab: .mcp),
-            Tip(title: "Fix the prettier hook", body: "It fails 17% of the time and each failure costs a retry.", save: "$7 a month", action: "Open hooks", go: .agents, tab: .hooks)]),
-        TipGroup(title: "Change a habit", symbol: "person", tone: .violet, tips: [
-            Tip(title: "Start fresh at 70% context", body: "Long sessions cost 2.3× as much and finish less often.", save: "$18 a month", action: "See context use", go: .insights, tab: .context),
-            Tip(title: "Name the file in the prompt", body: "Merged 2.1× more often than prompts that describe the feature only.", save: "Fewer retries", action: "See your prompts", go: .sessions, tab: .prompts)]),
-    ]
-
     var body: some View {
-        Page(sample: true) {
+        let adv = store.advice
+        Page {
             Card(padding: 22) {
                 HStack(alignment: .center, spacing: 32) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text("$\(MockData.monthlySavings)").font(.figure(56)).monospacedDigit()
-                        Text("a month").font(.figure(22)).foregroundStyle(.secondary)
-                    }
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack { Text("Projected this month").font(.bCaption).foregroundStyle(.secondary); Spacer(); Text("$412 now, $348 with all changes").font(.bCaption) }
-                        GeometryReader { g in
-                            ZStack(alignment: .leading) {
-                                Capsule().fill(Brand.muted)
-                                Capsule().fill(Brand.reclaimTint).frame(width: g.size.width)
-                                Capsule().fill(Brand.accent).frame(width: g.size.width * 0.84)
-                            }
-                        }.frame(height: 14)
-                    }
-                    Button("Apply the 3 safe changes") {}.buttonStyle(.brandProminent).controlSize(.large)
+                        Text(adv.monthly >= 1 ? String(format: "$%.0f", adv.monthly) : "\(adv.tips.count)").font(.figure(56)).monospacedDigit()
+                        Text(adv.monthly >= 1 ? "a month" : "suggestions").font(.figure(22)).foregroundStyle(.secondary)
+                    }.fixedSize()
+                    Text(adv.monthly >= 1 ? "An estimate: the difference in typical session cost between the agent you used most and the cheapest one, for each kind of task, over the last 30 days."
+                         : "From \(adv.sessions) sessions in the last 30 days. Savings in dollars appear once two agents have each done \(Advisor.minSessions) sessions of the same kind.")
+                        .font(.bCaption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
+                    Button("Open Advisor") { nav.open(.insights, .advisor) }.buttonStyle(.brandProminent).controlSize(.large).fixedSize()
                 }
             }
-            AdaptiveRow(spacing: 16) {
-                ForEach(groups) { g in
-                    Card {
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack(spacing: 10) {
-                                Image(systemName: g.symbol).foregroundStyle(g.tone.fg).frame(width: 30, height: 30).background(g.tone.bg, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-                                Text(g.title).font(.bHeadline)
-                            }
-                            ForEach(g.tips) { t in
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack(alignment: .top) { Text(t.title).font(.bBody.weight(.semibold)); Spacer(minLength: 6); Tag(text: t.save, tone: .blue) }
-                                    Text(t.body).font(.bCaption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                                    HStack(spacing: 6) { Button(t.action) { nav.open(t.go, t.tab) }.controlSize(.small); Button("Why?") { nav.open(t.go, t.tab) }.buttonStyle(.plain).font(.bCaption).foregroundStyle(.secondary) }
+            if adv.tips.isEmpty {
+                Card { Text(store.traceProgress != nil ? "Reading your session logs…" : "Nothing to suggest yet. Suggestions appear as sessions build up.").foregroundStyle(.secondary) }
+            } else {
+                AdaptiveRow(spacing: 16, minChild: 260) {
+                    ForEach([Tip.Group.agent, .harness, .habit], id: \.self) { g in
+                        let tips = adv.tips.filter { $0.group == g }
+                        Card {
+                            VStack(alignment: .leading, spacing: 12) {
+                                HStack(spacing: 10) {
+                                    Image(systemName: g == .agent ? "bolt.horizontal" : g == .harness ? "checkmark.shield" : "person")
+                                        .foregroundStyle((g == .agent ? Tone.blue : g == .harness ? .amber : .violet).fg).frame(width: 30, height: 30)
+                                        .background((g == .agent ? Tone.blue : g == .harness ? .amber : .violet).bg, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                                    Text(g.rawValue).font(.bHeadline)
                                 }
-                                .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-                                .background(Brand.muted, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                if tips.isEmpty { Text("Nothing here right now.").font(.bCaption).foregroundStyle(.secondary) }
+                                ForEach(tips) { t in
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        HStack(alignment: .top) { Text(t.title).font(.bBody.weight(.semibold)).fixedSize(horizontal: false, vertical: true); Spacer(minLength: 6); if let s = t.save { Tag(text: s, tone: .blue) } }
+                                        Text(t.body).font(.bCaption).foregroundStyle(.secondary).lineLimit(3).fixedSize(horizontal: false, vertical: true)
+                                        Button(t.action) { nav.open(t.area, t.tab) }.controlSize(.small)
+                                    }
+                                    .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                                    .background(Brand.muted, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                }
                             }
                         }
                     }

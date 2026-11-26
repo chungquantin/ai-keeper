@@ -1,178 +1,189 @@
 import SwiftUI
 
-// MARK: Logs (sample data)
+// Logs and Prompts, read from the Claude Code session logs (TraceIndex).
 
+// MARK: Logs
+
+/// Failures, declined commands, hook errors and compactions across recent sessions, newest first.
 struct LogsView: View {
+    @EnvironmentObject var store: Store
     private enum Level: String, CaseIterable { case all = "All", warn = "Warnings", error = "Errors" }
-    private struct Line: Identifiable {
-        let id = UUID(); let time: String; let level: String; let source: String; let workspace: String; let message: String
-        var tone: Tone { level == "error" ? .red : (level == "warn" ? .amber : (level == "ok" ? .green : .gray)) }
-    }
+    private struct Line: Identifiable { let id: String; let at: Date; let level: String; let project: String; let message: String }
     @State private var level: Level = .all
     @State private var query = ""
-    @State private var paused = false
+    @State private var lines: [Line] = []
+    @State private var perSlot: [[Double]] = []
+    @State private var errors24 = 0
 
-    private let lines: [Line] = [
-        Line(time: "17:41:08", level: "warn", source: "Claude Code", workspace: "api-server", message: "permission requested: Bash(psql -f migrations/0042_retry.sql)"),
-        Line(time: "17:40:52", level: "info", source: "Claude Code", workspace: "api-server", message: "tool_result Edit src/billing/retry.rs · 3 hunks applied"),
-        Line(time: "17:40:31", level: "error", source: "Codex", workspace: "api-server", message: "cargo build failed: error[E0382]: borrow of moved value: `policy`"),
-        Line(time: "17:40:12", level: "info", source: "Codex", workspace: "api-server", message: "running: cargo build --workspace"),
-        Line(time: "17:39:47", level: "ok", source: "AI Keeper", workspace: "", message: "cleanup job 218 finished: 8.3 GB from web-app/target in 4.1 s"),
-        Line(time: "17:39:20", level: "info", source: "Conductor", workspace: "mobile-app", message: "workspace mobile-onboarding synced with origin/main"),
-        Line(time: "17:38:55", level: "error", source: "Claude Code", workspace: "web-app", message: "hook PostToolUse failed (exit 2): prettier --check src/export.ts"),
-        Line(time: "17:38:10", level: "info", source: "Claude Code", workspace: "web-app", message: "tool_use Write src/export.ts · 212 lines"),
-        Line(time: "17:37:42", level: "warn", source: "AI Keeper", workspace: "", message: "skill pdf-extract has a script that downloads and runs a remote file"),
-        Line(time: "17:37:03", level: "info", source: "Codex", workspace: "api-server", message: "session perf-cache-layer resumed after 11 min idle"),
-        Line(time: "17:36:30", level: "error", source: "Claude Code", workspace: "api-server", message: "MCP server github timed out after 30 s (request: list_pull_requests)"),
-        Line(time: "17:35:58", level: "info", source: "AI Keeper", workspace: "", message: "scan finished: 16 workspaces, 108 GB reclaimable"),
-    ]
-
-    private var shown: [Line] {
-        lines.filter { l in
-            (level == .all || (level == .warn && l.level == "warn") || (level == .error && l.level == "error"))
-                && (query.isEmpty || l.message.localizedCaseInsensitiveContains(query) || l.source.localizedCaseInsensitiveContains(query))
-        }
-    }
+    private static let time: DateFormatter = { let f = DateFormatter(); f.dateFormat = "MMM d  HH:mm:ss"; return f }()
+    private func tone(_ l: String) -> Tone { l == "error" ? .red : l == "warn" ? .amber : .gray }
 
     var body: some View {
-        Page(title: "Logs", subtitle: "Agent output, hooks and AI Keeper's own jobs", sample: true) {
+        let shown = lines.filter { l in
+            (level == .all || (level == .warn && l.level == "warn") || (level == .error && l.level == "error"))
+                && (query.isEmpty || l.message.localizedCaseInsensitiveContains(query) || l.project.localizedCaseInsensitiveContains(query))
+        }
+        VStack(spacing: 14) {
             HStack(spacing: 10) {
-                HStack(spacing: 8) { Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                    TextField("Search messages, agents, commands", text: $query).textFieldStyle(.plain) }
-                    .padding(.horizontal, 10).frame(height: 30).frame(width: 340)
+                HStack(spacing: 8) { Image(systemName: "magnifyingglass").foregroundStyle(.secondary); TextField("Search messages, commands, projects", text: $query).textFieldStyle(.plain) }
+                    .padding(.horizontal, 10).frame(height: 30).frame(width: 320)
                     .background(Brand.card, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Brand.border))
                 Seg(Level.allCases.map { ($0.rawValue, $0) }, selection: $level)
                 Spacer()
-                HStack(spacing: 6) { Circle().fill(paused ? Brand.mutedForeground : AgentColor.good).frame(width: 7, height: 7); Text(paused ? "Paused" : "Live").font(.bCaption) }
-                Button(paused ? "Resume" : "Pause") { paused.toggle() }.controlSize(.small)
-                Button("Export") {}.controlSize(.small)
+                Text("\(shown.count) of \(lines.count) events, last \(TraceIndexer.days) days").font(.bCaption).foregroundStyle(.secondary)
+                Button("Reload") { store.loadTraces() }.controlSize(.small)
             }
             Card(padding: 14) {
                 HStack(alignment: .bottom, spacing: 18) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Last 30 minutes").font(.bCaption).foregroundStyle(.secondary)
-                        (Text("1,284 lines · ") + Text("9 errors").foregroundStyle(Brand.destructive)).font(.brand(18, .semibold))
-                    }
-                    StackedBars(data: (0..<60).map { [MockData.seeded($0, 9) > 0.86 ? 0.2 + MockData.seeded($0, 3) * 0.4 : 0, 0.2 + MockData.seeded($0, 1) * 0.8] },
-                                colors: [Brand.destructive, Brand.muted.opacity(1)], height: 44)
+                        Text("Last 24 hours").font(.bCaption).foregroundStyle(.secondary)
+                        (Text("\(perSlot.reduce(0) { $0 + Int($1[0] + $1[1]) }) events · ") + Text("\(errors24) errors").foregroundStyle(errors24 > 0 ? Brand.destructive : Color.secondary)).font(.brand(18, .semibold))
+                    }.fixedSize()
+                    StackedBars(data: perSlot.isEmpty ? [[0, 0]] : perSlot, colors: [Brand.destructive, Brand.mutedForeground.opacity(0.35)], height: 44)
                 }
-            }
-            Card(padding: 0) {
-                VStack(spacing: 0) {
-                    HStack(spacing: 14) {
-                        Text("Time").frame(width: 72, alignment: .leading); Text("Level").frame(width: 44, alignment: .leading)
-                        Text("Source").frame(width: 110, alignment: .leading); Text("Workspace").frame(width: 120, alignment: .leading); Text("Message")
-                        Spacer()
-                    }.font(.brand(11, .medium)).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.vertical, 8)
-                    Divider()
-                    ForEach(shown) { l in
+            }.fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 0) {
+                HStack(spacing: 14) {
+                    Text("Time").frame(width: 118, alignment: .leading); Text("Level").frame(width: 44, alignment: .leading)
+                    Text("Project").frame(width: 130, alignment: .leading); Text("Message"); Spacer()
+                }.font(.brand(11, .medium)).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.vertical, 8)
+                Divider()
+                if shown.isEmpty {
+                    Text(store.traceProgress != nil ? "Reading your session logs…" : lines.isEmpty ? "Nothing has failed or needed you in the last \(TraceIndexer.days) days." : "No events match.")
+                        .font(.bCaption).foregroundStyle(.secondary).padding(24).frame(maxHeight: .infinity, alignment: .top)
+                } else {
+                    List(shown) { l in
                         HStack(alignment: .firstTextBaseline, spacing: 14) {
-                            Text(l.time).font(.code(12)).foregroundStyle(.secondary).frame(width: 72, alignment: .leading)
-                            Text(l.level.uppercased()).font(.code(10).weight(.semibold)).foregroundStyle(l.tone.fg).frame(width: 44, alignment: .leading)
-                            HStack(spacing: 6) { Circle().fill(AgentColor.of(l.source)).frame(width: 7, height: 7); Text(l.source).font(.bCaption) }.frame(width: 110, alignment: .leading)
-                            Text(l.workspace).font(.code(12)).foregroundStyle(.secondary).frame(width: 120, alignment: .leading)
-                            Text(l.message).font(.code(12)).lineLimit(1)
+                            Text(Self.time.string(from: l.at)).font(.code(11)).foregroundStyle(.secondary).frame(width: 118, alignment: .leading)
+                            Text(l.level.uppercased()).font(.code(10).weight(.semibold)).foregroundStyle(tone(l.level).fg).frame(width: 44, alignment: .leading)
+                            Text(l.project).font(.code(12)).foregroundStyle(.secondary).lineLimit(1).frame(width: 130, alignment: .leading)
+                            Text(l.message).font(.code(12)).lineLimit(1).truncationMode(.middle)
                             Spacer(minLength: 0)
                         }
-                        .padding(.horizontal, 16).padding(.vertical, 6)
-                        .background(l.level == "error" ? Brand.destructiveTint : .clear)
-                    }
-                    if shown.isEmpty { Text("No lines match.").font(.bCaption).foregroundStyle(.secondary).padding(20) }
+                        .padding(.horizontal, 16).padding(.vertical, 5)
+                        .listRowInsets(EdgeInsets()).listRowSeparator(.hidden)
+                        .listRowBackground(l.level == "error" ? Brand.destructiveTint : Color.clear)
+                    }.listStyle(.plain).scrollContentBackground(.hidden)
                 }
             }
+            .frame(maxHeight: .infinity).panel().clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .padding(.horizontal, 28).padding(.vertical, 16)
+        .task(id: store.traces.count) {
+            let traces = store.traces
+            let out = await Task.detached(priority: .userInitiated) { () -> ([Line], [[Double]], Int) in
+                var all: [Line] = []
+                for t in traces { for e in t.events { all.append(Line(id: t.file + e.id, at: e.at, level: e.level, project: t.project, message: e.message)) } }
+                all.sort { $0.at > $1.at }
+                let now = Date()
+                var slots = [[Double]](repeating: [0, 0], count: 48); var errs = 0
+                for l in all {
+                    let ago = now.timeIntervalSince(l.at)
+                    guard ago >= 0, ago < 86_400 else { continue }
+                    let i = 47 - Int(ago / 1800)
+                    if l.level == "error" { slots[i][0] += 1; errs += 1 } else { slots[i][1] += 1 }
+                }
+                return (Array(all.prefix(5000)), slots, errs)
+            }.value
+            lines = out.0; perSlot = out.1; errors24 = out.2
         }
     }
 }
 
-// MARK: Prompts (sample data)
+// MARK: Prompts
 
+/// Every prompt you sent in recent Claude Code sessions, with how long the agent worked on it.
 struct PromptsView: View {
-    private struct P: Identifiable { let id = UUID(); let text: String; let meta: String; let words: Int; let turns: Int; let cost: String; let outcome: String; let tone: Tone }
+    @EnvironmentObject var store: Store
+    private struct Row: Identifiable { let id: String; let p: TracePrompt; let project: String; let session: String }
+    private struct Pattern { var fileTurns = 0.0, plainTurns = 0.0, fileN = 0, plainN = 0, medianWords = 0.0, shortTurns = 0.0, longTurns = 0.0, shortN = 0, longN = 0 }
     @State private var query = ""
     @State private var sort = 0
+    @State private var rows: [Row] = []
+    @State private var pat = Pattern()
 
-    private let prompts: [P] = [
-        P(text: "Retry failed invoices with backoff and park them after five failures", meta: "api-server · Claude Code · today", words: 62, turns: 14, cost: "$6.12", outcome: "Running", tone: .blue),
-        P(text: "Add a CSV export to the orders table. Reuse the existing Table component.", meta: "web-app · Claude Code · today", words: 41, turns: 9, cost: "$4.80", outcome: "Running", tone: .blue),
-        P(text: "Make search faster", meta: "api-server · Codex · today", words: 4, turns: 22, cost: "$3.41", outcome: "Running", tone: .blue),
-        P(text: "Index orders by customer and status. The slow query is in src/api/orders.rs.", meta: "api-server · Claude Code · yesterday", words: 57, turns: 6, cost: "$1.64", outcome: "Merged", tone: .violet),
-        P(text: "Fix the flaky CI on Windows", meta: "web-app · Codex · yesterday", words: 7, turns: 31, cost: "$11.40", outcome: "Abandoned", tone: .gray),
-        P(text: "Rename the scratch workspace and update the README links", meta: "web-app · Superset · yesterday", words: 14, turns: 3, cost: "$0.31", outcome: "Merged", tone: .violet),
-        P(text: "Upgrade dependencies, then run cargo test and fix any type errors", meta: "docs-site · Claude Code · 2 days ago", words: 36, turns: 12, cost: "$1.12", outcome: "Failed", tone: .red),
-        P(text: "Write release notes for 0.2.2 from the merged PRs", meta: "docs-site · Claude Code · 2 days ago", words: 24, turns: 4, cost: "$0.48", outcome: "Merged", tone: .violet),
-    ]
-
-    private var shown: [P] {
-        var l = prompts.filter { query.isEmpty || $0.text.localizedCaseInsensitiveContains(query) }
-        if sort == 1 { l.sort { ($0.outcome == "Merged" ? 0 : 1) < ($1.outcome == "Merged" ? 0 : 1) } }
-        if sort == 2 { l.sort { $0.cost > $1.cost } }
-        return l
-    }
+    private static let day: RelativeDateTimeFormatter = { let f = RelativeDateTimeFormatter(); f.unitsStyle = .abbreviated; return f }()
 
     var body: some View {
-        Page(title: "Prompts", subtitle: "Every instruction you gave an agent, and how it turned out", sample: true) {
+        let shown: [Row] = {
+            var l = query.isEmpty ? rows : rows.filter { $0.p.text.localizedCaseInsensitiveContains(query) || $0.project.localizedCaseInsensitiveContains(query) }
+            if sort == 1 { l.sort { $0.p.seconds > $1.p.seconds } }
+            if sort == 2 { l.sort { $0.p.turns > $1.p.turns } }
+            return l
+        }()
+        VStack(spacing: 14) {
             HStack(spacing: 12) {
-                ForEach([("Prompts that name a file", "2.1× more merged", "Than prompts that describe the feature only."),
-                         ("Best length", "40 to 90 words", "Under 15 words ran 3.4 extra turns on average."),
-                         ("Prompts with a test to pass", "31% cheaper", "Agents stop sooner when they have a finish line.")], id: \.0) { p in
-                    Card(padding: 14) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(p.0).font(.bCaption).foregroundStyle(.secondary)
-                            Text(p.1).font(.brand(18, .semibold))
-                            Text(p.2).font(.bCaption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                        }
-                    }
-                }
-            }
+                fact("Prompts that name a file", pat.fileN >= 5 && pat.plainN >= 5 ? String(format: "%.0f replies", pat.fileTurns) : "Too few yet",
+                     pat.fileN >= 5 && pat.plainN >= 5 ? String(format: "Against %.0f for prompts that do not. Typical, over %d and %d prompts.", pat.plainTurns, pat.fileN, pat.plainN) : "Needs 5 prompts of each kind.")
+                fact("Typical length", String(format: "%.0f words", pat.medianWords), "The middle of your \(rows.count) prompts.")
+                fact("Short against long", pat.shortN >= 5 && pat.longN >= 5 ? String(format: "%.0f vs %.0f replies", pat.shortTurns, pat.longTurns) : "Too few yet",
+                     "Prompts under 15 words against prompts over 40.")
+            }.fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 10) {
                 HStack(spacing: 8) { Image(systemName: "magnifyingglass").foregroundStyle(.secondary); TextField("Search your prompts", text: $query).textFieldStyle(.plain) }
                     .padding(.horizontal, 10).frame(height: 30).frame(width: 300)
                     .background(Brand.card, in: RoundedRectangle(cornerRadius: 9, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Brand.border))
                 Spacer()
-                Seg([("Newest", 0), ("Best result", 1), ("Costliest", 2)], selection: $sort)
+                Text("\(shown.count) prompts").font(.bCaption).foregroundStyle(.secondary)
+                Seg([("Newest", 0), ("Longest work", 1), ("Most replies", 2)], selection: $sort)
             }
-            Card(padding: 0) {
-                VStack(spacing: 0) {
-                    HStack(spacing: 14) {
-                        Text("Prompt"); Spacer()
-                        Text("Words").frame(width: 60, alignment: .trailing); Text("Turns").frame(width: 56, alignment: .trailing)
-                        Text("Cost").frame(width: 64, alignment: .trailing); Text("Outcome").frame(width: 96, alignment: .leading)
-                    }.font(.brand(11, .medium)).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.vertical, 8)
-                    ForEach(shown) { p in
-                        Divider()
+            VStack(spacing: 0) {
+                HStack(spacing: 14) {
+                    Text("Prompt"); Spacer()
+                    Text("Words").frame(width: 56, alignment: .trailing); Text("Replies").frame(width: 60, alignment: .trailing)
+                    Text("Agent worked").frame(width: 90, alignment: .trailing); Text("Sent").frame(width: 80, alignment: .trailing)
+                }.font(.brand(11, .medium)).foregroundStyle(.secondary).padding(.horizontal, 16).padding(.vertical, 8)
+                Divider()
+                if shown.isEmpty {
+                    Text(store.traceProgress != nil ? "Reading your session logs…" : "No prompts found.").font(.bCaption).foregroundStyle(.secondary).padding(24).frame(maxHeight: .infinity, alignment: .top)
+                } else {
+                    List(shown) { r in
                         HStack(spacing: 14) {
                             VStack(alignment: .leading, spacing: 1) {
-                                Text(p.text).font(.bBody.weight(.medium)).lineLimit(1)
-                                Text(p.meta).font(.bCaption).foregroundStyle(.secondary)
+                                Text(r.p.text).font(.bBody.weight(.medium)).lineLimit(1)
+                                Text(r.project + (r.session == r.p.text ? "" : " · " + r.session)).font(.bCaption).foregroundStyle(.secondary).lineLimit(1)
                             }
                             Spacer()
-                            Text("\(p.words)").foregroundStyle(.secondary).monospacedDigit().frame(width: 60, alignment: .trailing)
-                            Text("\(p.turns)").foregroundStyle(.secondary).monospacedDigit().frame(width: 56, alignment: .trailing)
-                            Text(p.cost).font(.bBody.weight(.medium)).monospacedDigit().frame(width: 64, alignment: .trailing)
-                            Tag(text: p.outcome, tone: p.tone).frame(width: 96, alignment: .leading)
+                            Text("\(r.p.words)").foregroundStyle(.secondary).monospacedDigit().frame(width: 56, alignment: .trailing)
+                            Text("\(r.p.turns)").foregroundStyle(.secondary).monospacedDigit().frame(width: 60, alignment: .trailing)
+                            Text(r.p.seconds >= 90 ? String(format: "%.0f min", r.p.seconds / 60) : String(format: "%.0f s", r.p.seconds)).font(.bBody.weight(.medium)).monospacedDigit().frame(width: 90, alignment: .trailing)
+                            Text(Self.day.localizedString(for: r.p.at, relativeTo: Date())).font(.bCaption).foregroundStyle(.secondary).frame(width: 80, alignment: .trailing)
                         }
-                        .padding(.horizontal, 16).padding(.vertical, 9)
-                        .background(p.id == shown.first?.id ? Brand.primaryTint : .clear)
-                    }
+                        .padding(.horizontal, 16).padding(.vertical, 8)
+                        .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
+                    }.listStyle(.plain).scrollContentBackground(.hidden)
                 }
             }
-            Card {
-                VStack(alignment: .leading, spacing: 10) {
-                    CardTitle(title: "What tends to work for you", note: "Found by comparing 212 sessions")
-                    HStack(alignment: .top, spacing: 12) {
-                        ForEach([("Name the file or the failing test", "Sessions that did this finished in 6 turns instead of 14."),
-                                 ("Say when you are done", "\"Stop when cargo test passes\" cut cost by 31%."),
-                                 ("Split prompts over 150 words", "Long prompts were abandoned twice as often.")], id: \.0) { t in
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(t.0).font(.bBody.weight(.semibold))
-                                Text(t.1).font(.bCaption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                            }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Brand.muted, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        }
-                    }
-                }
+            .frame(maxHeight: .infinity).panel().clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .padding(.horizontal, 28).padding(.vertical, 16)
+        .task(id: store.traces.count) {
+            let traces = store.traces
+            let out = await Task.detached(priority: .userInitiated) { () -> ([Row], Pattern) in
+                var all: [Row] = []
+                for t in traces { for (i, p) in t.prompts.enumerated() { all.append(Row(id: "\(t.file)#\(i)", p: p, project: t.project, session: t.title)) } }
+                all.sort { $0.p.at > $1.p.at }
+                var pt = Pattern()
+                let done = all.filter { $0.p.turns > 0 }
+                let file = done.filter { $0.p.namesFile }.map { Double($0.p.turns) }, plain = done.filter { !$0.p.namesFile }.map { Double($0.p.turns) }
+                let short = done.filter { $0.p.words < 15 }.map { Double($0.p.turns) }, long = done.filter { $0.p.words > 40 }.map { Double($0.p.turns) }
+                pt.fileTurns = TraceAgg.median(file); pt.plainTurns = TraceAgg.median(plain); pt.fileN = file.count; pt.plainN = plain.count
+                pt.shortTurns = TraceAgg.median(short); pt.longTurns = TraceAgg.median(long); pt.shortN = short.count; pt.longN = long.count
+                pt.medianWords = TraceAgg.median(all.map { Double($0.p.words) })
+                return (Array(all.prefix(20_000)), pt)
+            }.value
+            rows = out.0; pat = out.1
+        }
+    }
+
+    private func fact(_ label: String, _ value: String, _ note: String) -> some View {
+        Card(padding: 14) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(label).font(.bCaption).foregroundStyle(.secondary)
+                Text(value).font(.brand(18, .semibold))
+                Text(note).font(.bCaption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
         }
     }

@@ -79,6 +79,15 @@ final class Store: ObservableObject {
     @Published var alert: GuardAlert?
     @Published var vault: [VaultItem] = []
     @Published var sessions: [SessionInfo] = []
+    /// What happened inside each recent Claude Code session (tool calls, failures, timings), read from its log.
+    @Published var traces: [TraceSummary] = [] { didSet { traceBySession = Dictionary(traces.map { ($0.sessionID, $0) }, uniquingKeysWith: { a, _ in a }); refreshAdvice() } }
+    private(set) var traceBySession: [String: TraceSummary] = [:]
+    /// Suggestions worked out from the sessions and logs above.
+    @Published var advice = Advice()
+    @Published var mcpServers: [MCPServerInfo] = []
+    @Published var hooks: [HookInfo] = []
+    @Published var traceProgress: (done: Int, total: Int)?
+    private var tracesLoading = false
     @Published var skills: [SkillInfo] = []
     @Published var skillScans: [String: SkillScan] = [:]
     @Published var skillErrors: [String: String] = [:]
@@ -261,6 +270,38 @@ final class Store: ObservableObject {
             usage = d.rows; sessions = d.sessions; codexLimits = d.codex
             Task.detached(priority: .background) { Persist.save(d, "usage.json") }
             usageLoading = false
+            loadTraces()
+        }
+    }
+
+    private func refreshAdvice() {
+        let s = sessions, tr = traces
+        Task {
+            let (adv, servers, hooks) = await Task.detached(priority: .utility) { () -> (Advice, [MCPServerInfo], [HookInfo]) in
+                let servers = AgentConfig.mcpServers()
+                return (Advisor.compute(sessions: s, traces: tr, servers: servers), servers, AgentConfig.hooks())
+            }.value
+            advice = adv; mcpServers = servers; self.hooks = hooks
+        }
+    }
+
+    /// The pull request for the workspace a session ran in, if that workspace is still known.
+    func pr(forCwd cwd: String) -> PRInfo? { entries.first { $0.path == cwd }?.pr }
+
+    /// Reads the session logs in the background. Summaries are cached, so only logs that changed are read again.
+    func loadTraces() {
+        guard !tracesLoading else { return }
+        tracesLoading = true
+        Task {
+            let out = await Task.detached(priority: .utility) {
+                TraceIndexer.load { done, total, partial in
+                    Task { @MainActor in
+                        self.traceProgress = (done, total)
+                        if let partial { self.traces = partial }
+                    }
+                }
+            }.value
+            traces = out; traceProgress = nil; tracesLoading = false
         }
     }
 
