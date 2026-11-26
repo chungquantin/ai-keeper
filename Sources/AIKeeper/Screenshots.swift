@@ -36,13 +36,15 @@ enum Screenshots {
         main.reflectScrolledClipView(main.contentView)
     }
 
-    static func run(store: Store, dir: String) async {
+    static func run(store: Store, nav: NavState, dir: String) async {
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
-        NSApp.appearance = NSAppearance(named: .aqua)
+        let dark = ProcessInfo.processInfo.environment["AIKEEPER_SHOTS_APPEARANCE"] == "dark"
+        NSApp.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
+        let everything = ProcessInfo.processInfo.environment["AIKEEPER_SHOTS_ALL"] == "1"   // every sidebar destination, for design reviews
         NSApp.activate(ignoringOtherApps: true)   // so default buttons and the selection draw in their active state
         try? await Task.sleep(for: .seconds(2))
         guard let window = NSApp.windows.first(where: { $0.isVisible && $0.canBecomeMain }) else { print("no window"); exit(1) }
-        window.setContentSize(NSSize(width: 1360, height: 980))
+        window.setContentSize(NSSize(width: CGFloat(Double(ProcessInfo.processInfo.environment["AIKEEPER_SHOTS_WIDTH"] ?? "") ?? 1360), height: 980))
         window.center()
         window.makeKeyAndOrderFront(nil)
         func url(_ name: String) -> URL { URL(fileURLWithPath: "\(dir)/\(name).png") }
@@ -72,6 +74,23 @@ enum Screenshots {
             if !(NSApp.isActive && w.isKeyWindow) { print("warning: dialog still inactive") }
         }
 
+        // Every area and tab of the redesigned app: AIKEEPER_SHOTS_AREAS=1.
+        if ProcessInfo.processInfo.environment["AIKEEPER_SHOTS_AREAS"] == "1" {
+            _ = store.addDemoJob()
+            for a in Area.allCases {
+                for t in a.tabs {
+                    nav.open(a, t)
+                    await pause(a == .cleanup || t == .history ? 3.2 : 2.0)
+                    await focus()
+                    captureWindow(window, to: url("\(a.rawValue.lowercased())-\(t.rawValue.lowercased().replacingOccurrences(of: " ", with: "-"))"))
+                }
+            }
+            nav.showPalette = true
+            await pause(1.2)
+            if let sheet = window.attachedSheet { await settle(sheet); captureWindow(sheet, to: url("palette")) }
+            exit(0)
+        }
+
         // Overview: the top of the page, then the disk map further down.
         store.requestedSection = .agents
         await pause(0.8)
@@ -97,6 +116,19 @@ enum Screenshots {
             captureWindow(window, to: url(name))
         }
 
+        if everything {
+            for (name, section, wait) in [("deprecated", Section.deprecated, 2.0), ("tool-claude", .tool(.claude), 2.0), ("leftovers", .leftovers, 2.4), ("duplicates", .dedupe, 1.8),
+                                          ("containers", .containers, 2.2), ("disk", .disk, 2.8), ("vault", .vault, 1.8), ("sessions", .sessions, 2.4), ("tools", .integrations, 2.0)] {
+                store.requestedSection = section
+                let isList: Bool = { switch section { case .deprecated, .tool, .leftovers: return true; default: return false } }()
+                await pause(isList ? wait + 1.4 : wait)
+                if !isList { scroll(window, to: 0) }   // a table keeps its own offset; scrolling it by hand shifts its columns
+                await pause(0.6)
+                await focus()
+                captureWindow(window, to: url(name))
+            }
+        }
+
         // Skills, with the one that needs attention open.
         store.requestedSection = .skills
         if let risky = store.skills.first(where: { $0.name == "deploy-helper" }) { store.requestedSkill = risky.realPath }
@@ -113,6 +145,15 @@ enum Screenshots {
         if let sheet = window.attachedSheet { await settle(sheet); captureWindow(sheet, to: url("cleanup-confirm")) } else { print("no sheet") }
         store.plan = nil
         await pause(1.0)
+
+        if everything {
+            // First run: the onboarding sheet.
+            store.needsOnboarding = true
+            await pause(1.8)
+            if let sheet = window.attachedSheet { await settle(sheet); captureWindow(sheet, to: url("onboarding")) } else { print("no onboarding sheet") }
+            store.needsOnboarding = false
+            await pause(1.0)
+        }
 
         // The progress panel, shown in its own window.
         let job = store.addDemoJob()

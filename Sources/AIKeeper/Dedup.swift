@@ -203,8 +203,7 @@ struct DedupView: View {
                 tips
             }.padding(28).frame(maxWidth: 860, alignment: .leading).frame(maxWidth: .infinity)
         }
-        .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: 62) }   // keep the first row clear of the glass toolbar
-        .navigationTitle("Duplicates")
+        .toolbarClearance()
         .confirmationDialog("Merge duplicate files?", isPresented: $confirm, titleVisibility: .visible) {
             Button("Merge and free \((model.report?.reclaim ?? 0).bytesString)") { model.merge() }
         } message: { Text("Identical files are replaced by copy-on-write clones. Contents stay byte-for-byte the same, and editing a file only changes that copy.") }

@@ -151,8 +151,7 @@ struct AgentsView: View {
                 section("MCP servers", mcp, empty: "No MCP servers running.")
             }.padding(24)
         }
-        .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: 62) }   // keep the first row clear of the glass toolbar
-        .navigationTitle("Agents")
+        .toolbarClearance()
         .navigationSubtitle("Live · refreshes every 4s")
         .confirmationDialog(
             "\(force ? "Force quit" : "Stop") \(pendingKill.count) process\(pendingKill.count == 1 ? "" : "es")?",

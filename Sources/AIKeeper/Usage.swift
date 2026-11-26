@@ -443,8 +443,7 @@ struct UsageView: View {
                 }
             }.padding(24)
         }
-        .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: 62) }   // keep the first row clear of the glass toolbar
-        .navigationTitle("AI Usage")
+        .toolbarClearance()
         .toolbar {
             ToolbarItem { Picker("Tool", selection: $tool) { Text("All").tag(AgentTool?.none); ForEach(AgentTool.enabled, id: \.self) { Text($0.rawValue).tag(AgentTool?.some($0)) } }.pickerStyle(.segmented) }
             ToolbarItem { Picker("Range", selection: $range) { ForEach(Range.allCases) { Text($0.rawValue).tag($0) } }.pickerStyle(.segmented) }

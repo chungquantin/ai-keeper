@@ -91,8 +91,7 @@ struct DockerView: View {
                 }
             }.padding(28).frame(maxWidth: 860, alignment: .leading).frame(maxWidth: .infinity)
         }
-        .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: 62) }   // keep the first row clear of the glass toolbar
-        .navigationTitle("Containers")
+        .toolbarClearance()
         .toolbar { ToolbarItem { Button { Task { await refresh() } } label: { Label("Refresh", systemImage: "arrow.clockwise") }.disabled(loading) } }
         .task { await refresh() }
         .confirmationDialog(pending.map { "Prune \($0.title.lowercased())?" } ?? "", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {

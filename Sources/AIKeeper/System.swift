@@ -420,8 +420,7 @@ struct SystemView: View {
                 processes
             }.padding(24).frame(maxWidth: 1000, alignment: .leading).frame(maxWidth: .infinity)
         }
-        .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: 62) }   // keep the first row clear of the glass toolbar
-        .navigationTitle("System")
+        .toolbarClearance()
         .navigationSubtitle("Live · updates every 2 seconds")
         .task { await m.run() }
         .confirmationDialog("Quit \(pending?.name ?? "")?", isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }), titleVisibility: .visible) {

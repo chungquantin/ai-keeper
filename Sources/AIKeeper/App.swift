@@ -5,6 +5,7 @@ import SwiftUI
 struct AIKeeperApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var store = Store()
+    @StateObject private var nav = NavState()
 
     init() {
         Migration.run()   // before anything reads settings
@@ -196,7 +197,9 @@ struct AIKeeperApp: App {
         WindowGroup(id: "main") {
             RootView()
                 .environmentObject(store)
+                .environmentObject(nav)
                 .font(.bBody)
+                .tint(Brand.accent)
                 .frame(minWidth: 1060, minHeight: 620)
                 .task {
                     NSApplication.shared.setActivationPolicy(.regular)
@@ -212,12 +215,13 @@ struct AIKeeperApp: App {
                 Button("Rescan") { Task { await store.rescan() } }.keyboardShortcut("r")
             }
             CommandMenu("Go") {
-                Button("Overview") { store.requestedSection = .overview }.keyboardShortcut("1")
-                Button("All workspaces") { store.requestedSection = .all }.keyboardShortcut("2")
-                Button("Agents") { store.requestedSection = .agents }.keyboardShortcut("3")
-                Button("AI usage") { store.requestedSection = .usage }.keyboardShortcut("4")
-                Button("Disk analyzer") { store.requestedSection = .disk }.keyboardShortcut("5")
-                Button("System") { store.requestedSection = .memory }.keyboardShortcut("6")
+                Button("Search") { nav.showPalette = true }.keyboardShortcut("k")
+                Divider()
+                Button("Today") { nav.open(.today) }.keyboardShortcut("1")
+                Button("Sessions") { nav.open(.sessions) }.keyboardShortcut("2")
+                Button("Insights") { nav.open(.insights) }.keyboardShortcut("3")
+                Button("Cleanup") { nav.open(.cleanup) }.keyboardShortcut("4")
+                Button("Agents") { nav.open(.agents) }.keyboardShortcut("5")
             }
         }
 
@@ -278,45 +282,33 @@ enum Section: Hashable {
 
 struct RootView: View {
     @EnvironmentObject var store: Store
-    @State private var section: Section? = .overview
+    @EnvironmentObject var nav: NavState
     @State private var showSplash = !(Screenshots.outDir != nil || Recording.outDir != nil || Soak.seconds != nil || Demo.enabled
                                       || ProcessInfo.processInfo.environment["AIKEEPER_NOSPLASH"] != nil)
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         NavigationSplitView {
-            SidebarView(selection: $section)
-                .navigationSplitViewColumnWidth(min: 210, ideal: 240, max: 300)
+            SidebarView()
+                .navigationSplitViewColumnWidth(min: 210, ideal: 232, max: 280)
         } detail: {
             ZStack {
-            switch section ?? .overview {
-            case .overview: OverviewView(go: { section = $0 }, explore: { store.analyzer.open($0); section = .disk })
-            case .agents: AgentsView()
-            case .usage: UsageView()
-            case .disk: DiskView(model: store.analyzer)
-            case .vault: VaultView()
-            case .sessions: SessionsView()
-            case .dedupe: DedupView(model: store.dedup)
-            case .containers: DockerView()
-            case .memory: SystemView()
-            case .skills: SkillsView()
-            case .integrations: ToolsView()
-            case let s: EntryListView(section: s).id(s)
+                AreaView(area: nav.area)
             }
-            }
-            .id(section)
+            .background(Brand.background)
+            .id(nav.area)
             .transition(.opacity)
-            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: section)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: nav.area)
             // Inside the content column, not over the sidebar or toolbar.
             .safeAreaInset(edge: .top, spacing: 0) {
                 if let a = store.alert {
-                    AlertBanner(alert: a, go: { section = $0 })
+                    AlertBanner(alert: a, go: { nav.go($0) })
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
             }
             .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: store.alert?.id)
         }
-        .onChange(of: store.requestedSection) { _, s in if let s { section = s; store.requestedSection = nil } }
+        .onChange(of: store.requestedSection) { _, s in if let s { nav.go(s); store.requestedSection = nil } }
         .overlay {
             if showSplash { SplashView(onSkip: { dismissSplash() }).environmentObject(store).transition(.opacity) }
         }
@@ -329,14 +321,13 @@ struct RootView: View {
             dismissSplash()
         }
         .task {
-            if let dir = Screenshots.outDir { await Screenshots.run(store: store, dir: dir) }
+            if let dir = Screenshots.outDir { await Screenshots.run(store: store, nav: nav, dir: dir) }
             else if let dir = Recording.outDir { await Recording.run(store: store, dir: dir) }
             else if let secs = Soak.seconds { await Soak.run(store: store, for: secs) }
         }
         .sheet(item: $store.plan) { CleanupSheet(plan: $0) }
         .sheet(isPresented: $store.needsOnboarding) { OnboardingView().environmentObject(store).interactiveDismissDisabled() }
-        .toolbar {
-        }
+        .sheet(isPresented: $nav.showPalette) { PaletteView().environmentObject(store).environmentObject(nav) }
     }
 
     private func dismissSplash() {
@@ -374,73 +365,100 @@ struct ScanFooter: View {
 
 struct SidebarView: View {
     @EnvironmentObject var store: Store
-    @Binding var selection: Section?
-
-    /// Tools the user enabled that create workspaces, plus plain Git.
-    private var workspaceSources: [Source] {
-        ToolCatalog.all.filter { store.enabledTools.contains($0.id) && $0.workspaces }.compactMap(\.source) + [.git]
-    }
+    @EnvironmentObject var nav: NavState
 
     var body: some View {
         VStack(spacing: 0) {
+            scopePicker
             sidebarList
             ActivityBar()
             ScanFooter()
         }
     }
 
-    private var sidebarList: some View {
-        List(selection: $selection) {
-            row(.overview, badge: store.reclaimable > 0 ? store.reclaimable.bytesString : nil, accent: true)
-            SwiftUI.Section("Monitor") {
-                let running = store.agents.filter { $0.kind != .mcp }
-                row(.agents, badge: running.isEmpty ? nil : "\(running.count) running", accent: true)
-                row(.memory, badge: nil)
-                row(.sessions, badge: store.sessions.isEmpty ? nil : "\(store.sessions.count)")
-                row(.usage, badge: String(format: "$%.2f today", store.usage.filter { Calendar.current.isDateInToday($0.day) }.reduce(0) { $0 + $1.cost }))
+    /// The agent filter replaces the old "By tool" list. Pages that can narrow to one agent follow it.
+    private var scopePicker: some View {
+        Menu {
+            Button("All agents") { nav.scope = nil }
+            Divider()
+            ForEach(ToolCatalog.all.filter { store.enabledTools.contains($0.id) && ($0.agents || $0.usage || $0.workspaces) }, id: \.id) { t in
+                Button(t.name) { nav.scope = t.id }
             }
-            SwiftUI.Section("Workspaces") {
-                row(.all, badge: "\(store.workspaces.count)")
-                row(.deprecated, badge: store.deprecated.isEmpty ? nil : store.total(store.deprecated).bytesString, accent: true)
+        } label: {
+            HStack(spacing: 8) {
+                Circle().fill(nav.scope.map { AgentColor.of($0) } ?? Brand.accent).frame(width: 8, height: 8)
+                Text(nav.scope.flatMap { id in ToolCatalog.all.first { $0.id == id }?.name } ?? "All agents").font(.brand(13, .medium))
+                Spacer()
+                Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(.secondary)
             }
-            SwiftUI.Section("By tool") {
-                ForEach(workspaceSources, id: \.self) { s in
-                    let bytes = store.stats.bySource[s] ?? 0
-                    row(.tool(s), badge: bytes > 0 ? bytes.bytesString : nil)   // an empty tool says nothing, instead of "Zero KB"
-                }
-            }
-            SwiftUI.Section("Cleanup") {
-                row(.leftovers, badge: (store.total(store.orphanSessions) + store.total(store.caches)).bytesString)
-                row(.dedupe, badge: nil)
-                row(.containers, badge: nil)
-                row(.disk, badge: nil)
-                row(.vault, badge: store.vault.isEmpty ? nil : "\(store.vault.count)")
-            }
-            SwiftUI.Section("Setup") {
-                row(.skills, badge: skillsBadge)
-                row(.integrations, badge: "\(store.enabledTools.count) on")
-            }
+            .padding(.horizontal, 10).frame(height: 32)
+            .background(Brand.card, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Brand.border))
         }
-        .listStyle(.sidebar)
+        .menuStyle(.button).menuIndicator(.hidden).buttonStyle(.plain)
+        .padding(.horizontal, 12).padding(.top, 8).padding(.bottom, 4)
+        .accessibilityLabel("Agent filter")
+    }
+
+    private var sidebarList: some View {
+        ScrollView {
+            VStack(spacing: 2) {
+                ForEach(Area.allCases) { a in row(a) }
+                Divider().padding(.vertical, 8).padding(.horizontal, 10)
+                Button { nav.showPalette = true } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: "magnifyingglass").frame(width: 18)
+                        Text("Search")
+                        Spacer()
+                        Text("⌘K").font(.bCaption)
+                    }
+                    .foregroundStyle(Brand.mutedForeground).padding(.horizontal, 10).frame(height: 34).contentShape(Rectangle())
+                }.buttonStyle(HoverRowStyle()).clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }.padding(.horizontal, 10).padding(.top, 6)
+        }
         .font(.bBody)
     }
 
-    private var skillsBadge: String? {
-        guard !store.skills.isEmpty else { return nil }
-        let review = store.skills.filter { let v = SkillLibrary.verdict($0, store.skillScans); return v == .caution || v == .danger }.count
-        return review > 0 ? "\(review) to review" : "\(store.skills.count)"
+    /// A quiet tint and cobalt text mark the open area. The solid cobalt row is kept for the one primary button per screen.
+    private func row(_ a: Area) -> some View {
+        let on = nav.area == a
+        return Button { nav.area = a } label: {
+            HStack(spacing: 10) {
+                Image(systemName: a.symbol).font(.system(size: 14, weight: .medium)).frame(width: 18)
+                    .foregroundStyle(on ? Brand.primaryText : Brand.mutedForeground)
+                Text(a.rawValue).font(.brand(13, on ? .semibold : .medium))
+                Spacer(minLength: 4)
+                if let b = badge(a) {
+                    let hot = a == .cleanup || (a == .agents && b.contains("needs"))
+                    Text(b).font(.brand(11, hot ? .semibold : .medium)).monospacedDigit()
+                        .padding(.horizontal, hot ? 7 : 0).padding(.vertical, hot ? 1 : 0)
+                        .background(hot ? Brand.reclaimTint : .clear, in: Capsule())
+                        .foregroundStyle(hot ? Brand.reclaimText : Brand.mutedForeground)
+                }
+            }
+            .foregroundStyle(on ? Brand.primaryText : Color.primary)
+            .padding(.horizontal, 10).frame(height: 34)
+            .background(on ? Brand.primaryTint : Color.clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 
-    private func row(_ s: Section, badge: String?, accent: Bool = false) -> some View {
-        Group {
-            if case .tool(let src) = s, src.logoID != nil {
-                Label { Text(s.title) } icon: { ToolIcon(id: src.logoID, fallback: s.symbol, size: 17) }   // the tool's real logo
-            } else {
-                Label(s.title, systemImage: s.symbol)
-            }
+    private func badge(_ a: Area) -> String? {
+        switch a {
+        case .today: return nil
+        case .sessions:
+            let n = store.agents.filter { $0.kind != .mcp }.count
+            return n > 0 ? "\(n) live" : nil
+        case .insights: return nil
+        case .cleanup: return store.hasData && store.reclaimable > 0 ? store.reclaimable.bytesString : nil
+        case .agents:
+            let waiting = store.agents.filter { $0.state == .needsInput && $0.kind != .mcp }.count
+            if waiting > 0 { return "\(waiting) needs you" }
+            let review = store.skills.filter { let v = SkillLibrary.verdict($0, store.skillScans); return v == .caution || v == .danger }.count
+            return review > 0 ? "\(review) to review" : nil
         }
-        .badge(badge.map { Text($0) })   // no custom color: it stays readable on the selected row
-        .tag(s)
     }
 }
 
@@ -521,7 +539,7 @@ struct MenuContent: View {
             Divider()
             ForEach(store.activeJobs.prefix(1)) { JobMenuLine(job: $0) }
             Label("\(store.disk.available.bytesString) free", systemImage: "internaldrive")
-            Label("\(store.reclaimable.bytesString) reclaimable", systemImage: "leaf").foregroundStyle(Brand.reclaim)
+            Label("\(store.reclaimable.bytesString) reclaimable", systemImage: "leaf").foregroundStyle(Brand.reclaimText)
             Divider()
             Button("Open AI Keeper") {
                 openWindow(id: "main"); NSApp.activate(ignoringOtherApps: true)

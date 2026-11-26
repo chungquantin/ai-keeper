@@ -227,8 +227,7 @@ struct VaultView: View {
                 }
             }.padding(28).frame(maxWidth: 860, alignment: .leading).frame(maxWidth: .infinity)
         }
-        .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: 62) }   // keep the first row clear of the glass toolbar
-        .navigationTitle("Recently removed")
+        .toolbarClearance()
         .alert("Restore", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
             Button("OK") { message = nil }
         } message: { Text(message ?? "") }
@@ -246,7 +245,7 @@ struct VaultView: View {
                     if i.hasPatch { Pill(text: "Uncommitted changes", color: .orange) }
                     if i.hasUntracked { Pill(text: "Untracked files", color: .teal) }
                 }.padding(.top, 2)
-                ForEach(i.notes, id: \.self) { Text($0).font(.bCaption).foregroundStyle(.orange) }
+                ForEach(i.notes, id: \.self) { Text($0).font(.bCaption).foregroundStyle(Brand.reclaimText) }
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {

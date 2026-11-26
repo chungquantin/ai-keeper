@@ -111,7 +111,7 @@ struct EntryListView: View {
                         if e.artifactBytes > 0 {
                             // Icon instead of the word "rebuildable": the full label clipped in a narrow column.
                             Label(e.artifactBytes.bytesString, systemImage: "shippingbox")
-                                .font(.bCaption).foregroundStyle(.orange).monospacedDigit().lineLimit(1)
+                                .font(.bCaption).foregroundStyle(Brand.reclaimText).monospacedDigit().lineLimit(1)
                                 .help("\(e.artifactBytes.bytesString) of rebuildable build folders")
                         }
                     }
@@ -125,6 +125,7 @@ struct EntryListView: View {
                 Pill(text: t, color: c, truncates: true)
             }.width(min: 110, ideal: 125)
         }
+        .scrollContentBackground(.hidden)   // the table sits on the design system's background
         .contextMenu(forSelectionType: Entry.ID.self) { ids in
             let list = store.entries.filter { ids.contains($0.id) }
             if let first = list.first, list.count == 1 {

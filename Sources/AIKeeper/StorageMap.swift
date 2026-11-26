@@ -180,7 +180,7 @@ struct StorageMapView: View {
         if store.mapRefreshing {
             HStack(spacing: 6) { ProgressView().controlSize(.small); Text("Measuring in the background…") }.font(.bCaption).foregroundStyle(.secondary)
         } else if store.mapStale {
-            Label("Out of date after a cleanup", systemImage: "exclamationmark.circle").font(.bCaption).foregroundStyle(.orange)
+            Label("Out of date after a cleanup", systemImage: "exclamationmark.circle").font(.bCaption).foregroundStyle(Brand.reclaimText)
         } else if let d = store.mapDate {
             Text("Measured \(d.formatted(.relative(presentation: .named)))").font(.bCaption).foregroundStyle(.secondary)
         }
@@ -234,7 +234,7 @@ struct StorageMapView: View {
                 Text(h.size.bytesString).monospacedDigit().fontWeight(.medium)
                 Text(String(format: "%.0f%% of disk", Double(h.size) / used * 100)).font(.bCaption).foregroundStyle(.secondary)
                 if let g = store.growth(of: h.path, current: h.size), g > 0 {
-                    Text("+\(g.bytesString) today").font(.bCaption).foregroundStyle(.orange)
+                    Text("+\(g.bytesString) today").font(.bCaption).foregroundStyle(Brand.reclaimText)
                 }
             }.frame(width: 90, alignment: .trailing)
             HStack(spacing: 6) {

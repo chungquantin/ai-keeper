@@ -204,7 +204,7 @@ struct FreeSpaceChart: View {
                     }
                     RuleMark(y: .value("Floor", Double(store.floorBytes) / 1e9))
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4])).foregroundStyle(.orange)
-                        .annotation(position: .top, alignment: .leading) { Text("alert floor").font(.bCaption2).foregroundStyle(.orange) }
+                        .annotation(position: .top, alignment: .leading) { Text("alert floor").font(.bCaption2).foregroundStyle(Brand.reclaimText) }
                 }
                 .chartYAxis { AxisMarks { v in AxisGridLine(); AxisValueLabel { if let d = v.as(Double.self) { Text("\(Int(d)) GB") } } } }
                 .frame(height: 140)
@@ -217,7 +217,7 @@ struct FreeSpaceChart: View {
                         Image(systemName: "arrow.up.right").foregroundStyle(.orange)
                         Text(g.path.replacingOccurrences(of: home, with: "~")).lineLimit(1).truncationMode(.head)
                         Spacer()
-                        Text("+\(g.delta.bytesString) since yesterday").foregroundStyle(.orange).monospacedDigit()
+                        Text("+\(g.delta.bytesString) since yesterday").foregroundStyle(Brand.reclaimText).monospacedDigit()
                     }.font(.bCallout)
                 }
             }

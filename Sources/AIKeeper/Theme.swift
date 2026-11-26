@@ -4,22 +4,26 @@ import SwiftUI
 /// The brand palette. Ultramarine marks actions and "safe/finished" states, amber marks space you can reclaim,
 /// violet marks merged pull requests, and everything neutral is gray. Green is deliberately not used.
 enum Brand {
-    static let accent = Color(red: 0.145, green: 0.271, blue: 0.961)    // #2545F5
-    static let reclaim = Color(red: 0.961, green: 0.651, blue: 0.141)   // #F5A624
-    static let merged = Color(red: 0.514, green: 0.380, blue: 0.929)    // #8361ED
+    /// The one action colour (design system: `primary`). Cobalt by day, a lighter cobalt at night so white text still reads on it.
+    static let accent = Color.dynamic(light: 0x2F45FF, dark: 0x4A5CFF)
+    /// Space you can get back (`reclaim`). A fill or glyph; for amber text use `reclaimText`.
+    static let reclaim = Color.dynamic(light: 0xFF9F0A, dark: 0xFFB340)
+    /// A merged pull request (`merged`).
+    static let merged = Color.dynamic(light: 0x7C3AED, dark: 0xB794F6)
     static let ink = Color(red: 0.063, green: 0.094, blue: 0.157)       // #101828
 }
 
 extension View {
-    /// A raised surface with the brand's notched corners (the radius argument is kept so call sites read the same).
-    func panel(_ radius: CGFloat = 12) -> some View {
-        background(.background.secondary, in: NotchShape(cut: radius >= 10 ? 5 : 4))
-            .overlay(NotchShape(cut: radius >= 10 ? 5 : 4).strokeBorder(.separator, lineWidth: 0.5))
+    /// A card: `card` surface, continuous corners (14pt unless given), a one-pixel edge. `raised` adds the soft lift for the one card that matters.
+    func panel(_ radius: CGFloat = 14, raised: Bool = false) -> some View {
+        background(Brand.card, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Brand.border, lineWidth: 1))
+            .shadow(color: .black.opacity(raised ? 0.10 : 0), radius: raised ? 12 : 0, y: raised ? 6 : 0)
     }
 }
 
 extension Font {
-    /// Big numbers are set in the pixel face, the same as on the website.
+    /// Big numbers are set large in the system font, medium weight, tabular digits.
     static func figure(_ size: CGFloat, _ weight: Font.Weight = .semibold) -> Font {
         pixel(size * 1.3)
     }

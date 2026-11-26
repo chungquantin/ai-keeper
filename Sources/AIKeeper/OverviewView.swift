@@ -59,7 +59,7 @@ struct OverviewView: View {
             .frame(maxWidth: 860, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
-        .safeAreaInset(edge: .top, spacing: 0) { Color.clear.frame(height: 62) }   // keep the first row clear of the glass toolbar
+        .toolbarClearance()
         .navigationTitle("Overview")
         .background(Color(nsColor: .windowBackgroundColor))
     }

@@ -347,7 +347,7 @@ private struct JobRow: View {
 struct JobMenuLine: View {
     @ObservedObject var job: CleanupJob
     var body: some View {
-        Label("Cleaning · \(Int(job.status.fraction * 100))%", systemImage: "wind").foregroundStyle(.orange)
+        Label("Cleaning · \(Int(job.status.fraction * 100))%", systemImage: "wind").foregroundStyle(Brand.reclaimText)
     }
 }
 

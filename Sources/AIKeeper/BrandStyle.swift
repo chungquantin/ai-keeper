@@ -25,17 +25,17 @@ extension Font {
 
     /// Text in the brand face. Falls back to the system font if the files are missing.
     static func brand(_ size: CGFloat, _ weight: Font.Weight = .regular, relativeTo style: Font.TextStyle = .body) -> Font {
-        .custom(brandText, size: size, relativeTo: style).weight(weight)
+        .system(size: size, weight: weight)   // the system font (SF Pro): calm, and it matches the redesign
     }
-    static var bTitle2: Font { .brand(21, .bold, relativeTo: .title2) }
-    static var bTitle3: Font { .brand(17, .semibold, relativeTo: .title3) }
-    static var bHeadline: Font { .brand(14.5, .semibold, relativeTo: .headline) }
-    static var bBody: Font { .brand(13.5, .regular, relativeTo: .body) }
+    static var bTitle2: Font { .brand(22, .semibold, relativeTo: .title2) }
+    static var bTitle3: Font { .brand(18, .semibold, relativeTo: .title3) }
+    static var bHeadline: Font { .brand(15, .semibold, relativeTo: .headline) }
+    static var bBody: Font { .brand(13, .regular, relativeTo: .body) }
     static var bCallout: Font { .brand(13, .regular, relativeTo: .callout) }
-    static var bCaption: Font { .brand(11.5, .regular, relativeTo: .caption) }
-    static var bCaption2: Font { .brand(10.5, .regular, relativeTo: .caption2) }
+    static var bCaption: Font { .brand(12, .regular, relativeTo: .caption) }
+    static var bCaption2: Font { .brand(11, .medium, relativeTo: .caption2) }
     /// The pixel face, for numbers and small tags.
-    static func pixel(_ size: CGFloat) -> Font { .custom(brandPixel, size: size) }
+    static func pixel(_ size: CGFloat) -> Font { .system(size: size * 0.72, weight: .medium).monospacedDigit() }
     static func code(_ size: CGFloat) -> Font { .custom(brandCode, size: size) }
 }
 
@@ -50,47 +50,53 @@ extension Color {
     }
 }
 
-extension Brand {
-    static let night = Color(px: 0x0F1760)
-    static let paper = Color(px: 0xF4F6FF)
-    static let mist = Color(px: 0xDFE5FF)
-    /// Surfaces follow the system's own colours.
-    static let surface = Color(nsColor: .windowBackgroundColor)
-}
-
-/// A rectangle with its corners cut in one pixel step: the shape every panel and button uses on the website.
-struct NotchShape: InsettableShape {
-    var cut: CGFloat = 4
-    var inset: CGFloat = 0
-    func path(in rect: CGRect) -> Path {
-        let r = rect.insetBy(dx: inset, dy: inset), c = min(cut, r.width / 4, r.height / 4)
-        var p = Path()
-        p.move(to: CGPoint(x: r.minX, y: r.minY + c))
-        for pt in [(c, c), (c, 0), (r.width - c, 0), (r.width - c, c), (r.width, c), (r.width, r.height - c), (r.width - c, r.height - c),
-                   (r.width - c, r.height), (c, r.height), (c, r.height - c), (0, r.height - c)] {
-            p.addLine(to: CGPoint(x: r.minX + pt.0, y: r.minY + pt.1))
-        }
-        p.closeSubpath()
-        return p
+extension Color {
+    /// Like `dynamic`, with an alpha for each appearance (hairlines and tints).
+    static func dynamic(light: UInt32, lightAlpha: CGFloat, dark: UInt32, darkAlpha: CGFloat) -> Color {
+        Color(nsColor: NSColor(name: nil) { a in
+            let isDark = a.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            let h = isDark ? dark : light
+            return NSColor(srgbRed: CGFloat((h >> 16) & 255) / 255, green: CGFloat((h >> 8) & 255) / 255, blue: CGFloat(h & 255) / 255, alpha: isDark ? darkAlpha : lightAlpha)
+        })
     }
-    func inset(by amount: CGFloat) -> NotchShape { var s = self; s.inset += amount; return s }
 }
 
-/// The primary button: tint-coloured (cobalt unless a tint is set) with notched corners.
+/// The neutral surfaces and tints of the design system (tokens: background, card, popover, muted, border and their partners).
+extension Brand {
+    static let background = Color.dynamic(light: 0xF5F5F7, dark: 0x0E0E10)
+    static let card = Color.dynamic(light: 0xFFFFFF, dark: 0x1A1A1C)
+    static let popover = Color.dynamic(light: 0xFFFFFF, dark: 0x232326)
+    static let muted = Color.dynamic(light: 0xEFEFF2, dark: 0x232326)
+    static let mutedForeground = Color.dynamic(light: 0x66666B, dark: 0xA1A1A6)
+    static let border = Color.dynamic(light: 0x000000, lightAlpha: 0.08, dark: 0xFFFFFF, darkAlpha: 0.10)
+    static let hover = Color.dynamic(light: 0x000000, lightAlpha: 0.05, dark: 0xFFFFFF, darkAlpha: 0.07)
+    static let primaryText = Color.dynamic(light: 0x2F45FF, dark: 0x8C99FF)
+    static let primaryTint = Color.dynamic(light: 0x2F45FF, lightAlpha: 0.10, dark: 0x6E7DFF, darkAlpha: 0.20)
+    static let reclaimText = Color.dynamic(light: 0xB25E00, dark: 0xFFB340)
+    static let reclaimTint = Color.dynamic(light: 0xFF9F0A, lightAlpha: 0.16, dark: 0xFFB340, darkAlpha: 0.18)
+    static let destructive = Color.dynamic(light: 0xD70015, dark: 0xFF6961)
+    static let destructiveTint = Color.dynamic(light: 0xD70015, lightAlpha: 0.08, dark: 0xFF6961, darkAlpha: 0.18)
+    static let surface = background
+}
+
+/// The primary button: `primary` (cobalt unless a tint is set), continuous corners, scales to 97% when pressed.
 struct BrandProminentStyle: ButtonStyle {
     @Environment(\.isEnabled) private var enabled
     @Environment(\.controlSize) private var size
     func makeBody(configuration: Configuration) -> some View {
-        let pad: (CGFloat, CGFloat) = size == .small || size == .mini ? (10, 4) : size == .large ? (18, 9) : (14, 6)
+        let pad: (CGFloat, CGFloat) = size == .small || size == .mini ? (10, 4) : size == .large ? (20, 11) : (14, 7)
+        let radius: CGFloat = size == .small || size == .mini ? 6 : size == .large ? 12 : 10
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
         configuration.label
             .font(.brand(size == .large ? 14.5 : 13, .semibold))
             .foregroundStyle(.white)
             .padding(.horizontal, pad.0).padding(.vertical, pad.1)
-            .background(NotchShape(cut: size == .small || size == .mini ? 3 : 4).fill(.tint))
-            .overlay(NotchShape(cut: size == .small || size == .mini ? 3 : 4).fill(Color.black.opacity(configuration.isPressed ? 0.22 : 0)))
-            .opacity(enabled ? 1 : 0.45)
-            .offset(y: configuration.isPressed ? 1 : 0)
-            .contentShape(NotchShape())
+            .background(shape.fill(.tint))
+            .overlay(shape.fill(Color.black.opacity(configuration.isPressed ? 0.16 : 0)))
+            .opacity(enabled ? 1 : 0.4)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+            .contentShape(shape)
     }
 }
 extension ButtonStyle where Self == BrandProminentStyle { static var brandProminent: BrandProminentStyle { BrandProminentStyle() } }

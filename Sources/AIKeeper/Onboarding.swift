@@ -41,7 +41,7 @@ struct ToolRow: View {
                             .background(.quaternary, in: RoundedRectangle(cornerRadius: 4)).foregroundStyle(.secondary)
                     }
                 }.padding(.top, 1)
-                if let n = det.spec.note { Text(n).font(.bCaption).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true) }
+                if let n = det.spec.note { Text(n).font(.bCaption).foregroundStyle(Brand.reclaimText).fixedSize(horizontal: false, vertical: true) }
             }
             Spacer(minLength: 0)
             if showReveal, let d = det.dataPath {
@@ -259,7 +259,6 @@ struct ToolsView: View {
                 }
             }.padding(28).frame(maxWidth: 820, alignment: .leading).frame(maxWidth: .infinity)
         }
-        .navigationTitle("Tools")
         .task { if store.detections.isEmpty { await store.detectTools() } }
     }
 

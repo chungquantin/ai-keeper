@@ -173,7 +173,6 @@ struct SessionsView: View {
             .listStyle(.inset(alternatesRowBackgrounds: true))
             .overlay { if rows.isEmpty { ContentUnavailableView(store.usageLoading ? "Reading sessions…" : "No sessions match", systemImage: "bubble.left.and.text.bubble.right") } }
         }
-        .navigationTitle("Sessions")
         .searchable(text: $query, prompt: "Search titles, or text inside conversations")
         .onChange(of: query) { _, q in search(q) }
         .confirmationDialog("Move this session log to Trash?", isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }), titleVisibility: .visible) {

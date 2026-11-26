@@ -159,7 +159,6 @@ struct DiskView: View {
             Divider()
             if showLarge { largeList } else { folderList }
         }
-        .navigationTitle("Disk Analyzer")
         .navigationSubtitle(model.measuring ? "Measuring in the background…" : "\(model.total.bytesString)" + (model.measuredAt.map { " · measured \($0.formatted(.relative(presentation: .named)))" } ?? ""))
         .onAppear { if model.nodes.isEmpty { model.open(model.path) } }
         .confirmationDialog("Move “\(pendingDelete?.name ?? "")” to Trash?",
