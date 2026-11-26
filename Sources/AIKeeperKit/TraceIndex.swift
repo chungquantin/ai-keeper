@@ -91,7 +91,7 @@ enum TraceIndexer {
         lock.lock()
         if !restored {
             restored = true
-            if let d = Persist.load(Disk.self, "traces.json") { for (k, v) in d.items { cache[k] = (v.sig, v.s) } }
+            if let d = Persist.load(Disk.self, "traces-v2.json") { for (k, v) in d.items { cache[k] = (v.sig, v.s) } }
         }
         lock.unlock()
         let list = files()
@@ -113,7 +113,7 @@ enum TraceIndexer {
             let keep = Set(list.map(\.path))
             lock.lock(); cache = cache.filter { keep.contains($0.key) }
             let d = Disk(items: cache.mapValues { .init(sig: $0.sig, s: $0.s) }); lock.unlock()
-            Persist.save(d, "traces.json")
+            Persist.save(d, "traces-v2.json")
         }
         return out.filter { !$0.prompts.isEmpty || $0.toolCalls > 0 }
     }
@@ -152,6 +152,9 @@ enum TraceIndexer {
         var lastEdit = (file: "", n: 0)
         var contexts: [Int] = []
         var eventN = 0
+        // Working time inside a turn: the gaps between log lines, each counted up to 5 minutes, so a turn left open overnight is not 12 hours long.
+        var turnActive = 0.0, lastEvent: Date?
+        func tick(_ ts: Date) { if let le = lastEvent { turnActive += min(max(ts.timeIntervalSince(le), 0), 300) }; lastEvent = ts }
 
         func event(_ at: Date, _ level: String, _ msg: String) {
             eventN += 1
@@ -167,9 +170,9 @@ enum TraceIndexer {
             guard !s.prompts.isEmpty else { return }
             let i = s.prompts.count - 1
             s.prompts[i].turns = repliesInTurn.count
-            if let la = lastAssistant, la > s.prompts[i].at { s.prompts[i].seconds = la.timeIntervalSince(s.prompts[i].at) }
+            s.prompts[i].seconds = turnActive
             if !s.lastText.isEmpty { step(TraceStep(at: lastAssistant ?? s.prompts[i].at, kind: "text", title: "Agent", detail: clip(s.lastText, 320))) }
-            repliesInTurn = []
+            repliesInTurn = []; turnActive = 0
         }
 
         Lines.each(data) { line in
@@ -185,7 +188,7 @@ enum TraceIndexer {
             switch type {
             case "assistant":
                 guard let m = o["message"] as? [String: Any] else { return }
-                lastAssistant = ts
+                lastAssistant = ts; tick(ts)
                 if o["isApiErrorMessage"] as? Bool == true { s.apiErrors += 1; bump(ts, 3); event(ts, "error", "The model API returned an error"); return }
                 if let ms = o["thinkingDurationMs"] as? Double { s.thinkingMs += ms }
                 if let id = m["id"] as? String {
@@ -239,7 +242,7 @@ enum TraceIndexer {
                 for case let b as [String: Any] in (m["content"] as? [Any]) ?? [] {
                     if b["type"] as? String == "text", text == nil { text = b["text"] as? String }
                     guard b["type"] as? String == "tool_result", let id = b["tool_use_id"] as? String else { continue }
-                    sawResult = true
+                    sawResult = true; tick(ts)
                     guard let p = pending.removeValue(forKey: id) else { continue }
                     let ms = ((o["toolUseResult"] as? [String: Any])?["durationMs"] as? Double) ?? max(0, ts.timeIntervalSince(p.at) * 1000)
                     s.toolMs += min(ms, 3_600_000)
@@ -263,7 +266,7 @@ enum TraceIndexer {
                 }
                 guard !sawResult, o["isMeta"] as? Bool != true, o["isCompactSummary"] as? Bool != true,
                       var t = text, !t.isEmpty, let cleaned = UsageParser.cleanTitle(&t) else { return }
-                closeTurn()
+                closeTurn(); lastEvent = ts
                 var p = TracePrompt(at: ts, text: clip(cleaned, 400), words: cleaned.split(whereSeparator: { $0 == " " || $0 == "\n" }).count)
                 p.namesFile = cleaned.range(of: #"[\w\-/]+\.[a-zA-Z]{1,5}\b|[\w\-]+/[\w\-]+"#, options: .regularExpression) != nil
                 if let la = lastAssistant, ts > la {

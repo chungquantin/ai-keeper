@@ -35,7 +35,7 @@ struct PaletteView: View {
             r.append(Result(id: "ws-\(e.id)", group: "Workspaces", title: e.name, subtitle: "\(e.repoName) · \((e.size ?? 0).bytesString)", symbol: "square.stack.3d.up", kind: "Workspace") { nav.go(.all); store.requestedSelection = e.id })
         }
         for s in store.sessions.newest(100) {
-            r.append(Result(id: "ses-\(s.id)", group: "Sessions", title: s.title.isEmpty ? s.project : s.title, subtitle: "\(s.agent.rawValue) · \(s.project)", symbol: "text.justify.left", kind: "Session") { nav.open(.sessions, .history) })
+            r.append(Result(id: "ses-\(s.id)", group: "Sessions", title: s.title.isEmpty ? s.project : s.title, subtitle: "\(s.agent.rawValue) · \(s.project)", symbol: "text.justify.left", kind: "Trace") { nav.open(.sessions, .history); nav.openTrace = s })
         }
         return r
     }

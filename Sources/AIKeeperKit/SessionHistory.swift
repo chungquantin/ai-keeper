@@ -104,6 +104,7 @@ private enum SessionFmt {
 /// filters, rows grouped by day, and a panel for the one you pick. Outcomes and summaries are sample data until they can be worked out.
 struct SessionHistoryView: View {
     @EnvironmentObject var store: Store
+    @EnvironmentObject var nav: NavState
     @StateObject private var model = SessionHistoryModel()
     @State private var query = ""
     @State private var tool: AgentTool?
@@ -220,6 +221,7 @@ struct SessionHistoryView: View {
                         case .session(let s):
                             SessionRow(s: s, outcome: Self.outcome(s, store), folderExists: model.exists(s), selected: pick?.id == s.id)
                                 .contentShape(Rectangle())
+                                .onTapGesture(count: 2) { nav.openTrace = s }
                                 .onTapGesture { selected = s.id }
                                 .contextMenu {
                                     Button("Resume in Terminal") { Resume.open(s) }.disabled(!model.exists(s))
@@ -266,9 +268,10 @@ struct SessionHistoryView: View {
                 }
                 Spacer(minLength: 8)
                 VStack(spacing: 8) {
-                    Button { Resume.open(s) } label: { Text("Resume in Terminal").frame(maxWidth: .infinity) }
-                        .buttonStyle(.brandProminent).controlSize(.large).disabled(!model.exists(s))
+                    Button { nav.openTrace = s } label: { Text("Open trace").frame(maxWidth: .infinity) }
+                        .buttonStyle(.brandProminent).controlSize(.large)
                     HStack(spacing: 8) {
+                        Button { Resume.open(s) } label: { Text("Resume").frame(maxWidth: .infinity) }.disabled(!model.exists(s))
                         Button { sheet = .compare(s) } label: { Text("Compare").frame(maxWidth: .infinity) }
                         Button { sheet = .share(s) } label: { Text("Share").frame(maxWidth: .infinity) }
                     }

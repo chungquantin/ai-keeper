@@ -5,7 +5,7 @@ import SwiftUI
 // Cleanup: what can I remove?  Agents: how is it set up?
 
 enum Area: String, CaseIterable, Identifiable {
-    case today = "Today", sessions = "Sessions", insights = "Insights", cleanup = "Cleanup", agents = "Agents"
+    case today = "Today", sessions = "Traces", insights = "Insights", cleanup = "Cleanup", agents = "Agents"
     var id: String { rawValue }
 
     var symbol: String {
@@ -32,7 +32,7 @@ enum Area: String, CaseIterable, Identifiable {
 
 enum Tab: String, Hashable, Identifiable {
     case briefing = "Briefing", reclaim = "Reclaim", optimize = "Optimize", activity = "Activity"
-    case history = "History", live = "Live", logs = "Logs", prompts = "Prompts"
+    case history = "Sessions", live = "Live", logs = "Logs", prompts = "Prompts"
     case cost = "Cost", speed = "Speed", reliability = "Reliability", context = "Context", advisor = "Advisor", machine = "Machine"
     case workspaces = "Workspaces", leftovers = "Leftovers", disk = "Disk", containers = "Containers", removed = "Removed"
     case tools = "Tools", skills = "Skills", mcp = "MCP servers", hooks = "Hooks", budgets = "Budgets"
@@ -86,17 +86,29 @@ enum Tab: String, Hashable, Identifiable {
 /// Where the user is, and the state of the filters that used to be separate pages.
 @MainActor
 final class NavState: ObservableObject {
-    @Published var area: Area = .today
-    @Published var tab: [Area: Tab] = Dictionary(uniqueKeysWithValues: Area.allCases.map { ($0, $0.firstTab) })
+    @Published var area: Area = .today { didSet { remember() } }
+    @Published var tab: [Area: Tab] = Dictionary(uniqueKeysWithValues: Area.allCases.map { ($0, $0.firstTab) }) { didSet { remember() } }
+
+    // scripts/dev.sh relaunches the app after every rebuild. With AIKEEPER_DEV set, it comes back on the page you were on.
+    private static let devFile: URL? = ProcessInfo.processInfo.environment["AIKEEPER_DEV"] != nil ? Persist.dir.appendingPathComponent("dev-nav.txt") : nil
+    private func remember() { if let f = Self.devFile { try? "\(area.rawValue)|\(currentTab.rawValue)".write(to: f, atomically: true, encoding: .utf8) } }
+    init() {
+        guard let f = Self.devFile, let s = try? String(contentsOf: f, encoding: .utf8) else { return }
+        let p = s.split(separator: "|").map(String.init)
+        if p.count == 2, let a = Area(rawValue: p[0]), let t = Tab(rawValue: p[1]), a.tabs.contains(t) { area = a; tab[a] = t }
+    }
     @Published var workspaceFilter: Section = .all      // all, deprecated, or one tool
     @Published var diskDuplicates = false               // Disk tab: analyzer or duplicates
     @Published var showPalette = false
+    /// The session whose full trace is open, in place of the Traces lists.
+    @Published var openTrace: SessionInfo?
     /// The agent filter at the top of the sidebar. nil means all agents.
     @Published var scope: String?
 
     var currentTab: Tab { tab[area] ?? area.firstTab }
 
     func open(_ a: Area, _ t: Tab? = nil) {
+        openTrace = nil
         area = a
         if let t { tab[a] = t }
     }
@@ -203,6 +215,10 @@ struct AreaView: View {
     let area: Area
 
     var body: some View {
+        if area == .sessions, let s = nav.openTrace { TraceDetailView(session: s).id(s.id) } else { lists }
+    }
+
+    private var lists: some View {
         VStack(spacing: 0) {
             // One bar: where you are, what it is for, and its one action. The window has no separate title.
             HStack(alignment: .firstTextBaseline, spacing: 10) {

@@ -77,6 +77,16 @@ public struct AIKeeperApp: App {
             print("  config: mcp=\(AgentConfig.mcpServers().count) hooks=\(AgentConfig.hooks().count)")
             exit(0)
         }
+        // `AIKeeper --tracedetail`: reads the newest Claude Code log in full and prints counts only, to check the trace page's loader.
+        if CommandLine.arguments.contains("--tracedetail") {
+            guard let f = TraceIndexer.files().first else { print("no logs"); exit(0) }
+            let t0 = Date()
+            let s = SessionInfo(file: f.path, sessionID: "", agent: .claude, title: "", cwd: "", project: "", first: Date(), last: Date(), cost: 0, tokens: 0, bytes: 0)
+            let d = TraceDetailLoader.load(s, summary: nil)
+            let size = (try? f.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            print("DETAIL \(size / 1_000_000) MB log in \(String(format: "%.1f", Date().timeIntervalSince(t0)))s: turns=\(d.turns.count) toolCalls=\(d.toolCalls) failed=\(d.failed) modelCalls=\(d.modelCalls) files=\(d.files.count) models=\(d.models.count) cost=$\(String(format: "%.2f", d.cost)) working=\(Int(d.seconds / 60))min")
+            exit(0)
+        }
         if CommandLine.arguments.contains("--tools") {
             let procs = Dictionary(grouping: AgentScanner.scan().filter { $0.kind != .mcp }, by: { $0.kind.toolID ?? "" }).mapValues(\.count)
             for d in ToolCatalog.detect(runningToolIDs: procs) { print("TOOL \(d.found ? "FOUND" : "  -  ") \(d.spec.name.padding(toLength: 12, withPad: " ", startingAt: 0)) running=\(d.running) \(d.evidence)") }
@@ -231,7 +241,7 @@ public struct AIKeeperApp: App {
                 Button("Search") { nav.showPalette = true }.keyboardShortcut("k")
                 Divider()
                 Button("Today") { nav.open(.today) }.keyboardShortcut("1")
-                Button("Sessions") { nav.open(.sessions) }.keyboardShortcut("2")
+                Button("Traces") { nav.open(.sessions) }.keyboardShortcut("2")
                 Button("Insights") { nav.open(.insights) }.keyboardShortcut("3")
                 Button("Cleanup") { nav.open(.cleanup) }.keyboardShortcut("4")
                 Button("Agents") { nav.open(.agents) }.keyboardShortcut("5")
@@ -439,7 +449,7 @@ struct SidebarView: View {
     /// A quiet tint and cobalt text mark the open area. The solid cobalt row is kept for the one primary button per screen.
     private func row(_ a: Area) -> some View {
         let on = nav.area == a
-        return Button { nav.area = a } label: {
+        return Button { nav.open(a) } label: {
             HStack(spacing: 10) {
                 Image(systemName: a.symbol).font(.system(size: 13, weight: .regular)).frame(width: 18)
                     .foregroundStyle(on ? Brand.primaryText : Brand.mutedForeground)

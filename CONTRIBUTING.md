@@ -61,3 +61,7 @@ Maintainers cut releases by pushing a `v*` tag. See the Releasing section of the
 
 Every component and page has an Xcode preview, on invented demo data. Run `open Previews/Package.swift`, pick a file in `Previews/Sources/AIKeeperPreviews`, and use the canvas.
 Without Xcode, `./scripts/check-previews.sh` type-checks them. Add a `#Preview` when you add a view.
+
+## Working on the app
+
+`./scripts/dev.sh` rebuilds and relaunches the app each time you save a Swift file, on demo data, and reopens the page you were on. Add `--real` to use your own data.

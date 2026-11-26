@@ -85,6 +85,9 @@ enum Screenshots {
                     captureWindow(window, to: url("\(a.rawValue.lowercased())-\(t.rawValue.lowercased().replacingOccurrences(of: " ", with: "-"))"))
                 }
             }
+            // The full-page trace, on its Span tree tab with a failed call selected.
+            if let s = store.sessions.first { nav.open(.sessions, .history); nav.openTrace = s; await pause(2.5); await focus(); captureWindow(window, to: url("trace-span-tree")) }
+            nav.openTrace = nil
             nav.showPalette = true
             await pause(1.2)
             if let sheet = window.attachedSheet { await settle(sheet); captureWindow(sheet, to: url("palette")) }
