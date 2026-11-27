@@ -33,7 +33,7 @@ private struct Swatch: View {
         }
         HStack(spacing: 8) {
             Tag(text: "Merged", tone: .violet); Tag(text: "Open", tone: .blue); Tag(text: "Needs you", tone: .amber)
-            Tag(text: "Failed", tone: .red); Tag(text: "Idle", tone: .gray); Tag(text: "Healthy", tone: .green); SampleChip()
+            Tag(text: "Failed", tone: .red); Tag(text: "Idle", tone: .gray); Tag(text: "Healthy", tone: .green)
         }
         HStack(spacing: 8) { Delta(text: "−14%", good: true); Delta(text: "+1.3 pts", good: false); Delta(text: "+3") }
     }.padding(24).background(Brand.background).tint(Brand.accent)
@@ -44,7 +44,7 @@ private struct Swatch: View {
         KPIRow(items: [
             KPI(title: "Failed tool calls", value: "10.4%", prior: "vs. 9.1% prior", delta: "+1.3 pts", good: false),
             KPI(title: "Retries per task", value: "1.8", prior: "vs. 2.1 prior", delta: "−14%", good: true),
-            KPI(title: "Time to first edit", value: "4.8 min", delta: "−30%", good: true, spark: MockData.series(12, 1)),
+            KPI(title: "Time to first edit", value: "4.8 min", delta: "−30%", good: true, spark: PreviewData.series(12, 1)),
         ])
         Card { VStack(alignment: .leading, spacing: 8) { CardTitle(title: "A card", note: "with a note"); Note(text: "A line of advice on a muted ground.") } }
     }.padding(24).frame(width: 760).background(Brand.background)
@@ -54,15 +54,14 @@ private struct Swatch: View {
     VStack(alignment: .leading, spacing: 18) {
         Card { VStack(alignment: .leading, spacing: 8) {
             CardTitle(title: "StackedBars")
-            StackedBars(data: (0..<30).map { d in (0..<3).map { k in 0.1 + MockData.seeded(d, k) } }, colors: [AgentColor.claude, AgentColor.codex, AgentColor.conductor])
+            StackedBars(data: (0..<30).map { d in (0..<3).map { k in 0.1 + PreviewData.seeded(d, k) } }, colors: [AgentColor.claude, AgentColor.codex, AgentColor.conductor])
             Legend(items: [("Claude Code", AgentColor.claude), ("Codex", AgentColor.codex), ("Conductor", AgentColor.conductor)])
         } }
         Card { VStack(alignment: .leading, spacing: 8) {
             CardTitle(title: "LineChart")
-            LineChart(lines: [.init(values: MockData.series(40, 2), color: AgentColor.claude, dashed: true, width: 1.5), .init(values: MockData.series(40, 3), color: AgentColor.claude)], events: [0.3, 0.7])
+            LineChart(lines: [.init(values: PreviewData.series(40, 2), color: AgentColor.claude, dashed: true, width: 1.5), .init(values: PreviewData.series(40, 3), color: AgentColor.claude)], events: [0.3, 0.7])
         } }
         HStack(spacing: 14) {
-            Card { Heatgrid(rows: (0..<5).map { r in (0..<12).map { c in MockData.seeded(r * 12 + c, 4) } }) }
             Card { VStack(spacing: 10) { HBar(label: "Claude Code", value: "10.9%", fraction: 0.8, color: AgentColor.claude); HBar(label: "Codex", value: "12.7%", fraction: 0.9, color: AgentColor.codex) } }
         }
         Card { PixelMeter(value: 0.62, height: 10) }
@@ -85,15 +84,16 @@ private struct Swatch: View {
 
 #Preview("List rows") {
     Card(padding: 0) {
-        RowList(items: [AttentionItem(id: "1", tone: .amber, title: "fix-billing-retry is waiting on you", subtitle: "Claude Code needs an approval", action: "Open") { _, _ in },
-                        AttentionItem(id: "2", tone: .blue, title: "7 workspaces are safe to remove", subtitle: "27 GB", action: "Review") { _, _ in }]) { it in
-            ListRow(title: it.title, subtitle: it.subtitle) { Dot(tone: it.tone) } trail: { Button(it.action) {}.controlSize(.small) }
+        VStack(spacing: 0) {
+            ListRow(title: "fix-billing-retry is waiting on you", subtitle: "Claude Code needs an approval") { Dot(tone: .amber) } trail: { Button("Open") {}.controlSize(.small) }
+            Divider()
+            ListRow(title: "7 workspaces are safe to remove", subtitle: "27 GB") { Dot(tone: .blue) } trail: { Button("Review") {}.controlSize(.small) }
         }
     }.padding(24).frame(width: 620).background(Brand.background).tint(Brand.accent)
 }
 
-#Preview("Filters and page header") {
-    Page(title: "Reliability", subtitle: "What fails, what loops, and what costs you retries", action: "Set an alert", sample: true) {
-        FilterPills(items: ["Last 30 days", "Compare to previous period", "All agents"])
+#Preview("Page header") {
+    Page(title: "Reliability", subtitle: "What fails, what loops, and what costs you retries", action: "Set an alert") {
+        Text("The page content goes here.").foregroundStyle(.secondary)
     }.frame(width: 760, height: 200).background(Brand.background)
 }

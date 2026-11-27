@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Embeds the tool logos in the app as Swift data (Sources/AIKeeperKit/ToolLogoData.swift), so nothing has to be packaged next to the binary.
+"""Embeds the tool logos in the app as Swift data (Sources/AIKeeperKit/UI/ToolLogoData.swift), so nothing has to be packaged next to the binary.
 Sources are in assets/tool-logos: the open Simple Icons marks (SVG, drawn black on transparent so the app can tint them) and the
 tools' own app icons. Run: python3 scripts/gen-tool-logos.py"""
 import base64, os
@@ -14,5 +14,5 @@ for f in sorted(os.listdir(png)):
     b = base64.b64encode(open(os.path.join(png, f), "rb").read()).decode()
     lines.append(f'        "{n}": ("{b}", {"true" if n in TEMPLATE else "false"}),')
 lines += ["    ]", "}", ""]
-open(os.path.join(root, "Sources", "AIKeeper", "ToolLogoData.swift"), "w").write("\n".join(lines))
+open(os.path.join(root, "Sources", "AIKeeperKit", "UI", "ToolLogoData.swift"), "w").write("\n".join(lines))
 print("wrote", len(lines) - 8, "logos")

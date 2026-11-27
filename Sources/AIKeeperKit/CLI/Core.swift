@@ -166,7 +166,8 @@ enum Fmt {
 
 // MARK: - Commands
 
-struct Command {
+/// Immutable after creation and only used from the command-line entry point, so sharing it is safe.
+struct Command: @unchecked Sendable {
     let name: String
     var aliases: [String] = []
     let group: String

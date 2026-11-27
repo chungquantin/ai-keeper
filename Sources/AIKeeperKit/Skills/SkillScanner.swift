@@ -90,7 +90,8 @@ enum SkillScanner {
         let out = Pipe(), err = Pipe()
         p.standardOutput = out; p.standardError = err
         let lock = NSLock()
-        var outData = Data(), errData = Data()
+        nonisolated(unsafe) var outData = Data()
+        nonisolated(unsafe) var errData = Data()
         out.fileHandleForReading.readabilityHandler = { h in
             let d = h.availableData; lock.lock(); if outData.count < maxOutput { outData.append(d) }; lock.unlock()
         }
@@ -208,15 +209,15 @@ enum SkillScanner {
     }
 
     /// Scans skills in the background at low priority. `onResult` is called for each as it finishes. Stop it with `token.cancel()`.
-    static func scanAll(_ skills: [SkillInfo], binary: String, concurrency: Int = SkillScanner.suggestedConcurrency, token: ScanToken = ScanToken(), onResult: @escaping (SkillInfo, Swift.Result<SkillScan, ScanError>, Int) -> Void) {
+    static func scanAll(_ skills: [SkillInfo], binary: String, concurrency: Int = SkillScanner.suggestedConcurrency, token: ScanToken = ScanToken(), onResult: @escaping @Sendable (SkillInfo, Swift.Result<SkillScan, ScanError>, Int) -> Void) {
         track(token)
         defer { forget(token) }
         let queue = OperationQueue()
         queue.maxConcurrentOperationCount = max(1, concurrency)
         queue.qualityOfService = .utility
         let lock = NSLock()
-        var done = 0
-        func report(_ s: SkillInfo, _ r: Swift.Result<SkillScan, ScanError>) {
+        nonisolated(unsafe) var done = 0
+        @Sendable func report(_ s: SkillInfo, _ r: Swift.Result<SkillScan, ScanError>) {
             guard !token.cancelled else { return }
             lock.lock(); done += 1; let n = done; lock.unlock()
             onResult(s, r, n)

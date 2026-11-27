@@ -27,7 +27,7 @@ enum SafetyCommands {
                 guard a.yes else { Out.line("Would permanently delete the snapshot of \(i.name) (\(Fmt.size(i.bytes))).\n" + Term.dim("\nDry run. Add --yes to delete it.")); return 0 }
                 Vault.delete(i); Out.line("Deleted the snapshot of \(i.name)."); return 0
             case "purge":
-                let days = a.int("days") ?? Int(UserDefaults.standard.number("vault.days", default: 30))
+                let days = a.int("days") ?? Int(UserDefaults.standard.number(Prefs.Key.vaultDays, default: 30))
                 let old = items.filter { $0.date < Date().addingTimeInterval(-Double(days) * 86_400) }
                 guard a.yes else { Out.line("Would delete \(old.count) snapshot\(old.count == 1 ? "" : "s") older than \(days) days (\(Fmt.size(old.reduce(Int64(0)) { $0 + $1.bytes }))).\n" + Term.dim("\nDry run. Add --yes to delete them.")); return 0 }
                 Vault.purgeExpired(days: days); Out.line("Deleted \(old.count) snapshot\(old.count == 1 ? "" : "s")."); return 0
@@ -93,7 +93,7 @@ enum SetupCommands {
         run: { a in
             let ud = UserDefaults.standard
             func current(_ key: String) -> String? {
-                if key == "notify-agents" { return String(ud.object(forKey: "notify.agents") as? Bool ?? true) }
+                if key == "notify-agents" { return String(ud.object(forKey: Prefs.Key.notifyAgents) as? Bool ?? true) }
                 guard let s = settings.first(where: { $0.key == key }) else { return nil }
                 let v = ud.number(s.defaults, default: s.fallback)
                 return s.integer ? String(Int(v == 0 && s.key == "stale-days" ? s.fallback : v)) : String(v == v.rounded() ? String(Int(v)) : String(v))
@@ -107,7 +107,7 @@ enum SetupCommands {
                 let k = a.positional[1], v = a.positional[2]
                 if k == "notify-agents" {
                     guard let b = ["true": true, "on": true, "yes": true, "false": false, "off": false, "no": false][v.lowercased()] else { Out.fail("notify-agents takes true or false."); return 2 }
-                    ud.set(b, forKey: "notify.agents"); Out.line("notify-agents = \(b)"); return 0
+                    ud.set(b, forKey: Prefs.Key.notifyAgents); Out.line("notify-agents = \(b)"); return 0
                 }
                 guard let s = settings.first(where: { $0.key == k }) else { Out.fail("unknown key '\(k)'."); return 2 }
                 guard let n = Double(v), n >= 0, !(s.integer && n != n.rounded()) else { Out.fail("\(k) needs a \(s.integer ? "whole " : "")number, 0 or more."); return 2 }
@@ -162,7 +162,7 @@ enum SetupCommands {
             Out.line(r.text); return r.isError ? 1 : 0
         })
 
-    /// Writes the fictional demo workspaces, usage and disk map into the data folder, so every screen and command can be shown
+    /// Writes the fictional demo workspaces, usage into the data folder, so every screen and command can be shown
     /// without real names. Only works with AIKEEPER_DEMO=1; use AIKEEPER_DATA to pick where.
     static let demoExport = Command(
         name: "demo-export", group: "Hidden", summary: "Write demo data for screenshots and docs",
@@ -172,7 +172,6 @@ enum SetupCommands {
             MainActor.assumeIsolated {
                 let s = Store(); s.loadDemo()
                 Library.save(s.entries)
-                if let m = s.map { Persist.save(m, "map.json") }
                 Persist.save(UsageData(rows: s.usage, sessions: s.sessions, codex: s.codexLimits), "usage.json")
             }
             Out.line("Wrote demo data to \(Persist.dir.path)"); return 0

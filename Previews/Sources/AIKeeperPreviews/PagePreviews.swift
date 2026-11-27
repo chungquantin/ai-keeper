@@ -18,6 +18,7 @@ import SwiftUI
 
 // MARK: Insights
 
+#Preview("Insights · Findings") { InsightsHome().previewEnv(.insights, .findings).previewPage(height: 820) }
 #Preview("Insights · Speed") { SpeedView().previewEnv().previewPage(height: 1400) }
 #Preview("Insights · Reliability") { ReliabilityView().previewEnv().previewPage() }
 #Preview("Insights · Reliability · narrow") { ReliabilityView().previewEnv().previewPage(width: 828) }
@@ -32,7 +33,7 @@ import SwiftUI
 #Preview("Cleanup · Review · dark") { CleanupReview().previewEnv(.cleanup, .review).previewPage(height: 820).preferredColorScheme(.dark) }
 #Preview("Cleanup · Review · narrow") { CleanupReview().previewEnv(.cleanup, .review).previewPage(width: 828, height: 820) }
 #Preview("Cleanup · Item detail") {
-    ReclaimDetail(item: ReclaimPlanner.items(PreviewKit.store).first { $0.kind == .merged } ?? ReclaimPlanner.items(PreviewKit.store)[0]) {}.previewEnv(.cleanup, .review).previewPage(height: 820)
+    ReclaimDetail(item: PreviewKit.store.reclaimItems.first { $0.kind == .merged } ?? PreviewKit.store.reclaimItems[0]) {}.previewEnv(.cleanup, .review).previewPage(height: 820)
 }
 #Preview("Cleanup · Map") { CleanupMap().previewEnv(.cleanup, .map).previewPage(height: 820) }
 #Preview("Cleanup · Agent data") { AgentDataTab().previewEnv(.cleanup, .agentData).previewPage(height: 820) }
@@ -60,6 +61,7 @@ import SwiftUI
 }
 #Preview("Search and commands") { PaletteView().previewEnv() }
 #Preview("Settings") { SettingsView().previewEnv() }
+#Preview("First run") { OnboardingView().previewEnv() }
 #Preview("Menu bar") { MenuContent().previewEnv() }
 
 // MARK: The whole window

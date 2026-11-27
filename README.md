@@ -154,7 +154,14 @@ To report a security problem, follow [SECURITY.md](SECURITY.md).
 ## Layout
 
 ```
-Sources/AIKeeperKit   the app and the keeper command (scanner, cleanup engine, monitors, SwiftUI views and their previews, terminal UI)
+Sources/AIKeeperKit   the app and the keeper command, one folder per area:
+  App/                the window, sidebar, settings, menu bar item and navigation
+  Today/ Traces/ Insights/ Cleanup/ Agents/   one folder per place in the app
+  Core/               the store, scanner, classifier, preferences and saved files
+  UI/                 shared components: cards, charts, controls, brand styles
+  CLI/ Skills/        the keeper command, its terminal UI and the skills scanner
+  Dev/                screenshot, recording and soak tools
+Tests/AIKeeperKitTests unit tests (run with scripts/test.sh)
 Sources/AIKeeper      a one-line launcher for AIKeeperKit
 Previews/             Xcode previews of every component and page, on demo data (open Previews/Package.swift)
 assets/            app icon, bundled fonts and tool logos, and the scripts that draw them

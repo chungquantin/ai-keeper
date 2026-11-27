@@ -163,10 +163,10 @@ enum SkillCommands {
         let todo = targets.filter { rescan || SkillScanner.current($0, in: cache) == nil }
         Out.note(Term.dim("Scanning with \(Fmt.tilde(binary)): \(todo.count) of \(targets.count) skills (the rest are unchanged since their last scan)."))
         if !todo.isEmpty, SkillScanner.lowMemory { Out.note(Term.yellow(SkillScanner.lowMemoryNote)) }
-        var failures: [(String, String)] = []
+        nonisolated(unsafe) var failures: [(String, String)] = []
         let lock = NSLock()
-        var snapshot = cache
-        var finished = 0
+        nonisolated(unsafe) var snapshot = cache
+        nonisolated(unsafe) var finished = 0
         let token = SkillScanner.ScanToken()
         if !todo.isEmpty {
             // Ctrl-C stops the scanners and keeps every result already saved.

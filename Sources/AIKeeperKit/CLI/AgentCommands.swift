@@ -139,7 +139,7 @@ enum UsageCommands {
                 for (flag, key) in [("daily", "budget.daily"), ("weekly", "budget.weekly")] {
                     if let v = a.value(flag) { guard let n = Double(v), n >= 0 else { Out.fail("--\(flag) needs a dollar amount, like 40."); return 2 }; ud.set(n, forKey: key); changed = true }
                 }
-                let daily = ud.number("budget.daily", default: 0), weekly = ud.number("budget.weekly", default: 0)
+                let daily = ud.number(Prefs.Key.budgetDaily, default: 0), weekly = ud.number(Prefs.Key.budgetWeekly, default: 0)
                 let (today, week) = StatusCommands.spend(StatusCommands.usageData())
                 if a.json { Out.json(["daily_usd": daily, "weekly_usd": weekly, "today_usd": today, "week_usd": week]); return 0 }
                 if changed { Out.line("Saved.") }

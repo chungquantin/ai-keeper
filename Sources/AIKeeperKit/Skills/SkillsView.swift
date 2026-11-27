@@ -7,7 +7,7 @@ extension SkillVerdict {
 
 /// Every skill your agents can load, with a security scan from NVIDIA SkillSpector.
 struct SkillsView: View {
-    @EnvironmentObject var store: Store
+    @Environment(Store.self) private var store
     @State private var query = ""
     @State private var tool = "All tools"
     @State private var filter = 0                 // 0 all · 1 worth a look · 2 not scanned
@@ -73,7 +73,7 @@ struct SkillsView: View {
             Button("Delete permanently", role: .destructive) { remove(permanent: true) }
             Button("Cancel", role: .cancel) {}
         } message: { Text(removeMessage) }
-        .sheet(isPresented: $showRemoved) { QuarantineSheet().environmentObject(store) }
+        .sheet(isPresented: $showRemoved) { QuarantineSheet().environment(store) }
         .alert("SkillSpector", isPresented: Binding(get: { notice != nil }, set: { if !$0 { notice = nil } })) { Button("OK") {} } message: { Text(notice ?? "") }
     }
 
@@ -182,7 +182,7 @@ struct SkillRow: View {
 }
 
 struct SkillDetail: View {
-    @EnvironmentObject var store: Store
+    @Environment(Store.self) private var store
     let skill: SkillInfo
     @Binding var confirmInstall: Bool
 
@@ -283,7 +283,7 @@ struct IssueCard: View {
 }
 
 struct QuarantineSheet: View {
-    @EnvironmentObject var store: Store
+    @Environment(Store.self) private var store
     @Environment(\.dismiss) private var dismiss
     @State private var error: String?
 

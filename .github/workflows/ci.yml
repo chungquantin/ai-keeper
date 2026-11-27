@@ -31,6 +31,12 @@ jobs:
       - name: Build
         run: swift build -c release
 
+      - name: Unit tests
+        run: ./scripts/test.sh
+
+      - name: Previews still type-check
+        run: ./scripts/check-previews.sh
+
       - name: Bundle the app
         run: ./scripts/bundle.sh
 

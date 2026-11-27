@@ -31,9 +31,9 @@ enum StatusCommands {
             let agents = Library.agents().filter { $0.kind != .mcp }
             let needYou = agents.filter { $0.state == .needsInput }.count
             let (today, week) = spend(usageData())
-            let floorGB = UserDefaults.standard.number("guard.floorGB", default: 50)
+            let floorGB = UserDefaults.standard.number(Prefs.Key.guardFloorGB, default: 50)
             let lowDisk = Double(disk.available) / 1e9 < floorGB
-            let daily = UserDefaults.standard.number("budget.daily", default: 0), weekly = UserDefaults.standard.number("budget.weekly", default: 0)
+            let daily = UserDefaults.standard.number(Prefs.Key.budgetDaily, default: 0), weekly = UserDefaults.standard.number(Prefs.Key.budgetWeekly, default: 0)
             var alerts: [String] = []
             if lowDisk { alerts.append("Free space is below your \(Int(floorGB)) GB floor") }
             if daily > 0, today >= daily { alerts.append("Daily AI budget reached: \(Fmt.usd(today)) of \(Fmt.usd(daily))") }

@@ -139,7 +139,7 @@ final class UsageScreen: Screen {
         let total = perDay.reduce(0, +), tokens = rows.reduce(0) { $0 + $1.tokens }
         var out = ["", "  " + A.paint(Fmt.usd(total), A.bold) + A.paint("  in the last \(days) days  ·  \(String(format: "%.1fM", Double(tokens) / 1e6)) tokens  ·  estimated at API list prices", A.gray), ""]
         let (today, week) = StatusCommands.spend(data)
-        let daily = UserDefaults.standard.number("budget.daily", default: 0), weekly = UserDefaults.standard.number("budget.weekly", default: 0)
+        let daily = UserDefaults.standard.number(Prefs.Key.budgetDaily, default: 0), weekly = UserDefaults.standard.number(Prefs.Key.budgetWeekly, default: 0)
         out.append("  " + UI.label("Today") + Fmt.usd(today) + (daily > 0 ? A.paint("  of \(Fmt.usd(daily))  ", A.gray) + Widget.bar(today / daily, width: 16, color: today >= daily ? A.red : A.blue) : ""))
         out.append("  " + UI.label("This week") + Fmt.usd(week) + (weekly > 0 ? A.paint("  of \(Fmt.usd(weekly))  ", A.gray) + Widget.bar(week / weekly, width: 16, color: week >= weekly ? A.red : A.blue) : ""))
         out.append("")
@@ -247,7 +247,8 @@ final class DiskScreen: Screen {
     }
 }
 
-final class ExploreScreen: Screen {
+/// Its measuring callbacks run on a worker queue and take `lock` before touching any state.
+final class ExploreScreen: Screen, @unchecked Sendable {
     var title: String { "Explore  ›  " + Fmt.tilde(path) }
     var tickInterval: Double { measuring ? 0.4 : 0 }
     var keys: [(String, String)] { [("↑↓", "move"), ("enter", "open folder"), ("←", "up"), ("esc", "back")] }
@@ -267,7 +268,7 @@ final class ExploreScreen: Screen {
         list = ListState(); measuring = true
         let dirs = nodes.indices.filter { nodes[$0].size == nil }
         let queue = OperationQueue(); queue.maxConcurrentOperationCount = 4; queue.qualityOfService = .utility
-        var pending = dirs.count
+        nonisolated(unsafe) var pending = dirs.count
         if pending == 0 { measuring = false }
         for i in dirs {
             let p = nodes[i].path

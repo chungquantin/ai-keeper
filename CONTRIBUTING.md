@@ -29,11 +29,13 @@ Useful while developing:
 ## Tests
 
 ```bash
+./scripts/test.sh              # unit tests (Swift Testing); also works with only the Command Line Tools installed
+./scripts/check-previews.sh    # the Xcode previews still type-check
 ./scripts/test-cli.sh          # the keeper command end to end, against a throwaway repo
 ./scripts/test-launch.sh       # builds the app and checks that it opens and stays running
 ```
 
-If you change behaviour, add a check to `scripts/test-cli.sh`. A change that deletes, moves or restores files must be covered by one.
+If you change behaviour, add a check to `scripts/test-cli.sh`. A change that deletes, moves or restores files must be covered by one, and by a unit test in `Tests/AIKeeperKitTests`.
 
 ## Safety comes first
 

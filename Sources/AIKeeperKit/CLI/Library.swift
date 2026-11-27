@@ -6,7 +6,7 @@ enum Pick { case found(Entry), failed(String) }
 /// All of it reuses the app's own logic (Discovery, Enricher, Classifier, Cleaner), so the CLI and the window never disagree.
 enum Library {
     static var staleDays: Int {
-        let v = UserDefaults.standard.integer(forKey: "staleDays"); return v == 0 ? 14 : v
+        let v = UserDefaults.standard.integer(forKey: Prefs.Key.staleDays); return v == 0 ? 14 : v
     }
 
     static func entries() -> [Entry] { Persist.load([Entry].self, "scan.json") ?? [] }
@@ -81,9 +81,9 @@ enum Library {
     static func scan(prs: Bool) -> [Entry] {
         Out.status("Discovering workspaces…")
         let found = Discovery.all()
-        var results = [Entry?](repeating: nil, count: found.count)
+        nonisolated(unsafe) var results = [Entry?](repeating: nil, count: found.count)
         let lock = NSLock()
-        var done = 0
+        nonisolated(unsafe) var done = 0
         let queue = OperationQueue()
         queue.maxConcurrentOperationCount = 3        // each worker spawns git and du; more only makes the rest of the Mac wait
         queue.qualityOfService = .background
@@ -159,7 +159,7 @@ enum Library {
         var settled: Int64 = 0
         for (i, e) in targets.enumerated() {
             if prog.isCancelled { break }
-            var result: Result<Int64, Error> = .success(0)
+            nonisolated(unsafe) var result: Result<Int64, Error> = .success(0)
             let finished = DispatchSemaphore(value: 0)
             DispatchQueue.global(qos: .userInitiated).async {
                 result = Result { try mode == .removeWorkspaces ? Cleaner.remove(e, options: options, progress: prog) : Cleaner.purgeArtifacts(e, permanent: options.permanent, progress: prog) }

@@ -35,10 +35,10 @@ enum DiskCommands {
             switch a.positional.first {
             case "explore":
                 guard let path = dir(a.positional.dropFirst().first) else { return 2 }
-                var nodes = DiskModel.list(path)
+                nonisolated(unsafe) var nodes = DiskModel.list(path)
                 let dirs = nodes.indices.filter { nodes[$0].size == nil }
                 let q = OperationQueue(); q.maxConcurrentOperationCount = 4; q.qualityOfService = .utility
-                let lock = NSLock(); var done = 0
+                let lock = NSLock(); nonisolated(unsafe) var done = 0
                 for i in dirs {
                     let p = nodes[i].path
                     q.addOperation {
