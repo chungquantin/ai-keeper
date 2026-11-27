@@ -94,13 +94,18 @@ enum Screenshots {
             nav.showPalette = false
             await pause(0.8)
             // Dialogs: the confirm sheet and onboarding are attached sheets.
-            nav.open(.cleanup, .workspaces)
+            nav.open(.cleanup, .review)
             await pause(1.5)
             let safe = store.entries.filter { ["feat-search-index", "experiment-graphql", "chore-deps-update"].contains($0.name) }
             store.plan = CleanupPlan(mode: .removeWorkspaces, entries: safe)
             await pause(1.8)
             if let sheet = window.attachedSheet { await settle(sheet); captureWindow(sheet, to: url("dialog-confirm")) }
             store.plan = nil
+            await pause(1.0)
+            store.basket.resetToSafe(); nav.showBasket = true
+            await pause(1.5)
+            if let sheet = window.attachedSheet { await settle(sheet); captureWindow(sheet, to: url("dialog-basket")) }
+            nav.showBasket = false
             await pause(1.0)
             store.needsOnboarding = true
             await pause(1.8)

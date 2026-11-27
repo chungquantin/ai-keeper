@@ -20,10 +20,10 @@ enum Area: String, CaseIterable, Identifiable {
 
     var tabs: [Tab] {
         switch self {
-        case .today: [.briefing, .reclaim, .optimize, .activity]
+        case .today: [.briefing]
         case .sessions: [.history, .live, .logs, .prompts]
         case .insights: [.cost, .speed, .reliability, .context, .advisor, .machine]
-        case .cleanup: [.workspaces, .leftovers, .disk, .containers, .removed]
+        case .cleanup: [.review, .map, .agentData, .automate, .cleaned]
         case .agents: [.tools, .skills, .mcp, .hooks, .budgets]
         }
     }
@@ -31,10 +31,10 @@ enum Area: String, CaseIterable, Identifiable {
 }
 
 enum Tab: String, Hashable, Identifiable {
-    case briefing = "Briefing", reclaim = "Reclaim", optimize = "Optimize", activity = "Activity"
+    case briefing = "Briefing"
     case history = "Sessions", live = "Live", logs = "Logs", prompts = "Prompts"
     case cost = "Cost", speed = "Speed", reliability = "Reliability", context = "Context", advisor = "Advisor", machine = "Machine"
-    case workspaces = "Workspaces", leftovers = "Leftovers", disk = "Disk", containers = "Containers", removed = "Removed"
+    case review = "Review", map = "Map", agentData = "Agent data", automate = "Automate", cleaned = "History"
     case tools = "Tools", skills = "Skills", mcp = "MCP servers", hooks = "Hooks", budgets = "Budgets"
     var id: String { rawValue }
 
@@ -42,9 +42,6 @@ enum Tab: String, Hashable, Identifiable {
     var subtitle: String {
         switch self {
         case .briefing: "What needs you, and what you can get back or save"
-        case .reclaim: "Space you can safely get back"
-        case .optimize: "Changes that would save money"
-        case .activity: "What is running, and what ran recently"
         case .history: "Every agent session on this Mac, searchable"
         case .live: "Agents running right now"
         case .logs: "What failed, what you declined and what was compacted, across recent sessions"
@@ -55,11 +52,11 @@ enum Tab: String, Hashable, Identifiable {
         case .context: "How full the window gets, and what the cache saves"
         case .advisor: "What your own history says about which agent and tools to use"
         case .machine: "What agents cost this Mac"
-        case .workspaces: "Worktrees and checkouts, with what is safe to remove"
-        case .leftovers: "Chat history of deleted projects, caches and logs"
-        case .disk: "Where the space goes, and files that can share one copy"
-        case .containers: "What Docker and OrbStack are holding"
-        case .removed: "Unsaved work kept from workspaces you removed"
+        case .review: "What you can clear, and what it would cost to regret"
+        case .map: "Where the space went, colored by what losing it would cost"
+        case .agentData: "What agents and dev tools keep on this Mac, and for how long"
+        case .automate: "Rules that keep the Mac tidy and never touch unsaved work"
+        case .cleaned: "What you cleared, and how to put it back"
         case .tools: "Every agent on this Mac"
         case .skills: "What your agents can load, checked for risky scripts"
         case .mcp: "What each server adds to every session, and whether it is used"
@@ -75,9 +72,6 @@ enum Tab: String, Hashable, Identifiable {
     var symbol: String {
         switch self {
         case .briefing: "sun.max"
-        case .reclaim: "trash"
-        case .optimize: "chart.bar.xaxis"
-        case .activity: "bolt.horizontal"
         default: ""
         }
     }
@@ -98,7 +92,11 @@ final class NavState: ObservableObject {
         if p.count == 2, let a = Area(rawValue: p[0]), let t = Tab(rawValue: p[1]), a.tabs.contains(t) { area = a; tab[a] = t }
     }
     @Published var workspaceFilter: Section = .all      // all, deprecated, or one tool
-    @Published var diskDuplicates = false               // Disk tab: analyzer or duplicates
+    @Published var reviewAll = false                    // Review: the trust tiers, or the full workspace table
+    @Published var mapMode: MapMode = .trust
+    @Published var dataMode: DataMode = .sources
+    @Published var historyMode: HistoryMode = .cleaned
+    @Published var showBasket = false                   // the confirm sheet behind the sidebar's Reclaim button
     @Published var showPalette = false
     /// The session whose full trace is open, in place of the Traces lists.
     @Published var openTrace: SessionInfo?
@@ -117,14 +115,14 @@ final class NavState: ObservableObject {
     func go(_ s: Section) {
         switch s {
         case .overview: open(.today, .briefing)
-        case .all: workspaceFilter = .all; open(.cleanup, .workspaces)
-        case .deprecated: workspaceFilter = .deprecated; open(.cleanup, .workspaces)
-        case .tool: workspaceFilter = s; open(.cleanup, .workspaces)
-        case .leftovers: open(.cleanup, .leftovers)
-        case .disk: diskDuplicates = false; open(.cleanup, .disk)
-        case .dedupe: diskDuplicates = true; open(.cleanup, .disk)
-        case .containers: open(.cleanup, .containers)
-        case .vault: open(.cleanup, .removed)
+        case .all: workspaceFilter = .all; reviewAll = true; open(.cleanup, .review)
+        case .deprecated: workspaceFilter = .deprecated; reviewAll = false; open(.cleanup, .review)
+        case .tool: workspaceFilter = s; reviewAll = true; open(.cleanup, .review)
+        case .leftovers: reviewAll = false; open(.cleanup, .review)
+        case .disk: mapMode = .folders; open(.cleanup, .map)
+        case .dedupe: mapMode = .duplicates; open(.cleanup, .map)
+        case .containers: dataMode = .containers; open(.cleanup, .agentData)
+        case .vault: historyMode = .removed; open(.cleanup, .cleaned)
         case .agents: open(.sessions, .live)
         case .sessions: open(.sessions, .history)
         case .usage: open(.insights, .cost)
@@ -151,20 +149,22 @@ private struct ToolbarClearance: ViewModifier {
 }
 extension View { func toolbarClearance() -> some View { modifier(ToolbarClearance()) } }
 
-/// The tab strip. Today uses raised pills with a live count on each tab; every other area uses a quiet underline.
+/// The tab strip: a quiet underline under the open tab. Areas with a single page do not show one.
 struct TabStrip: View {
     let tabs: [Tab]
     @Binding var selection: Tab
-    var pills = false
-    var badge: (Tab) -> String? = { _ in nil }
-    var hot: (Tab) -> Bool = { _ in false }
 
     var body: some View {
-        HStack(spacing: pills ? 6 : 22) {
+        HStack(spacing: 22) {
             ForEach(tabs) { t in
                 let on = t == selection
                 Button { selection = t } label: {
-                    if pills { pill(t, on) } else { underline(t, on) }
+                    Text(t.rawValue)
+                        .font(.brand(13, .medium))
+                        .foregroundStyle(on ? Brand.primaryText : Brand.mutedForeground)
+                        .padding(.top, 10).padding(.bottom, 11)
+                        .overlay(alignment: .bottom) { Rectangle().fill(on ? Brand.accent : .clear).frame(height: 2) }
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(on ? .isSelected : [])
@@ -172,39 +172,7 @@ struct TabStrip: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 28)
-        .padding(.top, pills ? 4 : 0)
-        .padding(.bottom, pills ? 12 : 0)
-        .overlay(alignment: .bottom) { if !pills { Divider() } }
-    }
-
-    private func pill(_ t: Tab, _ on: Bool) -> some View {
-        HStack(spacing: 8) {
-            if !t.symbol.isEmpty { Image(systemName: t.symbol).font(.system(size: 13, weight: .medium)).foregroundStyle(on ? Brand.primaryText : Brand.mutedForeground) }
-            Text(t.rawValue).font(.brand(13, on ? .semibold : .medium))
-            if let b = badge(t) {
-                Text(b).font(.brand(12, .semibold)).monospacedDigit()
-                    .padding(.horizontal, 8).padding(.vertical, 1)
-                    .background(hot(t) ? Brand.reclaimTint : (on ? Brand.primaryTint : Brand.muted), in: Capsule())
-                    .foregroundStyle(hot(t) ? Brand.reclaimText : (on ? Brand.primaryText : Brand.mutedForeground))
-            }
-        }
-        .foregroundStyle(on ? Color.primary : Brand.mutedForeground)
-        .padding(.leading, 12).padding(.trailing, 14).frame(height: 38)
-        .background {
-            if on { RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Brand.card)
-                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Brand.edge))
-                .shadow(color: Brand.liftNear, radius: 1.5, y: 1.5) }
-        }
-        .contentShape(Rectangle())
-    }
-
-    private func underline(_ t: Tab, _ on: Bool) -> some View {
-        Text(t.rawValue)
-            .font(.brand(13, .medium))
-            .foregroundStyle(on ? Brand.primaryText : Brand.mutedForeground)
-            .padding(.top, 10).padding(.bottom, 11)
-            .overlay(alignment: .bottom) { Rectangle().fill(on ? Brand.accent : .clear).frame(height: 2) }
-            .contentShape(Rectangle())
+        .overlay(alignment: .bottom) { Divider() }
     }
 }
 
@@ -230,9 +198,9 @@ struct AreaView: View {
                 if let a = nav.currentTab.action { Button(a) { UsageExport.save(store.usage) }.buttonStyle(.brandOutline).controlSize(.small) }
             }
             .padding(.horizontal, 28).frame(height: 52)
-            TabStrip(tabs: area.tabs,
-                     selection: Binding(get: { nav.currentTab }, set: { nav.tab[area] = $0 }),
-                     pills: area == .today, badge: badge, hot: { area == .today && $0 == .briefing })
+            if area.tabs.count > 1 {
+                TabStrip(tabs: area.tabs, selection: Binding(get: { nav.currentTab }, set: { nav.tab[area] = $0 }))
+            }
             GeometryReader { g in
                 HStack(spacing: 0) {
                     page(nav.currentTab)
@@ -250,25 +218,9 @@ struct AreaView: View {
         .background(Brand.background)
     }
 
-    private func badge(_ t: Tab) -> String? {
-        guard area == .today else { return nil }
-        switch t {
-        case .briefing: return "\(TodayData.attention(store).count)"
-        case .reclaim: return store.hasData ? store.reclaimable.bytesString : nil
-        case .optimize: return store.advice.monthly >= 1 ? String(format: "$%.0f", store.advice.monthly) : (store.advice.tips.isEmpty ? nil : "\(store.advice.tips.count)")
-        case .activity:
-            let n = store.agents.filter { $0.kind != .mcp }.count
-            return n > 0 ? "\(n) live" : nil
-        default: return nil
-        }
-    }
-
     @ViewBuilder private func page(_ t: Tab) -> some View {
         switch t {
-        case .briefing: TodayBriefing()
-        case .reclaim: TodayReclaim()
-        case .optimize: TodayOptimize()
-        case .activity: TodayActivity()
+        case .briefing: TodayHome()
         case .history: SessionHistoryView()
         case .live: AgentsView()
         case .logs: LogsView()
@@ -279,11 +231,11 @@ struct AreaView: View {
         case .context: ContextView()
         case .advisor: AdvisorView()
         case .machine: SystemView()
-        case .workspaces: WorkspacesTab()
-        case .leftovers: EntryListView(section: .leftovers).id(Section.leftovers)
-        case .disk: DiskTab()
-        case .containers: DockerView()
-        case .removed: VaultView()
+        case .review: CleanupReview()
+        case .map: CleanupMap()
+        case .agentData: AgentDataTab()
+        case .automate: AutomateTab()
+        case .cleaned: CleanupHistory()
         case .tools: FleetView()
         case .skills: SkillsView()
         case .mcp: MCPView()
@@ -302,7 +254,6 @@ struct WorkspacesTab: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ReclaimStrip().fixedSize(horizontal: false, vertical: true).padding(.horizontal, 28).padding(.top, 6)
             HStack(spacing: 10) {
                 Seg([("All", 0), ("Safe to remove", 1), ("By tool", 2)], selection: Binding(
                     get: { nav.workspaceFilter == .deprecated ? 1 : (nav.workspaceFilter == .all ? 0 : 2) },
@@ -316,48 +267,6 @@ struct WorkspacesTab: View {
             }
             .padding(.horizontal, 28).padding(.vertical, 10)
             EntryListView(section: nav.workspaceFilter).id(nav.workspaceFilter)
-        }
-    }
-}
-
-/// Disk: the analyzer and duplicate merging share one tab.
-struct DiskTab: View {
-    @EnvironmentObject var store: Store
-    @EnvironmentObject var nav: NavState
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Seg([("Analyzer", false), ("Duplicates", true)], selection: $nav.diskDuplicates)
-                Spacer()
-            }.padding(.horizontal, 28).padding(.vertical, 10)
-            if nav.diskDuplicates { DedupView(model: store.dedup) } else { DiskView(model: store.analyzer) }
-        }
-    }
-}
-
-/// The one-line answer above the Cleanup lists: how much is there and what kind it is.
-struct ReclaimStrip: View {
-    @EnvironmentObject var store: Store
-    var body: some View {
-        let ws = store.total(store.removableWorkspaces), build = store.keptArtifactBytes, left = store.total(store.orphanSessions) + store.total(store.caches)
-        let total = max(ws + build + left, 1)
-        Card(padding: 14) {
-            HStack(spacing: 22) {
-                HStack(alignment: .firstTextBaseline, spacing: 4) {
-                    Text(store.hasData ? store.reclaimable.byteParts.number : "—").font(.figure(40)).monospacedDigit()
-                    Text(store.reclaimable.byteParts.unit).font(.figure(16)).foregroundStyle(.secondary)
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    GeometryReader { g in
-                        HStack(spacing: 2) {
-                            Rectangle().fill(Brand.reclaim).frame(width: max(0, (g.size.width - 4) * Double(build) / Double(total)))
-                            Rectangle().fill(Brand.accent).frame(width: max(0, (g.size.width - 4) * Double(ws) / Double(total)))
-                            Rectangle().fill(Brand.merged).frame(width: max(0, (g.size.width - 4) * Double(left) / Double(total)))
-                        }.clipShape(RoundedRectangle(cornerRadius: 5)).background(RoundedRectangle(cornerRadius: 5).fill(Brand.muted))
-                    }.frame(height: 10)
-                    Legend(items: [("Build folders \(build.bytesString)", Brand.reclaim), ("Merged workspaces \(ws.bytesString)", Brand.accent), ("Leftovers \(left.bytesString)", Brand.merged)])
-                }
-            }
         }
     }
 }
@@ -402,3 +311,7 @@ enum UsageExport {
         try? out.write(to: url, atomically: true, encoding: .utf8)
     }
 }
+
+enum MapMode: Hashable { case trust, folders, duplicates }
+enum DataMode: Hashable { case sources, containers }
+enum HistoryMode: Hashable { case cleaned, removed }

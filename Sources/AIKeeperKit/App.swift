@@ -220,12 +220,14 @@ public struct AIKeeperApp: App {
             RootView()
                 .environmentObject(store)
                 .environmentObject(nav)
+                .environmentObject(store.basket)
                 .font(.bBody)
                 .tint(Brand.accent)
                 .frame(minWidth: 1060, minHeight: 620)
                 .task {
                     NSApplication.shared.setActivationPolicy(.regular)
-                    NSApplication.shared.activate(ignoringOtherApps: true)
+                    // scripts/dev.sh relaunches on every save; stealing focus each time would pull you out of your editor.
+                    if ProcessInfo.processInfo.environment["AIKEEPER_DEV"] == nil { NSApplication.shared.activate(ignoringOtherApps: true) }
                     await store.bootstrap()
                 }
         }
@@ -236,6 +238,7 @@ public struct AIKeeperApp: App {
             CommandGroup(replacing: .newItem) {}
             CommandGroup(after: .toolbar) {
                 Button("Rescan") { Task { await store.rescan() } }.keyboardShortcut("r")
+                Button("Reclaim safe space") { store.basket.resetToSafe(); nav.showBasket = true }.keyboardShortcut("r", modifiers: [.command, .shift])
             }
             CommandMenu("Go") {
                 Button("Search") { nav.showPalette = true }.keyboardShortcut("k")
@@ -352,6 +355,7 @@ struct RootView: View {
             else if let secs = Soak.seconds { await Soak.run(store: store, for: secs) }
         }
         .sheet(item: $store.plan) { CleanupSheet(plan: $0) }
+        .sheet(isPresented: $nav.showBasket) { BasketSheet().environmentObject(store).environmentObject(store.basket).environmentObject(nav) }
         .sheet(isPresented: $store.needsOnboarding) { OnboardingView().environmentObject(store).interactiveDismissDisabled() }
         .sheet(isPresented: $nav.showPalette) { PaletteView().environmentObject(store).environmentObject(nav) }
     }
@@ -362,30 +366,58 @@ struct RootView: View {
     }
 }
 
-struct ScanFooter: View {
+/// The quick action that lives in the sidebar on every page: what is safe to clear, one button to clear it, one to rescan.
+struct ReclaimCard: View {
     @EnvironmentObject var store: Store
+    @EnvironmentObject var nav: NavState
+    @EnvironmentObject var basket: Basket
+
     var body: some View {
-        HStack(spacing: 8) {
-            Group {
-                switch store.phase {
-                case .discovering:
-                    RobotSpinner()
-                    Text("Finding workspaces")
-                case .measuring(let d, let t):
-                    RobotSpinner()
-                    ProgressView(value: Double(d), total: Double(max(t, 1))).frame(width: 46)
-                    Text("Measuring \(d) of \(t)").monospacedDigit()
-                case .done, .idle:
-                    Text(store.lastScan.map { "Scanned \($0.formatted(.relative(presentation: .named)))" } ?? "Not scanned yet")
-                        .foregroundStyle(store.lastScan.map { Date().timeIntervalSince($0) > 3600 } ?? true ? Brand.reclaim : .secondary)
+        let safe = store.stats.safeBytes
+        let parts = safe.byteParts
+        VStack(alignment: .leading, spacing: 9) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title).font(.bCaption2).foregroundStyle(.secondary)
+                Spacer()
+                status
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(store.hasData ? parts.number : "—").font(.figure(26)).monospacedDigit()
+                Text(store.hasData ? parts.unit : "").font(.figure(12)).foregroundStyle(.secondary)
+            }
+            if case .measuring(let d, let t) = store.phase { ProgressView(value: Double(d), total: Double(max(t, 1))).controlSize(.small) }
+            HStack(spacing: 6) {
+                if safe == 0 && store.hasData && !store.isScanning {
+                    Button { nav.open(.cleanup, .review) } label: { Text("Review").frame(maxWidth: .infinity) }.buttonStyle(.brandOutline)
+                } else {
+                    Button { basket.resetToSafe(); nav.showBasket = true } label: { Text("Reclaim").frame(maxWidth: .infinity) }
+                        .buttonStyle(.brandProminent).disabled(safe == 0 || store.isScanning)
                 }
-            }.font(.bCaption).foregroundStyle(.secondary)
-            Spacer()
-            Button { Task { await store.rescan() } } label: { Image(systemName: "arrow.clockwise") }
-                .buttonStyle(.borderless).disabled(store.isScanning).help("Rescan (⌘R)").accessibilityLabel("Rescan")
+                Button { Task { await store.rescan() } } label: { Image(systemName: "arrow.clockwise").frame(width: 14) }
+                    .buttonStyle(.brandOutline).disabled(store.isScanning).help("Rescan (⌘R)").accessibilityLabel("Rescan")
+            }.controlSize(.regular)
         }
-        .padding(.horizontal, 16).padding(.vertical, 10)
-        .overlay(alignment: .top) { Divider() }
+        .padding(12).panel(12)
+        .padding(.horizontal, 10).padding(.bottom, 10).padding(.top, 4)
+    }
+
+    private var title: String {
+        switch store.phase {
+        case .discovering: "Finding workspaces"
+        case .measuring(let d, let t): "Measuring \(d) of \(t)"
+        default: store.stats.safeBytes == 0 && store.hasData ? "Tidy" : "Safe to reclaim"
+        }
+    }
+
+    @ViewBuilder private var status: some View {
+        if store.isScanning { RobotSpinner() }
+        else {
+            let stale = store.lastScan.map { Date().timeIntervalSince($0) > 3600 } ?? true
+            HStack(spacing: 4) {
+                Circle().fill(stale ? Brand.reclaim : Brand.ok).frame(width: 6, height: 6)
+                Text(store.lastScan.map { $0.formatted(.relative(presentation: .numeric, unitsStyle: .narrow)) } ?? "not scanned").font(.bCaption2).foregroundStyle(.secondary)
+            }
+        }
     }
 }
 
@@ -399,7 +431,7 @@ struct SidebarView: View {
             scopePicker
             sidebarList
             ActivityBar()
-            ScanFooter()
+            ReclaimCard()
         }
     }
 
@@ -565,7 +597,7 @@ struct MenuContent: View {
             Divider()
             ForEach(store.activeJobs.prefix(1)) { JobMenuLine(job: $0) }
             Label("\(store.disk.available.bytesString) free", systemImage: "internaldrive")
-            Label("\(store.reclaimable.bytesString) reclaimable", systemImage: "leaf").foregroundStyle(Brand.reclaimText)
+            Label("\(store.stats.safeBytes.bytesString) safe to reclaim", systemImage: "leaf").foregroundStyle(Brand.reclaimText)
             Divider()
             Button("Open AI Keeper") {
                 openWindow(id: "main"); NSApp.activate(ignoringOtherApps: true)

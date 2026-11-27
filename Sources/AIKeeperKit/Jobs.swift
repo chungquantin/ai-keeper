@@ -113,6 +113,12 @@ extension Store {
                 if plan.mode == .removeWorkspaces {
                     entries.removeAll { $0.id == e.id }
                     removed.append((e.path, bytes(e)))
+                    // Remember how to bring it back: out of the Trash, or from its branch on the remote.
+                    if e.kind != .cache {
+                        let moved = prog.takeTrashed().first { $0.from == e.path }?.to
+                        RestoreLog.add(RestoreRecord(id: UUID().uuidString, date: .now, name: e.name, bytes: bytes(e), path: e.path,
+                                                     trash: moved, repo: e.repoPath, branch: e.branch))
+                    } else { _ = prog.takeTrashed() }
                 } else if let idx = entries.firstIndex(where: { $0.id == e.id }) {
                     removed += e.artifacts.map { ($0.path, $0.bytes) }
                     entries[idx].size = max(0, (entries[idx].size ?? 0) - freed)

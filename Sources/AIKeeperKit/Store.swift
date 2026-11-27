@@ -111,6 +111,9 @@ final class Store: ObservableObject {
     var lastSampleSave = Date.distantPast
     let analyzer = DiskModel()
     let dedup = DedupModel()
+    let basket = Basket()
+    let sources = SourcesModel()
+    let rules = RuleBook()
     private var started = false
 
     init() {
@@ -174,6 +177,7 @@ final class Store: ObservableObject {
             }
         }
         Task { while !Task.isCancelled { await guardTick(); try? await Task.sleep(for: .seconds(30)) } }
+        Task { while !Task.isCancelled { try? await Task.sleep(for: .seconds(1800)); await RuleEngine.tick(self) } }   // rules also run between scans
         guard ToolSettings.onboarded else {
             needsOnboarding = true   // first launch: let the user pick tools before anything is scanned
             await detectTools()
@@ -378,6 +382,7 @@ final class Store: ObservableObject {
         persistEntries()
         recordSnapshot()
         refreshDisk()
+        Task { await RuleEngine.tick(self) }
     }
 
     /// Encoding ~300 KB of JSON on the main thread is a visible hitch; do it in the background.
@@ -475,6 +480,11 @@ struct Stats {
     var caches: [Entry] = []
     var keptArtifactBytes: Int64 = 0
     var reclaimable: Int64 = 0
+    /// The trust ladder: what losing it would cost. Rebuildable and On a remote are safe to clear; Only here is not.
+    var rebuildBytes: Int64 = 0
+    var remoteBytes: Int64 = 0
+    var onlyHereBytes: Int64 = 0
+    var safeBytes: Int64 { rebuildBytes + remoteBytes }
     var managedBytes: Int64 = 0
     var measuredCount = 0
     var staleCount = 0
@@ -499,6 +509,7 @@ struct Stats {
                     workspaces.append(e)
                     if e.verdict == .deprecated { deprecated.append(e) }
                     if removing { removable.append(e); removableBytes += size }
+                    if removing && e.safety == .safe { remoteBytes += size } else if e.verdict == .deprecated { onlyHereBytes += size }
                 }
                 if e.verdict == .dangling { staleCount += 1 }
                 let keeps = !removing && e.verdict != .dangling
@@ -510,10 +521,11 @@ struct Stats {
                 if let a = e.artifacts.max(by: { $0.bytes < $1.bytes }), a.bytes > (biggestArtifact?.bytes ?? 0) {
                     biggestArtifact = (e.name, a.label, a.bytes)
                 }
-            case .sessionData: orphans.append(e); orphanBytes += size
+            case .sessionData: orphans.append(e); orphanBytes += size; onlyHereBytes += size
             case .cache: caches.append(e); cacheBytes += size
             }
         }
+        rebuildBytes = keptArtifactBytes + cacheBytes
         reclaimable = removableBytes + keptArtifactBytes + orphanBytes + cacheBytes
         repoGroups = groups.filter { $0.value.total > 0 }.map { RepoGroup(name: $0.key, total: $0.value.total, count: $0.value.count, reclaim: $0.value.reclaim) }
             .sorted { $0.total > $1.total }.prefix(8).map { $0 }

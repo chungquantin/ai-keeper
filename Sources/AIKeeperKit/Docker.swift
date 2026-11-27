@@ -21,6 +21,14 @@ enum DockerCLI {
         return (rows, nil)
     }
 
+    /// Docker prints sizes as text ("12.3GB (45%)"). Sum them without a library.
+    static func parseBytes(_ s: String) -> Int64 {
+        let t = s.split(separator: " ").first.map(String.init) ?? s
+        let units: [(String, Double)] = [("TB", 1e12), ("GB", 1e9), ("MB", 1e6), ("kB", 1e3), ("KB", 1e3), ("B", 1)]
+        for (u, m) in units where t.hasSuffix(u) { return Int64((Double(t.dropLast(u.count)) ?? 0) * m) }
+        return 0
+    }
+
     static func prune(_ args: [String]) -> String {
         guard let docker = path else { return "docker not found" }
         let r = Shell.run(docker, args)

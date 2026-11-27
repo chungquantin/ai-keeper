@@ -14,21 +14,23 @@ stop() { [ -n "$PID" ] && kill "$PID" 2>/dev/null; wait "$PID" 2>/dev/null; PID=
 trap 'stop; rm -f "$STAMP"; echo; exit 0' INT TERM
 
 build() {
-  local out; out="$(swift build 2>&1)"
+  local t0=$SECONDS out; out="$(swift build 2>&1)"
   if echo "$out" | grep -q "error:"; then
     echo "$out" | grep -E "error:" | sort -u | head -20
     echo "── build failed; the running app is unchanged. Fix and save again."
     return 1
   fi
-  echo "── built $(date +%H:%M:%S)"
+  echo "── built in $((SECONDS - t0))s at $(date +%H:%M:%S)"
 }
 
+# Start the new build first and close the old one once its window is up, so there is no blank gap between versions.
 launch() {
-  stop
+  local old="$PID"
   if [ "$REAL" = 1 ]; then AIKEEPER_DEV=1 AIKEEPER_NOSPLASH=1 "$BIN" >/dev/null 2>&1 &
   else AIKEEPER_DEV=1 AIKEEPER_DEMO=1 AIKEEPER_NOSPLASH=1 "$BIN" >/dev/null 2>&1 &
   fi
   PID=$!
+  if [ -n "$old" ]; then sleep 1.2; kill "$old" 2>/dev/null; wait "$old" 2>/dev/null; fi
 }
 
 echo "Watching Sources/ for changes ($([ "$REAL" = 1 ] && echo "real data" || echo "demo data")). Ctrl-C to stop."

@@ -76,7 +76,7 @@ private struct Swatch: View {
         var body: some View {
             VStack(alignment: .leading, spacing: 28) {
                 TabStrip(tabs: Area.insights.tabs, selection: $a)
-                TabStrip(tabs: Area.today.tabs, selection: $b, pills: true, badge: { ["4", "108 GB", "$64", "5 live"][Area.today.tabs.firstIndex(of: $0) ?? 0] }, hot: { $0 == .briefing })
+                TabStrip(tabs: Area.cleanup.tabs, selection: $b)
             }.padding(.vertical, 24).frame(width: 760).background(Brand.background)
         }
     }

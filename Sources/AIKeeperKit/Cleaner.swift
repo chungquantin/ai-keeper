@@ -9,6 +9,11 @@ final class CleanProgress: @unchecked Sendable {
     private var _detail = ""
     private var _cancelled = false
     private var _firstError: String?
+    private var _trashed: [(from: String, to: String)] = []
+
+    /// Where the Trash put each folder it took, so a cleanup can be undone.
+    func addTrashed(from: String, to: String) { lock.withLock { _trashed.append((from, to)) } }
+    func takeTrashed() -> [(from: String, to: String)] { lock.withLock { let t = _trashed; _trashed = []; return t } }
 
     var freed: Int64 { lock.withLock { _freed } }
     var label: String { lock.withLock { _label } }
@@ -145,7 +150,9 @@ enum Cleaner {
                 throw Failure(message: err)
             }
         } else {
-            try FileManager.default.trashItem(at: URL(fileURLWithPath: path), resultingItemURL: nil)
+            var out: NSURL?
+            try FileManager.default.trashItem(at: URL(fileURLWithPath: path), resultingItemURL: &out)
+            if let to = (out as URL?)?.path { progress.addTrashed(from: path, to: to) }
         }
     }
 }

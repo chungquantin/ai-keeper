@@ -6,11 +6,8 @@ import SwiftUI
 
 // MARK: Today
 
-#Preview("Today · Briefing") { TodayBriefing().previewEnv().previewPage() }
-#Preview("Today · Briefing · dark") { TodayBriefing().previewEnv().previewPage().preferredColorScheme(.dark) }
-#Preview("Today · Reclaim") { TodayReclaim().previewEnv().previewPage() }
-#Preview("Today · Optimize") { TodayOptimize().previewEnv().previewPage() }
-#Preview("Today · Activity") { TodayActivity().previewEnv().previewPage() }
+#Preview("Today · Briefing") { TodayHome().previewEnv().previewPage() }
+#Preview("Today · Briefing · dark") { TodayHome().previewEnv().previewPage().preferredColorScheme(.dark) }
 
 // MARK: Sessions
 
@@ -31,8 +28,17 @@ import SwiftUI
 
 // MARK: Cleanup
 
-#Preview("Cleanup · Workspaces") { WorkspacesTab().previewEnv(.cleanup, .workspaces).previewPage(height: 820) }
-#Preview("Cleanup · Disk") { DiskTab().previewEnv(.cleanup, .disk).previewPage(height: 820) }
+#Preview("Cleanup · Review") { CleanupReview().previewEnv(.cleanup, .review).previewPage(height: 820) }
+#Preview("Cleanup · Review · dark") { CleanupReview().previewEnv(.cleanup, .review).previewPage(height: 820).preferredColorScheme(.dark) }
+#Preview("Cleanup · Review · narrow") { CleanupReview().previewEnv(.cleanup, .review).previewPage(width: 828, height: 820) }
+#Preview("Cleanup · Item detail") {
+    ReclaimDetail(item: ReclaimPlanner.items(PreviewKit.store).first { $0.kind == .merged } ?? ReclaimPlanner.items(PreviewKit.store)[0]) {}.previewEnv(.cleanup, .review).previewPage(height: 820)
+}
+#Preview("Cleanup · Map") { CleanupMap().previewEnv(.cleanup, .map).previewPage(height: 820) }
+#Preview("Cleanup · Agent data") { AgentDataTab().previewEnv(.cleanup, .agentData).previewPage(height: 820) }
+#Preview("Cleanup · Automate") { AutomateTab().previewEnv(.cleanup, .automate).previewPage(height: 820) }
+#Preview("Cleanup · History") { CleanupHistory().previewEnv(.cleanup, .cleaned).previewPage(height: 820) }
+#Preview("Cleanup · Basket") { BasketSheet().previewEnv(.cleanup, .review) }
 
 // MARK: Agents
 
@@ -60,4 +66,4 @@ import SwiftUI
 
 #Preview("App · Today") { RootView().previewEnv(.today).frame(width: 1360, height: 900) }
 #Preview("App · Insights") { RootView().previewEnv(.insights, .reliability).frame(width: 1360, height: 900) }
-#Preview("App · Cleanup · dark") { RootView().previewEnv(.cleanup, .workspaces).frame(width: 1360, height: 900).preferredColorScheme(.dark) }
+#Preview("App · Cleanup · dark") { RootView().previewEnv(.cleanup, .review).frame(width: 1360, height: 900).preferredColorScheme(.dark) }

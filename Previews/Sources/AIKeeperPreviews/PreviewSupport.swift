@@ -21,7 +21,7 @@ enum PreviewKit {
 extension View {
     /// Gives a view what the running app gives it: the demo store, navigation, the cobalt tint and the body font.
     @MainActor func previewEnv(_ area: Area = .today, _ tab: AIKeeperKit.Tab? = nil) -> some View {
-        environmentObject(PreviewKit.store).environmentObject(PreviewKit.nav(area, tab)).tint(Brand.accent).font(.bBody)
+        environmentObject(PreviewKit.store).environmentObject(PreviewKit.store.basket).environmentObject(PreviewKit.nav(area, tab)).tint(Brand.accent).font(.bBody)
     }
     /// A page sized like the content column of the app at its usual width.
     func previewPage(width: CGFloat = 1120, height: CGFloat = 780) -> some View {
