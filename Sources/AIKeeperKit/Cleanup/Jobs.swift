@@ -244,25 +244,45 @@ struct ActivityBar: View {
     @State private var open = false
 
     var body: some View {
-        if !store.jobs.isEmpty {
-            Button { open.toggle() } label: { ActivitySummary(jobs: store.jobs).padding(.horizontal, 16).padding(.vertical, 9) }
+        if !store.jobs.isEmpty || !store.tasks.isEmpty {
+            Button { open.toggle() } label: { ActivitySummary(jobs: store.jobs, tasks: store.tasks).padding(.horizontal, 16).padding(.vertical, 9) }
                 .buttonStyle(HoverRowStyle())
                 .overlay(alignment: .top) { Divider() }
                 .popover(isPresented: $open, arrowEdge: .trailing) { ActivityList().environment(store) }
-                .help("Background cleanups")
+                .help("Background tasks")
         }
     }
 }
 
 private struct ActivitySummary: View {
     let jobs: [CleanupJob]
+    let tasks: [BackgroundTask]
     var body: some View {
-        if let running = jobs.first(where: { $0.state == .running }) {
+        let running = tasks.filter { $0.state == .running }
+        if let t = running.first {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small).scaleEffect(0.7).frame(width: 14, height: 14)
+                    Text(t.title).font(.bCaption.weight(.medium)).lineLimit(1)
+                    Spacer(minLength: 4)
+                    if running.count > 1 { Text("+\(running.count - 1)").font(.bCaption2).foregroundStyle(.secondary) }
+                    Image(systemName: "chevron.up").font(.bCaption2).foregroundStyle(.tertiary)
+                }
+                Text(t.step).font(.bCaption2).foregroundStyle(.secondary).lineLimit(1).padding(.leading, 22)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        } else if let running = jobs.first(where: { $0.state == .running }) {
             RunningLine(job: running, queued: jobs.filter { $0.state == .queued }.count)
         } else if jobs.contains(where: { $0.state == .queued }) {
             HStack(spacing: 6) { SleepingRobot(scale: 1); Text("Cleanup waiting").font(.bCaption).foregroundStyle(.secondary) }
+        } else if jobs.isEmpty, let last = tasks.first {
+            HStack(spacing: 8) {
+                Image(systemName: last.state == .failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill").foregroundStyle(last.state == .failed ? Brand.reclaim : Brand.accent)
+                VStack(alignment: .leading, spacing: 1) { Text(last.title).font(.bCaption.weight(.medium)).lineLimit(1); Text(last.step).font(.bCaption2).foregroundStyle(.secondary).lineLimit(1) }
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.up").font(.bCaption2).foregroundStyle(.tertiary)
+            }.frame(maxWidth: .infinity, alignment: .leading)
         } else {
-            FinishedLine(jobs: jobs)
+            FinishedLine(jobs: jobs, extra: tasks.reduce(Int64(0)) { $0 + $1.freed })
         }
     }
 }
@@ -285,8 +305,9 @@ private struct RunningLine: View {
 
 private struct FinishedLine: View {
     let jobs: [CleanupJob]
+    var extra: Int64 = 0
     var body: some View {
-        let freed = jobs.reduce(Int64(0)) { $0 + ($1.outcome?.freed ?? 0) }
+        let freed = jobs.reduce(extra) { $0 + ($1.outcome?.freed ?? 0) }
         HStack(spacing: 8) {
             Image(systemName: "checkmark.circle.fill").foregroundStyle(Brand.accent)
             Text("\(freed.bytesString) freed").font(.bCaption).monospacedDigit()
@@ -301,11 +322,13 @@ struct ActivityList: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("Cleanups").font(.bHeadline)
+                Text("Background tasks").font(.bHeadline)
                 Spacer()
-                if store.jobs.contains(where: { $0.state == .finished }) { Button("Clear finished") { store.clearFinishedJobs() }.controlSize(.small) }
+                if store.jobs.contains(where: { $0.state == .finished }) || store.tasks.contains(where: { $0.state != .running }) { Button("Clear finished") { store.clearFinishedJobs(); store.tasks.removeAll { $0.state != .running } }.controlSize(.small) }
             }.padding(14)
             Divider()
+            if store.tasks.isEmpty && store.jobs.isEmpty { Text("Nothing is running.").font(.bCallout).foregroundStyle(.secondary).padding(14) }
+            BackgroundTaskList()
             ForEach(store.jobs) { job in
                 JobRow(job: job)
                 if job.id != store.jobs.last?.id { Divider() }

@@ -23,7 +23,7 @@ enum Area: String, CaseIterable, Identifiable {
         case .today: [.briefing]
         case .sessions: [.history, .live, .logs, .prompts]
         case .insights: [.findings]                                    // one page; the rest open from its "Look deeper" list
-        case .cleanup: [.review, .map, .agentData, .automate, .cleaned]
+        case .cleanup: [.overview, .clean, .apps, .files, .optimize, .automate]
         case .agents: [.tools, .skills, .mcp, .hooks, .budgets]
         }
     }
@@ -42,7 +42,7 @@ enum Tab: String, Hashable, Identifiable {
     case briefing = "Briefing"
     case history = "Sessions", live = "Live", logs = "Logs", prompts = "Prompts"
     case findings = "Findings", cost = "Cost", speed = "Speed", reliability = "Reliability", context = "Context", advisor = "Advisor", machine = "Machine"
-    case review = "Review", map = "Map", agentData = "Agent data", automate = "Automate", cleaned = "History"
+    case overview = "Overview", clean = "Clean", apps = "Apps", files = "Files", optimize = "Optimize", automate = "Automate"
     case tools = "Tools", skills = "Skills", mcp = "MCP servers", hooks = "Hooks", budgets = "Budgets"
     var id: String { rawValue }
 
@@ -61,11 +61,12 @@ enum Tab: String, Hashable, Identifiable {
         case .context: "How full the window gets, and what the cache saves"
         case .advisor: "What your own history says about which agent and tools to use"
         case .machine: "What agents cost this Mac"
-        case .review: "What you can clear, and what it would cost to regret"
-        case .map: "Where the space went, colored by what losing it would cost"
-        case .agentData: "What agents and dev tools keep on this Mac, and for how long"
-        case .automate: "Rules that keep the Mac tidy and never touch unsaved work"
-        case .cleaned: "What you cleared, and how to put it back"
+        case .overview: "Your disk, and what you can clear"
+        case .clean: "Junk, developer clutter and agent data, sorted by what losing it would cost"
+        case .apps: "Uninstall apps, and everything they left behind"
+        case .files: "Large and old files, duplicates and the folder map"
+        case .optimize: "What starts with your Mac, and routine maintenance"
+        case .automate: "Rules that run by themselves, and what they did"
         case .tools: "Every agent on this Mac"
         case .skills: "What your agents can load, checked for risky scripts"
         case .mcp: "What each server adds to every session, and whether it is used"
@@ -100,10 +101,10 @@ final class NavState {
         if p.count == 2, let a = Area(rawValue: p[0]), let t = Tab(rawValue: p[1]), a.pages.contains(t) { area = a; tab[a] = t }
     }
     var workspaceFilter: WorkspaceFilter = .all   // all, deprecated, or one tool
-    var reviewAll = false                    // Review: the trust tiers, or the full workspace table
-    var mapMode: MapMode = .trust
+    var cleanMode: CleanMode = .review
+    var filesMode: FilesMode = .large
+    var autoMode: AutoMode = .rules
     var dataMode: DataMode = .sources
-    var historyMode: HistoryMode = .cleaned
     var showBasket = false                   // the confirm sheet behind the sidebar's Reclaim button
     var showPalette = false
     /// The session whose full trace is open, in place of the Traces lists.
@@ -201,10 +202,6 @@ struct AreaView: View {
                         .buttonStyle(.brandOutline)   // the quiet secondary button, unless a view asks for another
                         .id(nav.currentTab)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    if area == .insights, nav.currentTab == .speed, g.size.width >= 1120 {
-                        Divider()
-                        WorthChanging().frame(width: 300)
-                    }
                 }
             }
         }
@@ -225,11 +222,12 @@ struct AreaView: View {
         case .context: ContextView()
         case .advisor: AdvisorView()
         case .machine: SystemView()
-        case .review: CleanupReview()
-        case .map: CleanupMap()
-        case .agentData: AgentDataTab()
-        case .automate: AutomateTab()
-        case .cleaned: CleanupHistory()
+        case .overview: StorageOverview()
+        case .clean: CleanTab()
+        case .apps: AppsTab()
+        case .files: FilesTab()
+        case .optimize: OptimizeTab()
+        case .automate: AutomateHub()
         case .tools: FleetView()
         case .skills: SkillsView()
         case .mcp: MCPView()
@@ -265,33 +263,6 @@ struct WorkspacesTab: View {
     }
 }
 
-/// The right-hand panel on Speed: the few changes worth making, from the same suggestions as Today › Optimize.
-struct WorthChanging: View {
-    @Environment(Store.self) private var store
-    @Environment(NavState.self) private var nav
-    var body: some View {
-        let tips = Array(store.advice.tips.prefix(4))
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Worth changing").font(.bHeadline)
-                    Text("From your last 30 days.").font(.bCaption).foregroundStyle(.secondary)
-                }
-                if tips.isEmpty { Text("Nothing to suggest yet.").font(.bCaption).foregroundStyle(.secondary) }
-                ForEach(tips) { t in
-                    Button { nav.open(t.area, t.tab) } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack(alignment: .top) { Text(t.title).font(.bBody.weight(.semibold)).multilineTextAlignment(.leading); Spacer(minLength: 4); if let s = t.save { Tag(text: s, tone: .blue) } }
-                            Text(t.body).font(.bCaption).foregroundStyle(.secondary).lineLimit(3).multilineTextAlignment(.leading)
-                        }.padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Brand.muted, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    }.buttonStyle(.plain)
-                }
-                Button { nav.open(.insights, .advisor) } label: { Text("Open Advisor").frame(maxWidth: .infinity) }.buttonStyle(.brandProminent).controlSize(.large)
-            }.padding(20)
-        }.background(Brand.card)
-    }
-}
-
 /// Export CSV on Cost: one row per day, agent and model.
 enum UsageExport {
     @MainActor static func save(_ rows: [UsageRow]) {
@@ -306,6 +277,7 @@ enum UsageExport {
     }
 }
 
-enum MapMode: Hashable { case trust, folders, duplicates }
+enum CleanMode: Hashable { case review, agentData, allWorkspaces }
+enum FilesMode: Hashable { case large, duplicates, folders, trustMap }
+enum AutoMode: Hashable { case rules, history, snapshots }
 enum DataMode: Hashable { case sources, containers }
-enum HistoryMode: Hashable { case cleaned, removed }

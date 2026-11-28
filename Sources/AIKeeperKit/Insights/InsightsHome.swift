@@ -24,7 +24,7 @@ struct InsightsHome: View {
                 VStack(spacing: 14) {
                     if tips.isEmpty { empty } else { ForEach(tips) { FindingCard(tip: $0) { InsightDismissals.dismiss($0); dismissed = InsightDismissals.all() } } }
                 }.frame(maxWidth: .infinity)
-                VStack(spacing: 14) { deeper; quiet }.frame(width: 340)
+                VStack(spacing: 14) { deeper }.frame(width: 340)
             }
         }
     }
@@ -66,15 +66,6 @@ struct InsightsHome: View {
             }
         }
     }
-
-    private var quiet: some View {
-        Card(padding: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Quiet on purpose").font(.bBody.weight(.semibold))
-                Text("We show at most \(Self.maxFindings) findings. Dismiss one and it stays away until the numbers change.").font(.bCaption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            }
-        }
-    }
 }
 
 private struct FindingCard: View {
@@ -87,24 +78,23 @@ private struct FindingCard: View {
 
     var body: some View {
         Card(padding: 18) {
-            HStack(alignment: .center, spacing: 18) {
+            HStack(alignment: .center, spacing: 16) {
                 TierChip(symbol: symbol, tone: tone, size: 36)
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(tip.title).font(.system(size: 15, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
                     Text(tip.body).font(.bCallout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                    if !tip.why.isEmpty { Text("Why am I seeing this? \(tip.why)").font(.bCaption).foregroundStyle(Brand.primaryText).fixedSize(horizontal: false, vertical: true) }
-                }.frame(maxWidth: .infinity, alignment: .leading)
+                }.frame(maxWidth: .infinity, alignment: .leading).help(tip.why)
                 if !tip.value.isEmpty {
-                    VStack(alignment: .trailing, spacing: 6) {
-                        Text(tip.value).font(.system(size: 22, weight: .semibold)).monospacedDigit()
-                        GeometryReader { g in ZStack(alignment: .leading) { Capsule().fill(Brand.muted); Capsule().fill(tone.fg).frame(width: max(4, g.size.width * min(max(tip.fraction, 0), 1))) } }.frame(width: 140, height: 6)
-                        Text(tip.caption).font(.bCaption2).foregroundStyle(.secondary)
-                    }
+                    VStack(alignment: .trailing, spacing: 5) {
+                        Text(tip.value).font(.system(size: 20, weight: .semibold)).monospacedDigit().lineLimit(1)
+                        GeometryReader { g in ZStack(alignment: .leading) { Capsule().fill(Brand.muted); Capsule().fill(tone.fg).frame(width: max(4, g.size.width * min(max(tip.fraction, 0), 1))) } }.frame(width: 96, height: 5)
+                        Text(tip.caption).font(.bCaption2).foregroundStyle(.secondary).lineLimit(1)
+                    }.fixedSize()
                 }
-                VStack(spacing: 6) {
-                    Button(tip.action) { nav.open(tip.area, tip.tab) }.buttonStyle(.brandProminent).controlSize(.small)
-                    Button("Dismiss") { dismiss(tip) }.controlSize(.small)
-                }.frame(width: 140)
+                HStack(spacing: 6) {
+                    Button(tip.action) { nav.open(tip.area, tip.tab) }.buttonStyle(.brandProminent).controlSize(.small).fixedSize()
+                    Button { dismiss(tip) } label: { Image(systemName: "xmark").font(.system(size: 10, weight: .semibold)) }.controlSize(.small).help("Dismiss").accessibilityLabel("Dismiss")
+                }
             }
         }
     }

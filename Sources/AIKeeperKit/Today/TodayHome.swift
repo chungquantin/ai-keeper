@@ -28,24 +28,8 @@ struct TodayHome: View {
     private func headline(_ items: [AttentionItem]) -> some View {
         let n = items.count
         let words = ["Nothing", "One thing", "Two things", "Three things", "Four things", "Five things"]
-        let lead = n == 0 ? "Nothing needs you." : (n < words.count ? words[n] : "\(n) things") + (n == 1 ? " needs you." : " need you.")
-        let safe = store.stats.safeBytes
-        let spent = String(format: "$%.2f", store.spentToday)
-        let strong = Color.primary, quiet = Brand.mutedForeground
-        let line: Text
-        if store.hasData && safe > 0 {
-            line = Text(lead + " ").foregroundColor(quiet)
-                + Text("\(safe.bytesString) can go").foregroundColor(strong)
-                + Text(" without losing work, and ").foregroundColor(quiet)
-                + Text("you have spent \(spent)").foregroundColor(strong)
-                + Text(" so far today.").foregroundColor(quiet)
-        } else {
-            line = Text(lead + " ").foregroundColor(quiet)
-                + Text("You have spent \(spent)").foregroundColor(strong)
-                + Text(" so far today.").foregroundColor(quiet)
-        }
-        return line.font(.system(size: 30, weight: .semibold)).tracking(-0.5).lineSpacing(3)
-            .fixedSize(horizontal: false, vertical: true).frame(maxWidth: 980, alignment: .leading).padding(.bottom, 4)
+        let lead = n == 0 ? "All clear" : (n < words.count ? words[n] : "\(n) things") + (n == 1 ? " needs you" : " need you")
+        return Text(lead).font(.system(size: 30, weight: .semibold)).tracking(-0.5).padding(.bottom, 2)
     }
 }
 
@@ -79,42 +63,52 @@ private struct ReclaimTile: View {
     var body: some View {
         let st = store.stats
         let safe = st.safeBytes, parts = safe.byteParts
-        let tiers: [(Tier, Int64)] = [(.rebuildable, st.rebuildBytes), (.onRemote, st.remoteBytes), (.onlyHere, st.onlyHereBytes)]
+        let tiers: [(Tier, Int64)] = [(.rebuildable, st.rebuildBytes), (.onRemote, st.remoteBytes)]
+        let scan: String = store.isScanning ? "Scanning" : store.lastScan.map { $0.formatted(.relative(presentation: .named, unitsStyle: .abbreviated)) } ?? "Not scanned"
         Card(padding: 18) {
             VStack(alignment: .leading, spacing: 12) {
-                HStack { Text("Safe to reclaim").font(.bCaption2).foregroundStyle(.secondary); Spacer(); if safe > 0 { Tag(text: "Clear now", tone: .green) } }
+                HStack { Text("Safe to reclaim").font(.bCaption2).foregroundStyle(.secondary); Spacer(); Text(scan).font(.bCaption2).foregroundStyle(.tertiary) }
                 HStack(spacing: 18) {
                     ZStack {
                         Donut(parts: tiers.map { (Double($0.1), $0.0.color) })
                         VStack(spacing: 0) {
                             Text(store.hasData ? parts.number : "—").font(.figure(24)).monospacedDigit()
-                            Text(parts.unit.isEmpty ? " " : "\(parts.unit) safe").font(.bCaption2).foregroundStyle(.secondary)
+                            Text(parts.unit.isEmpty ? " " : parts.unit).font(.bCaption2).foregroundStyle(.secondary)
                         }
                     }
-                    .frame(width: 124, height: 124)
+                    .frame(width: 116, height: 116)
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Safe to reclaim \(safe.bytesString). " + tiers.map { "\($0.0.title) \($0.1.bytesString)" }.joined(separator: ", "))
                     VStack(alignment: .leading, spacing: 9) {
                         ForEach(tiers, id: \.0.id) { t, b in
                             HStack(spacing: 8) {
                                 Circle().fill(t.color).frame(width: 7, height: 7)
-                                Text(t.title).font(.bCaption)
+                                Text(t.title).font(.bCaption).lineLimit(1)
                                 Spacer(minLength: 4)
-                                Text(b.bytesString).font(.bCaption.weight(.semibold)).monospacedDigit()
+                                Text(b.bytesString).font(.bCaption.weight(.semibold)).monospacedDigit().lineLimit(1)
                             }
                         }
-                        if st.onlyHereBytes > 0 { Text("The amber part needs a look, so it is not in the \(safe.bytesString).").font(.bCaption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true) }
+                        if st.onlyHereBytes > 0 {
+                            HStack(spacing: 8) {
+                                Circle().strokeBorder(Tier.onlyHere.color, lineWidth: 1.5).frame(width: 7, height: 7)
+                                Text("Needs a look").font(.bCaption).foregroundStyle(.secondary).lineLimit(1)
+                                Spacer(minLength: 4)
+                                Text(st.onlyHereBytes.bytesString).font(.bCaption).monospacedDigit().foregroundStyle(.secondary).lineLimit(1)
+                            }.padding(.top, 8).overlay(alignment: .top) { Divider() }
+                        }
                     }
                 }
                 Spacer(minLength: 0)
-                HStack {
-                    Text(store.hasData ? "\(st.managedBytes.bytesString) in agent workspaces" : "Measuring your workspaces…").font(.bCaption).foregroundStyle(.secondary)
-                    Spacer()
+                HStack(spacing: 8) {
+                    Button { Task { await store.rescan() } } label: {
+                        if store.isScanning { ProgressView().controlSize(.small).scaleEffect(0.6).frame(width: 14, height: 14) } else { Image(systemName: "arrow.clockwise").frame(width: 14, height: 14) }
+                    }.controlSize(.small).disabled(store.isScanning).help("Rescan (⌘R)").accessibilityLabel("Rescan")
+                    Spacer(minLength: 0)
                     if safe == 0 && store.hasData && !store.isScanning {
-                        Button("Review") { nav.open(.cleanup, .review) }.controlSize(.small)
+                        Button("Review") { nav.go(.review) }.controlSize(.small).fixedSize()
                     } else {
                         Button("Reclaim \(safe.bytesString)") { basket.resetToSafe(); nav.showBasket = true }
-                            .buttonStyle(.brandProminent).controlSize(.small).disabled(safe == 0 || store.isScanning)
+                            .buttonStyle(.brandProminent).controlSize(.small).fixedSize().disabled(safe == 0 || store.isScanning)
                     }
                 }
             }
@@ -138,7 +132,7 @@ private struct SpendTile: View {
         let whole = Int(spent), cents = Int(((spent - Double(whole)) * 100).rounded())
         Card(padding: 18) {
             VStack(alignment: .leading, spacing: 10) {
-                HStack { Text("Spent, last 7 days").font(.bCaption2).foregroundStyle(.secondary); Spacer(); if yesterday > 0 { Tag(text: "\(Int((today / yesterday * 100).rounded()))% of yesterday", tone: .gray) } }
+                HStack { Text("Last 7 days").font(.bCaption2).foregroundStyle(.secondary); Spacer(); if yesterday > 0 { let d = Int(((today - yesterday) / yesterday * 100).rounded()); Tag(text: (d >= 0 ? "+" : "−") + "\(abs(d))% vs yesterday", tone: .gray) } }
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     Text("$\(whole)").font(.figure(30)).monospacedDigit()
                     Text(String(format: ".%02d", cents)).font(.figure(15)).foregroundStyle(.secondary).monospacedDigit()
@@ -149,9 +143,9 @@ private struct SpendTile: View {
                     .accessibilityLabel("Spend over the last 7 days: " + week.map { String(format: "$%.0f", $0.total) }.joined(separator: ", "))
                 Spacer(minLength: 0)
                 HStack {
-                    Legend(items: agents.prefix(3).map { a in ("\(a.rawValue) \(String(format: "$%.0f", week.reduce(0) { $0 + ($1.by[a] ?? 0) }))", AgentColor.of(a.rawValue)) })
+                    Legend(items: agents.prefix(2).map { a in ("\(a.rawValue.capitalized) \(Self.money(week.reduce(0) { $0 + ($1.by[a] ?? 0) }))", AgentColor.of(a.rawValue)) })
                     Spacer(minLength: 0)
-                    Button("Budgets") { nav.open(.agents, .budgets) }.controlSize(.small)
+                    Button("Budgets") { nav.open(.agents, .budgets) }.controlSize(.small).fixedSize()
                 }
             }
         }
@@ -160,6 +154,8 @@ private struct SpendTile: View {
             week = await Task.detached(priority: .utility) { Self.compute(rows) }.value
         }
     }
+
+    private static func money(_ v: Double) -> String { v.formatted(.currency(code: "USD").precision(.fractionLength(0))) }
 
     private nonisolated static func compute(_ rows: [UsageRow]) -> [DaySpend] {
         let cal = Calendar.current, start = cal.startOfDay(for: Date())
@@ -205,6 +201,11 @@ private struct SpendBars: View {
 // MARK: Running
 
 private struct RunningTile: View {
+    /// 41m, 3h 8m: no seconds once it has run for a minute.
+    private static func span(_ t: TimeInterval) -> String {
+        let m = Int(t / 60)
+        return m < 1 ? "just now" : m < 60 ? "\(m)m" : m % 60 == 0 ? "\(m / 60)h" : "\(m / 60)h \(m % 60)m"
+    }
     @Environment(Store.self) private var store
     @Environment(NavState.self) private var nav
 
@@ -215,7 +216,7 @@ private struct RunningTile: View {
         Card(padding: 18) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Text("Running, last 12 hours").font(.bCaption2).foregroundStyle(.secondary)
+                    Text("Agents").font(.bCaption2).foregroundStyle(.secondary)
                     Spacer()
                     if waiting > 0 { Tag(text: "\(waiting) waiting", tone: .amber) } else if working > 0 { Tag(text: "\(working) working", tone: .blue) }
                 }
@@ -223,20 +224,15 @@ private struct RunningTile: View {
                     Text("\(live.count)").font(.figure(30)).monospacedDigit()
                     Text(live.count == 1 ? "agent" : "agents").font(.figure(15)).foregroundStyle(.secondary)
                 }
-                VStack(spacing: 7) {
+                VStack(spacing: 9) {
                     if live.isEmpty { Text("No agents are running.").font(.bCaption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading) }
                     ForEach(live.prefix(5)) { a in
-                        HStack(spacing: 10) {
+                        HStack(spacing: 8) {
+                            Circle().fill(a.state == .needsInput ? Brand.reclaim : AgentColor.of(a.kind.rawValue).opacity(a.state == .idle ? 0.4 : 1)).frame(width: 7, height: 7)
                             Text(store.workspace(for: a)?.name ?? a.cwd.map { ($0 as NSString).lastPathComponent } ?? a.kind.rawValue)
-                                .font(.bCaption).foregroundStyle(.secondary).lineLimit(1).frame(width: 96, alignment: .leading)
-                            GeometryReader { g in
-                                let f = min(a.elapsed, window) / window
-                                ZStack(alignment: .leading) {
-                                    Capsule().fill(Brand.muted)
-                                    Capsule().fill(a.state == .needsInput ? Brand.reclaim : AgentColor.of(a.kind.rawValue).opacity(a.state == .idle ? 0.45 : 1))
-                                        .frame(width: max(6, g.size.width * f)).offset(x: g.size.width * (1 - f))
-                                }
-                            }.frame(height: 10)
+                                .font(.bCaption).lineLimit(1).truncationMode(.middle)
+                            Spacer(minLength: 4)
+                            Text(a.state == .needsInput ? "Waiting" : Self.span(a.elapsed)).font(.bCaption2).foregroundStyle(a.state == .needsInput ? Brand.reclaimText : Color.secondary).monospacedDigit().fixedSize()
                         }
                     }
                 }
@@ -244,7 +240,7 @@ private struct RunningTile: View {
                 HStack {
                     Text(live.count > working + waiting ? "\(live.count - working - waiting) idle" : " ").font(.bCaption).foregroundStyle(.secondary)
                     Spacer()
-                    Button("Open sessions") { nav.open(.sessions, .live) }.controlSize(.small)
+                    Button("Open sessions") { nav.open(.sessions, .live) }.controlSize(.small).fixedSize()
                 }
             }
         }
@@ -274,10 +270,10 @@ private struct NeedsCard: View {
                         TierChip(symbol: symbol(it.id), tone: it.tone, size: 34)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(it.title).font(.bBody.weight(.semibold)).lineLimit(1)
-                            Text(it.subtitle).font(.bCaption).foregroundStyle(.secondary).lineLimit(2)
+                            Text(it.subtitle).font(.bCaption).foregroundStyle(.secondary).lineLimit(1)
                         }
                         Spacer(minLength: 8)
-                        if i == 0 { Button(it.action) { it.go(nav, store) }.buttonStyle(.brandProminent).controlSize(.small) } else { Button(it.action) { it.go(nav, store) }.controlSize(.small) }
+                        if i == 0 { Button(it.action) { it.go(nav, store) }.buttonStyle(.brandProminent).controlSize(.small).fixedSize() } else { Button(it.action) { it.go(nav, store) }.controlSize(.small).fixedSize() }
                     }
                     .padding(.horizontal, 20).padding(.vertical, 11).overlay(alignment: .top) { Divider() }
                 }
@@ -288,16 +284,14 @@ private struct NeedsCard: View {
                         TierChip(symbol: "bolt", tone: .violet, size: 34)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(tip.title).font(.bBody.weight(.semibold)).lineLimit(1)
-                            Text(tip.body).font(.bCaption).foregroundStyle(.secondary).lineLimit(2)
+                            Text(tip.caption.isEmpty ? tip.body : "\(tip.value) \(tip.caption)").font(.bCaption).foregroundStyle(.secondary).lineLimit(1)
                         }
                         Spacer(minLength: 8)
-                        Button("See all") { nav.open(.insights, .advisor) }.controlSize(.small)
+                        Button("See all") { nav.open(.insights, .advisor) }.controlSize(.small).fixedSize()
                     }.padding(.horizontal, 20).padding(.bottom, 12)
                 }
                 Spacer(minLength: 0)
-                Text(store.lastScan.map { "Scanned \($0.formatted(.relative(presentation: .named))). Read from your own logs and folders; nothing leaves this Mac." } ?? "Not scanned yet.")
-                    .font(.bCaption2).foregroundStyle(.secondary).padding(.horizontal, 20).padding(.bottom, 14).padding(.top, 6)
-            }
+            }.padding(.bottom, 6)
         }
     }
 }
@@ -322,11 +316,10 @@ private struct TimelineCard: View {
                     let color = AgentColor.of(s.agent.rawValue)
                     let isLive = live.contains(s.cwd)
                     HStack(spacing: 12) {
-                        Text(isLive ? "Now" : s.last.formatted(date: .omitted, time: .shortened)).font(.bCaption2).foregroundStyle(.secondary).frame(width: 56, alignment: .leading)
-                        Circle().fill(color).frame(width: 9, height: 9)
+                        Circle().fill(color).frame(width: 9, height: 9).overlay { if isLive { Circle().strokeBorder(color.opacity(0.35), lineWidth: 3).frame(width: 15, height: 15) } }.frame(width: 15)
                         VStack(alignment: .leading, spacing: 1) {
                             Text(s.title.isEmpty ? s.project : s.title).font(.bBody.weight(.semibold)).lineLimit(1)
-                            Text("\(isLive ? "Working" : "Finished") · \(s.agent.rawValue) · \(s.project)").font(.bCaption2).foregroundStyle(.secondary).lineLimit(1)
+                            Text((isLive ? "Working" : s.last.formatted(date: .omitted, time: .shortened)) + " · \(s.project)").font(.bCaption2).foregroundStyle(.secondary).lineLimit(1)
                         }
                         Spacer(minLength: 6)
                         VStack(alignment: .trailing, spacing: 4) {

@@ -94,7 +94,7 @@ enum Screenshots {
             nav.showPalette = false
             await pause(0.8)
             // Dialogs: the confirm sheet and onboarding are attached sheets.
-            nav.open(.cleanup, .review)
+            nav.go(.review)
             await pause(1.5)
             let safe = store.entries.filter { ["feat-search-index", "experiment-graphql", "chore-deps-update"].contains($0.name) }
             store.plan = CleanupPlan(mode: .removeWorkspaces, entries: safe)

@@ -2,7 +2,7 @@ import SwiftUI
 
 // Cleanup › History: what you cleared, and how to put it back.
 
-struct CleanupHistory: View {
+struct HistoryPane: View {
     @Environment(Store.self) private var store
     @Environment(NavState.self) private var nav
     @State private var records: [RestoreRecord] = RestoreLog.all()
@@ -10,13 +10,7 @@ struct CleanupHistory: View {
     @State private var busy: String?
     @State private var message: String?
 
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack { Seg([("Cleaned", HistoryMode.cleaned), ("Saved snapshots", HistoryMode.removed)], selection: Bindable(nav).historyMode); Spacer() }
-                .padding(.horizontal, 28).padding(.top, 8).padding(.bottom, 2)
-            if nav.historyMode == .removed { VaultView() } else { cleaned }
-        }
-    }
+    var body: some View { cleaned }
 
     private var cleaned: some View {
         Page {

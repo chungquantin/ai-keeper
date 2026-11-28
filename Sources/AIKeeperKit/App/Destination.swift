@@ -14,7 +14,9 @@ enum Destination: Hashable {
     case workspaces(WorkspaceFilter)     // Cleanup › Review › All workspaces
     case folders, duplicates             // Cleanup › Map
     case containers                      // Cleanup › Agent data › Containers
-    case savedSnapshots                  // Cleanup › History › Saved snapshots
+    case savedSnapshots                  // Cleanup › Automate › Saved snapshots
+    case cleanHistory                    // Cleanup › Automate › History
+    case agentData                       // Cleanup › Clean › Agent data
 
     static let live = Destination.area(.sessions, .live)
     static let history = Destination.area(.sessions, .history)
@@ -29,12 +31,14 @@ extension NavState {
         switch d {
         case .today: open(.today, .briefing)
         case .area(let a, let t): open(a, t)
-        case .review: reviewAll = false; open(.cleanup, .review)
-        case .workspaces(let f): workspaceFilter = f; reviewAll = true; open(.cleanup, .review)
-        case .folders: mapMode = .folders; open(.cleanup, .map)
-        case .duplicates: mapMode = .duplicates; open(.cleanup, .map)
-        case .containers: dataMode = .containers; open(.cleanup, .agentData)
-        case .savedSnapshots: historyMode = .removed; open(.cleanup, .cleaned)
+        case .review: cleanMode = .review; open(.cleanup, .clean)
+        case .workspaces(let f): workspaceFilter = f; cleanMode = .allWorkspaces; open(.cleanup, .clean)
+        case .agentData: cleanMode = .agentData; open(.cleanup, .clean)
+        case .folders: filesMode = .folders; open(.cleanup, .files)
+        case .duplicates: filesMode = .duplicates; open(.cleanup, .files)
+        case .containers: cleanMode = .agentData; dataMode = .containers; open(.cleanup, .clean)
+        case .savedSnapshots: autoMode = .snapshots; open(.cleanup, .automate)
+        case .cleanHistory: autoMode = .history; open(.cleanup, .automate)
         }
     }
 }

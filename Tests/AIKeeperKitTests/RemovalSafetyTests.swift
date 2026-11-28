@@ -97,3 +97,33 @@ import Testing
         #expect(!RestoreRecord(id: "4", date: .now, name: "x", bytes: 1, path: "/x").canRestore)
     }
 }
+
+@Suite struct AppAndFileTests {
+    @Test func allowsAnAppBundleDirectlyInApplicationsOnly() {
+        let h = FakeHome()
+        #expect(Cleaner.isSafeToRemove(path: "/Applications/Example.app", home: h.path))
+        #expect(!Cleaner.isSafeToRemove(path: "/Applications", home: h.path))
+        #expect(!Cleaner.isSafeToRemove(path: "/Applications/Utilities/Terminal.app", home: h.path))
+        #expect(!Cleaner.isSafeToRemove(path: "/Applications/Example.app/Contents", home: h.path))
+        #expect(!Cleaner.isSafeToRemove(path: "/Applications/readme.txt", home: h.path))
+    }
+
+    @Test func installersInDownloadsAreRebuildableAndOtherFilesAreOnlyHere() {
+        let dmg = BigFile(path: home + "/Downloads/Xcode.dmg", bytes: 1, opened: nil, inCloud: false)
+        let mov = BigFile(path: home + "/Movies/a.mov", bytes: 1, opened: nil, inCloud: false)
+        let cloud = BigFile(path: home + "/Documents/a.zip", bytes: 1, opened: nil, inCloud: true)
+        #expect(dmg.tier == .rebuildable && mov.tier == .onlyHere && cloud.tier == .onRemote)
+        #expect(mov.kind == .movie && dmg.kind == .image)
+    }
+
+    @Test func unusedAppsNeedAnOldLastOpenedDate() {
+        let old = app(Date().addingTimeInterval(-200 * 86_400)), fresh = app(Date())
+        #expect(old.notOpened(forDays: 90) && !fresh.notOpened(forDays: 90))
+    }
+}
+
+private func app(_ opened: Date) -> InstalledApp {
+    var a = InstalledApp(name: "Example", path: "/Applications/Example.app", bundleID: "com.example.app", version: "1", source: .download)
+    a.lastOpened = opened
+    return a
+}

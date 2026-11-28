@@ -52,3 +52,14 @@ struct ToolIcon: View {
         .accessibilityHidden(true)
     }
 }
+
+/// The lab behind a model, read from its name, so a model table can show the maker's mark.
+enum ModelLogo {
+    static func id(for model: String) -> String? {
+        let m = model.lowercased()
+        let table: [(String, String)] = [("claude", "claude"), ("opus", "claude"), ("sonnet", "claude"), ("haiku", "claude"), ("gpt", "openai"), ("codex", "openai"), ("o1", "openai"), ("o3", "openai"), ("o4", "openai"),
+                                         ("gemini", "gemini"), ("gemma", "gemini"), ("llama", "meta"), ("mistral", "mistral"), ("codestral", "mistral"), ("deepseek", "deepseek"), ("qwen", "qwen"),
+                                         ("grok", "grok"), ("kimi", "kimi"), ("moonshot", "kimi"), ("glm", "zhipu"), ("minimax", "minimax"), ("ollama", "ollama")]
+        return table.first { m.contains($0.0) }?.1
+    }
+}

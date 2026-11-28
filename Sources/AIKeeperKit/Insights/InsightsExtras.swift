@@ -79,10 +79,7 @@ struct SpeedView: View {
             InsightsBar(days: $days, sessions: a.sessions)
             if a.sessions == 0 { EmptyInsights() } else {
                 let sess = TraceAgg.median(a.sessionSeconds), sessPrev = TraceAgg.median(b.sessionSeconds)
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(headline(sess, sessPrev, enough)).font(.brand(24, .semibold)).fixedSize(horizontal: false, vertical: true)
-                    Text("Working time only: from each of your prompts to the agent's last message. Time you were away is counted separately.").foregroundStyle(.secondary)
-                }
+                Text(headline(sess, sessPrev, enough)).font(.brand(24, .semibold)).fixedSize(horizontal: false, vertical: true)
                 AdaptiveRow(spacing: 14) {
                     Card {
                         VStack(alignment: .leading, spacing: 12) {
@@ -96,58 +93,65 @@ struct SpeedView: View {
                                     VStack(alignment: .leading, spacing: 1) { Text(pct(p.1)).font(.brand(15, .semibold)); Text(p.0).font(.bCaption).foregroundStyle(.secondary) }.frame(maxWidth: .infinity, alignment: .leading)
                                 }
                             }
-                            if let w = parts.last, w.1 > 0.15 { Note(text: "Agents sat finished for \(mins(a.waitSeconds)) waiting for your next prompt. A notification when an agent stops would give some of that back.") }
+                            if let w = parts.last, w.1 > 0.15 { Note(text: "Agents waited \(mins(a.waitSeconds)) for your next prompt.") }
                         }
                     }
                     Card {
                         VStack(alignment: .leading, spacing: 10) {
-                            CardTitle(title: "This period against the one before", note: enough ? nil : "Too little earlier history")
-                            compare("Time to first edit", TraceAgg.median(a.firstEdit), TraceAgg.median(b.firstEdit), a.firstEdit.count, b.firstEdit.count, enough)
-                            compare("Turn time, typical", TraceAgg.median(a.turnSeconds), TraceAgg.median(b.turnSeconds), a.turnSeconds.count, b.turnSeconds.count, enough)
-                            compare("Turn time, slowest 5%", TraceAgg.percentile(a.turnSeconds, 0.95), TraceAgg.percentile(b.turnSeconds, 0.95), a.turnSeconds.count, b.turnSeconds.count, enough)
-                            compare("Session working time", sess, sessPrev, a.sessionSeconds.count, b.sessionSeconds.count, enough)
+                            CardTitle(title: "Against the period before", note: enough ? nil : "Too little history")
+                            HStack(spacing: 12) { Spacer(); Text("Before").frame(width: 64, alignment: .trailing); Text("Now").frame(width: 64, alignment: .trailing); Color.clear.frame(width: 56, height: 1) }.font(.bCaption2).foregroundStyle(.secondary)
+                            compare("First edit", TraceAgg.median(a.firstEdit), TraceAgg.median(b.firstEdit), a.firstEdit.count, b.firstEdit.count, enough)
+                            compare("Typical turn", TraceAgg.median(a.turnSeconds), TraceAgg.median(b.turnSeconds), a.turnSeconds.count, b.turnSeconds.count, enough)
+                            compare("Slowest 5% of turns", TraceAgg.percentile(a.turnSeconds, 0.95), TraceAgg.percentile(b.turnSeconds, 0.95), a.turnSeconds.count, b.turnSeconds.count, enough)
+                            compare("Session time", sess, sessPrev, a.sessionSeconds.count, b.sessionSeconds.count, enough)
                         }
                     }
                 }
                 KPIRow(items: [
-                    kpi("Time to first edit", mins(TraceAgg.median(a.firstEdit)), TraceAgg.median(a.firstEdit), TraceAgg.median(b.firstEdit), enough, series(a, days: days) { $0.1.isEmpty ? nil : TraceAgg.median($0.1) }),
+                    kpi("First edit", mins(TraceAgg.median(a.firstEdit)), TraceAgg.median(a.firstEdit), TraceAgg.median(b.firstEdit), enough, series(a, days: days) { $0.1.isEmpty ? nil : TraceAgg.median($0.1) }),
                     kpi("Turn time", mins(TraceAgg.median(a.turnSeconds)), TraceAgg.median(a.turnSeconds), TraceAgg.median(b.turnSeconds), enough, series(a, days: days) { $0.0.isEmpty ? nil : TraceAgg.median($0.0) }),
-                    kpi("Session working time", mins(sess), sess, sessPrev, enough, series(a, days: days) { $0.2.isEmpty ? nil : TraceAgg.median($0.2) }),
+                    kpi("Session", mins(sess), sess, sessPrev, enough, series(a, days: days) { $0.2.isEmpty ? nil : TraceAgg.median($0.2) }),
                     kpi("Output speed", String(format: "%.0f tok/s", a.outputSpeed), a.outputSpeed, b.outputSpeed, enough, nil, higher: true),
                     kpi("Prompts a day", String(format: "%.0f", Double(a.prompts) / Double(days)), Double(a.prompts), Double(b.prompts), enough, series(a, days: days) { Double($0.3) }, higher: true),
                 ])
                 Card(padding: 0) {
                     VStack(alignment: .leading, spacing: 0) {
-                        VStack(alignment: .leading, spacing: 2) { Text("Slowest turns").font(.bHeadline); Text("From one of your prompts to the agent's last message").font(.bCaption).foregroundStyle(.secondary) }.padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 8)
+                        VStack(alignment: .leading, spacing: 2) { Text("Slowest turns").font(.bHeadline); Text("Longest from prompt to last message").font(.bCaption).foregroundStyle(.secondary) }.padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 8)
                         let top = max(a.slowest.first?.prompt.seconds ?? 1, 1)
                         ForEach(a.slowest.indices, id: \.self) { i in
                             let s = a.slowest[i]
                             HStack(spacing: 14) {
-                                VStack(alignment: .leading, spacing: 1) { Text(s.prompt.text).font(.bBody.weight(.medium)).lineLimit(1); Text("\(s.session.project) · \(s.prompt.turns) replies").font(.bCaption).foregroundStyle(.secondary) }.frame(maxWidth: .infinity, alignment: .leading)
+                                VStack(alignment: .leading, spacing: 1) { Text(Self.cleanPrompt(s.prompt.text)).font(.bBody.weight(.medium)).lineLimit(1); Text("\(s.session.project) · \(s.prompt.turns) replies").font(.bCaption).foregroundStyle(.secondary) }.frame(maxWidth: .infinity, alignment: .leading)
                                 GeometryReader { g in ZStack(alignment: .leading) { Capsule().fill(Brand.muted); Capsule().fill(AgentColor.conductor).frame(width: max(3, g.size.width * s.prompt.seconds / top)) } }.frame(width: 200, height: 6)
                                 Text(mins(s.prompt.seconds)).font(.bBody).monospacedDigit().frame(width: 64, alignment: .trailing)
                             }.padding(.horizontal, 18).padding(.vertical, 9).overlay(alignment: .top) { Divider() }
                         }
                     }
                 }
-                Text("Stalls inside a turn and queue time at the provider are not in the logs, so they are not shown.").font(.bCaption).foregroundStyle(.tertiary)
+                Text("Working time runs from your prompt to the agent's last message. Time you were away is not counted.").font(.bCaption).foregroundStyle(.tertiary)
             }
         }
         .task(id: "\(store.traces.count)-\(days)") { await m.update(store.traces, days: days) }
     }
 
+    /// Prompts sometimes start with a tag the app added (<system-reminder>); show the words that follow.
+    private static func cleanPrompt(_ t: String) -> String {
+        let plain = t.replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression).split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        return plain.isEmpty ? "Automated message" : plain
+    }
+
     private func headline(_ now: Double, _ prev: Double, _ enough: Bool) -> String {
-        guard enough, prev > 0 else { return "A typical session takes \(mins(now)) of working time." }
+        guard enough, prev > 0 else { return "A typical session takes \(mins(now))" }
         let d = (now - prev) / prev * 100
-        if abs(d) < 3 { return "A typical session takes \(mins(now)) of working time, about the same as before." }
-        return "A typical session takes \(mins(now)) of working time, \(String(format: "%.0f%%", abs(d))) \(d < 0 ? "less" : "more") than the \(days) days before."
+        if abs(d) < 3 { return "A typical session takes \(mins(now)), the same as before" }
+        return "A typical session takes \(mins(now)), \(String(format: "%.0f%%", abs(d))) \(d < 0 ? "shorter" : "longer") than before"
     }
 
     private func phases(_ a: TraceAgg) -> [(String, Double, Color)] {
         let thinking = a.thinkingSeconds, tools = a.toolSeconds
         let writing = max(a.activeSeconds - thinking - tools, 0)
         let total = max(thinking + tools + writing + a.waitSeconds, 1)
-        return [("Thinking", thinking / total, AgentColor.conductor), ("Writing and reading", writing / total, AgentColor.claude), ("Running tools", tools / total, AgentColor.codex), ("Waiting on you", a.waitSeconds / total, Brand.reclaim)]
+        return [("Thinking", thinking / total, AgentColor.conductor), ("Writing", writing / total, AgentColor.claude), ("Running tools", tools / total, AgentColor.codex), ("Waiting on you", a.waitSeconds / total, Brand.reclaim)]
     }
 
     private func kpi(_ title: String, _ value: String, _ now: Double, _ prev: Double, _ enough: Bool, _ spark: [Double]?, higher: Bool = false) -> KPI {
@@ -158,11 +162,11 @@ struct SpeedView: View {
     private func compare(_ label: String, _ now: Double, _ prev: Double, _ n: Int, _ pn: Int, _ enough: Bool) -> some View {
         let c = change(now, prev, enough: enough)
         return HStack(spacing: 12) {
-            Text(label).font(.bBody.weight(.medium)).frame(maxWidth: .infinity, alignment: .leading)
-            VStack(alignment: .trailing, spacing: 0) { Text(enough ? mins(prev) : "–").monospacedDigit(); Text("\(pn) samples").font(.bCaption).foregroundStyle(.tertiary) }.frame(width: 80, alignment: .trailing)
-            VStack(alignment: .trailing, spacing: 0) { Text(mins(now)).monospacedDigit(); Text("\(n) samples").font(.bCaption).foregroundStyle(.tertiary) }.frame(width: 80, alignment: .trailing)
-            Group { if let t = c.0 { Delta(text: t, good: c.1) } else { Text("–").foregroundStyle(.tertiary) } }.frame(width: 60, alignment: .trailing)
-        }.padding(.vertical, 5).overlay(alignment: .top) { Divider() }
+            Text(label).font(.bBody.weight(.medium)).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
+            Text(enough ? mins(prev) : "–").monospacedDigit().foregroundStyle(.secondary).frame(width: 64, alignment: .trailing).help("\(pn) samples")
+            Text(mins(now)).monospacedDigit().frame(width: 64, alignment: .trailing).help("\(n) samples")
+            Group { if let t = c.0 { Delta(text: t, good: c.1) } else { Text("–").foregroundStyle(.tertiary) } }.frame(width: 56, alignment: .trailing)
+        }.padding(.vertical, 8).overlay(alignment: .top) { Divider() }
     }
 }
 

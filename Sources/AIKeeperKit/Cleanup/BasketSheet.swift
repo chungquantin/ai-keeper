@@ -159,7 +159,7 @@ struct BasketProgress: View {
                 if !back.isEmpty {
                     Button { undo(back) } label: { Label(undoing ? "Putting back…" : "Undo, put \(back.count) back", systemImage: "arrow.uturn.backward") }.disabled(undoing)
                 }
-                Button("Open History") { nav.open(.cleanup, .cleaned); close() }
+                Button("Open History") { nav.go(.cleanHistory); close() }
                 Spacer()
                 Button("Done") { jobs.forEach { store.dismissJob($0) }; close() }.keyboardShortcut(.defaultAction).buttonStyle(.brandProminent)
             }

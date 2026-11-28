@@ -106,32 +106,49 @@ enum RuleEngine {
     @discardableResult
     static func run(_ r: CleanRule, store: Store) async -> Int64 {
         var freed: Int64 = 0
+        let task = store.beginTask(r.title, symbol: "wand.and.stars")
         switch r.kind {
         case .buildFolders, .mergedWorkspaces:
+            task.note("Looking for items that match")
             let p = preview(r, store: store)
-            guard !p.plan.isEmpty else { break }
+            guard !p.plan.isEmpty else { task.note("Nothing matches this rule right now"); break }
+            task.note("Clearing \(p.count) \(r.kind == .buildFolders ? "build folder" : "workspace")\(p.count == 1 ? "" : "s"), \(p.bytes.bytesString)")
+            if p.askFirst > 0 { task.note("Skipped \(p.askFirst.bytesString) in workspaces over \(r.gb) GB. Those need your say-so.") }
             let jobs = store.reclaim(p.plan, deleteNow: true)
-            while jobs.contains(where: { $0.state != .finished }) { try? await Task.sleep(for: .milliseconds(500)) }
+            while jobs.contains(where: { $0.state != .finished }) {
+                let done = jobs.reduce(Int64(0)) { $0 + $1.status.freed }, total = jobs.reduce(Int64(0)) { $0 + $1.status.total }
+                task.step = "Cleared \(done.bytesString) of \(total.bytesString)"
+                try? await Task.sleep(for: .milliseconds(500))
+            }
             freed = jobs.compactMap(\.outcome).reduce(0) { $0 + $1.freed }
+            let failures = jobs.compactMap(\.outcome).reduce(0) { $0 + $1.failures.count }
+            if failures > 0 { task.note("\(failures) item\(failures == 1 ? "" : "s") could not be removed") }
             jobs.forEach { store.dismissJob($0) }
         case .dockerCache:
             let keep = r.gb
+            task.note("Measuring the Docker build cache")
             freed = await asyncBytes(r, store: store)
-            guard freed > 0 else { break }
-            _ = await Task.detached { DockerCLI.prune(["builder", "prune", "-f", "--keep-storage", "\(keep)GB"]) }.value
+            guard freed > 0 else { task.note("The cache is under \(keep) GB, so nothing to prune"); break }
+            task.note("Pruning \(freed.bytesString), keeping \(keep) GB")
+            let ok = await Task.detached { DockerCLI.prune(["builder", "prune", "-f", "--keep-storage", "\(keep)GB"]) }.value
+            _ = ok
+            task.note("Measuring again")
             await store.sources.measure()
         case .transcripts:
             let d = r.days
+            task.note("Finding transcripts older than \(d) days")
             let res = await Task.detached(priority: .utility) { () -> Int64 in
                 let plan = Archiver.candidates(id: "claude", days: d)
                 if case .success = Archiver.archive(plan, id: "claude") { return plan.bytes }
                 return 0
             }.value
             freed = res
-            if res > 0 { await store.sources.measure(); store.loadTraces() }
+            if res > 0 { task.note("Archived \(res.bytesString). Restore from History."); await store.sources.measure(); store.loadTraces() }
+            else { task.note("No transcripts are old enough") }
         }
         var next = r; next.lastRun = .now; next.lastFreed = freed
         store.rules.update(next)
+        task.finish(freed: freed)
         if freed > 0, store.rules.notify { Notifier.send("A cleanup rule ran", "\(r.title): \(freed.bytesString)", id: "rule.\(r.id)", kind: .rule) }
         return freed
     }
@@ -212,6 +229,23 @@ private struct RulesBody: View {
         }.buttonStyle(.plain)
     }
 
+    /// What the latest run of this rule did, line by line, updating while it runs.
+    private func lastRun(_ t: BackgroundTask) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                if t.state == .running { ProgressView().controlSize(.small).scaleEffect(0.7) } else { Image(systemName: t.state == .failed ? "exclamationmark.triangle.fill" : "checkmark.circle.fill").foregroundStyle(t.state == .failed ? Brand.reclaim : Brand.accent) }
+                Text(t.state == .running ? "Running now" : "Last run").font(.bCaption2).foregroundStyle(.secondary)
+                Spacer(); Text(t.elapsed.shortDuration).font(.bCaption2).foregroundStyle(.tertiary)
+            }
+            ForEach(t.log) { l in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(l.time.formatted(date: .omitted, time: .standard)).foregroundStyle(.tertiary).monospacedDigit()
+                    Text(l.text).fixedSize(horizontal: false, vertical: true)
+                }.font(.bCaption)
+            }
+        }.padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Brand.muted, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
     private func editor(_ r: CleanRule) -> some View {
         Card(padding: 20) {
             VStack(alignment: .leading, spacing: 14) {
@@ -226,6 +260,7 @@ private struct RulesBody: View {
                 .padding(12).frame(maxWidth: .infinity, alignment: .leading).background(Brand.muted, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 Button { Task { running = true; await RuleEngine.run(r, store: store); running = false } } label: { Text(running ? "Running…" : "Run now").frame(maxWidth: .infinity) }
                     .buttonStyle(.brandProminent).controlSize(.large).disabled(running || wouldFree(r) == 0)
+                if let t = store.tasks.first(where: { $0.title == r.title }) { lastRun(t) }
             }
         }
     }
@@ -268,6 +303,22 @@ private struct RulesBody: View {
                 Toggle(isOn: Bindable(book).notify) {
                     VStack(alignment: .leading, spacing: 1) { Text("Tell me when a rule runs").font(.bBody.weight(.medium)); Text("A notification with how much it cleared.").font(.bCaption).foregroundStyle(.secondary) }
                 }.toggleStyle(.switch)
+            }
+        }
+    }
+}
+
+/// Automate: the rules, what they and you cleared, and the snapshots kept of unsaved work.
+struct AutomateHub: View {
+    @Environment(NavState.self) private var nav
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack { Seg([("Rules", AutoMode.rules), ("History", .history), ("Saved snapshots", .snapshots)], selection: Bindable(nav).autoMode); Spacer() }
+                .padding(.horizontal, 28).padding(.top, 8).padding(.bottom, 2)
+            switch nav.autoMode {
+            case .rules: AutomateTab()
+            case .history: HistoryPane()
+            case .snapshots: VaultView()
             }
         }
     }

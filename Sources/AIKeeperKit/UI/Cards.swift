@@ -106,7 +106,13 @@ struct KPI: View {
 struct KPIRow: View {
     let items: [KPI]
     /// Wraps to a second line when the window is narrow, so a tile never has to truncate its number.
-    var body: some View { LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) { ForEach(items.indices, id: \.self) { items[$0] } } }
+    var body: some View {
+        // One row when every tile fits at its minimum width, so no empty slot is left at the end; a wrapping grid otherwise.
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) { ForEach(items.indices, id: \.self) { items[$0].frame(minWidth: 150) } }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], spacing: 12) { ForEach(items.indices, id: \.self) { items[$0] } }
+        }
+    }
 }
 
 struct Delta: View {

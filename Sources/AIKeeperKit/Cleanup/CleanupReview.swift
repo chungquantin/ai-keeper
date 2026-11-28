@@ -85,12 +85,7 @@ struct CleanupReview: View {
         let items = store.reclaimItems
         GeometryReader { g in
             let wide = g.size.width >= 1000
-            if nav.reviewAll {
-                VStack(spacing: 0) {
-                    modeBar.padding(.horizontal, 28).padding(.top, 8).padding(.bottom, 2)
-                    WorkspacesTab()
-                }
-            } else if let k = detail, let item = items.first(where: { $0.kind == k }) {
+            if let k = detail, let item = items.first(where: { $0.kind == k }) {
                 ReclaimDetail(item: item) { detail = nil }
             } else {
                 HStack(spacing: 0) {
@@ -102,16 +97,8 @@ struct CleanupReview: View {
         }
     }
 
-    private var modeBar: some View {
-        HStack {
-            Seg([("Review", false), ("All workspaces", true)], selection: Bindable(nav).reviewAll)
-            Spacer()
-        }
-    }
-
     private func tiers(_ items: [ReclaimItem]) -> some View {
         Page {
-            modeBar
             hero(items)
             if items.isEmpty {
                 Card(padding: 28) {

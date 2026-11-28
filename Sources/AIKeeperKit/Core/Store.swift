@@ -55,6 +55,7 @@ final class Store {
     var lastScan: Date?
     var plan: CleanupPlan?
     var jobs: [CleanupJob] = []
+    var tasks: [BackgroundTask] = []
     @ObservationIgnored var jobRunner: Task<Void, Never>?
     nonisolated(unsafe) static weak var current: Store?
     var agents: [AgentProc] = []
@@ -104,6 +105,9 @@ final class Store {
     @ObservationIgnored var lastAgentKey: [String] = []
     @ObservationIgnored var recentSamples: [DiskSample] = []   // 1-minute resolution, last 30 min, for fast-drop detection only
     @ObservationIgnored var lastScanDate: Date?
+    @ObservationIgnored var diskAtScan: Int64 = 0          // free space when the last scan finished, to notice a big drop
+    @ObservationIgnored var agentsRunningBefore = 0
+    var scanReason: String?                                // why the last automatic rescan happened, for the "Scanned" line
     @ObservationIgnored var hasCachedUsage = false
     @ObservationIgnored var workStarted: [Int32: Date] = [:]
     @ObservationIgnored var lastUsageLoad = Date.distantPast
@@ -115,6 +119,9 @@ final class Store {
     let basket = Basket()
     let sources = SourcesModel()
     let rules = RuleBook()
+    let apps = AppModel()
+    let files = FilesModel()
+    let storage = StorageModel()
     @ObservationIgnored private var started = false
 
     init() {
@@ -178,6 +185,10 @@ final class Store {
         Task { while !Task.isCancelled { await guardTick(); try? await Task.sleep(for: .seconds(30)) } }
         Task { while !Task.isCancelled { try? await Task.sleep(for: .seconds(1800)); await RuleEngine.tick(self); Digest.tick(self) } }   // rules and the weekly digest run between scans
         Task { while !Task.isCancelled { try? await Task.sleep(for: .seconds(300)); await scheduledScan() } }
+        // Coming back to the app after a while: what you see should be current.
+        NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            Task { @MainActor in await self?.smartRescan("You came back to the app", minAge: 900) }
+        }
         guard ToolSettings.onboarded else {
             needsOnboarding = true   // first launch: let the user pick tools before anything is scanned
             await detectTools()
@@ -237,13 +248,27 @@ final class Store {
         await rescan()
     }
 
+    /// Rescans when something suggests the numbers moved: you came back to the app, an agent finished, or free space dropped.
+    /// Throttled so it never runs back to back, and never while a scan or a cleanup is running.
+    func smartRescan(_ reason: String, minAge: TimeInterval) async {
+        guard !Demo.enabled, ToolSettings.onboarded, !needsOnboarding, !isScanning, activeJobs.isEmpty, runningTasks.isEmpty else { return }
+        guard Prefs.scanOnBattery || !Power.onBattery else { return }
+        guard Date().timeIntervalSince(lastScan ?? .distantPast) >= minAge else { return }
+        scanReason = reason
+        await scan()
+    }
+
     /// Re-reads every workspace. (The old whole-home disk map is gone from the app: the Folders view measures on demand.)
-    func rescan() async { await scan() }
+    func rescan() async { scanReason = nil; await scan() }
 
     func refreshAgents() async {
         let list = await Task.detached(priority: .utility) { SessionPeek.assign(AgentScanner.scan()) }.value
         let shown = list.filter { $0.kind.toolID.map(ToolSettings.enabled) ?? true }.sorted { ($0.state == .needsInput ? 0 : 1) < ($1.state == .needsInput ? 0 : 1) }
         let key = shown.map(\.displayKey)
+        // An agent session ended: it just finished building and writing, which is when the numbers change most.
+        let working = list.filter { $0.kind != .mcp }.count
+        if working < agentsRunningBefore { Task { try? await Task.sleep(for: .seconds(30)); await smartRescan("An agent finished", minAge: 300) } }
+        agentsRunningBefore = working
         if key != lastAgentKey { lastAgentKey = key; agents = shown }   // CPU jitter alone shouldn't re-render every view
         trackTransitions(list)
     }
@@ -364,6 +389,7 @@ final class Store {
         persistEntries()
         recordSnapshot()
         refreshDisk()
+        diskAtScan = disk.available
         Task { await RuleEngine.tick(self) }
     }
 
@@ -422,6 +448,8 @@ final class Store {
             let next = DiskInfo(total: Int64(v.volumeTotalCapacity ?? 0), available: important, purgeable: max(0, important - raw))
             // Free space wobbles by a few KB constantly; only publish when it moved enough to matter.
             if abs(next.available - disk.available) > 50_000_000 || next.total != disk.total { disk = next }
+            // Free space fell by 5 GB or more since the last scan: builds or downloads probably grew, so look again.
+            if diskAtScan > 0, diskAtScan - next.available >= 5_000_000_000, lastScan != nil { Task { await smartRescan("Free space dropped", minAge: 600) } }
         }
     }
 

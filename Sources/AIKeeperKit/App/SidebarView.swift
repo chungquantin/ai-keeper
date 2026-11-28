@@ -10,6 +10,14 @@ struct ReclaimCard: View {
         let safe = store.stats.safeBytes
         let parts = safe.byteParts
         VStack(alignment: .leading, spacing: 9) {
+            Button { nav.go(.area(.cleanup, .overview)) } label: {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack { Text(low ? "Macintosh HD is almost full" : "Macintosh HD").font(.bCaption2).foregroundStyle(low ? Brand.reclaimText : .secondary); Spacer()
+                        Text("\(store.disk.available.bytesString) free").font(.bCaption2.weight(.semibold)).foregroundStyle(low ? Brand.reclaimText : .primary) }
+                    StorageBar(disk: store.disk, segments: store.storage.segments(store.disk), height: 6)
+                }
+            }.buttonStyle(.plain).help("See what is using your storage")
+            Divider()
             HStack(alignment: .firstTextBaseline) {
                 Text(title).font(.bCaption2).foregroundStyle(.secondary)
                 Spacer()
@@ -22,7 +30,7 @@ struct ReclaimCard: View {
             if case .measuring(let d, let t) = store.phase { ProgressView(value: Double(d), total: Double(max(t, 1))).controlSize(.small) }
             HStack(spacing: 6) {
                 if safe == 0 && store.hasData && !store.isScanning {
-                    Button { nav.open(.cleanup, .review) } label: { Text("Review").frame(maxWidth: .infinity) }.buttonStyle(.brandOutline)
+                    Button { nav.go(.review) } label: { Text("Review").frame(maxWidth: .infinity) }.buttonStyle(.brandOutline)
                 } else {
                     Button { basket.resetToSafe(); nav.showBasket = true } label: { Text("Reclaim").frame(maxWidth: .infinity) }
                         .buttonStyle(.brandProminent).disabled(safe == 0 || store.isScanning)
@@ -34,6 +42,8 @@ struct ReclaimCard: View {
         .padding(12).panel(12)
         .padding(.horizontal, 10).padding(.bottom, 10).padding(.top, 4)
     }
+
+    private var low: Bool { store.disk.total > 0 && Double(store.disk.available) / Double(store.disk.total) < 0.08 }
 
     private var title: String {
         switch store.phase {

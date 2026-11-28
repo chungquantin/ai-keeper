@@ -140,7 +140,7 @@ struct CostView: View {
                 ForEach(data.models.prefix(8)) { m in
                     Divider()
                     HStack(spacing: 14) {
-                        Text(Self.modelName(m.model)).font(.bBody).lineLimit(1).frame(maxWidth: .infinity, alignment: .leading).help(m.model)
+                        HStack(spacing: 8) { ToolIcon(id: ModelLogo.id(for: m.model), fallback: "cpu", size: 16).foregroundStyle(.primary); Text(Self.modelName(m.model)).font(.bBody).lineLimit(1) }.frame(maxWidth: .infinity, alignment: .leading).help(m.model)
                         HStack(spacing: 7) { Circle().fill(AgentColor.of(m.agent.rawValue)).frame(width: 7, height: 7); Text(Self.agentName(m.agent)).font(.bCaption).foregroundStyle(.secondary) }.frame(width: 110, alignment: .leading)
                         Text("\(m.sessions)").foregroundStyle(.secondary).monospacedDigit().frame(width: 70, alignment: .trailing)
                         Text(compact(m.tokens)).foregroundStyle(.secondary).monospacedDigit().frame(width: 80, alignment: .trailing)

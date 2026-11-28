@@ -94,6 +94,9 @@ enum Cleaner {
     /// Records come from other tools' databases and from a file on disk, so a bad or tampered one must never turn into
     /// "delete my home folder", "delete my Documents", or "follow a link out of home".
     static func isSafeToRemove(path: String, home h: String = home, keep: [String] = Prefs.keepFolders) -> Bool {
+        // An app bundle directly inside /Applications is the one place outside home that the Apps tab may remove from.
+        let direct = URL(fileURLWithPath: path).standardizedFileURL.path
+        if (direct as NSString).deletingLastPathComponent == "/Applications", direct.hasSuffix(".app") { return !Prefs.isKept(direct, keep: keep) }
         let p = URL(fileURLWithPath: path).standardizedFileURL.resolvingSymlinksInPath().path
         let root = URL(fileURLWithPath: h).standardizedFileURL.resolvingSymlinksInPath().path
         let depth = { (s: String) in s.split(separator: "/").count }
@@ -154,7 +157,8 @@ enum Cleaner {
         return freed
     }
 
-    private static func dispose(_ path: String, permanent: Bool, progress: CleanProgress) throws {
+    private static func dispose(_ path: String, permanent wanted: Bool, progress: CleanProgress) throws {
+        let permanent = wanted || path.hasPrefix(home + "/.Trash/")   // anything already in the Trash can only be deleted for good
         if permanent {
             FastDelete.remove(path, progress: progress)
             if let err = progress.firstError, !progress.isCancelled, FileManager.default.fileExists(atPath: path) {

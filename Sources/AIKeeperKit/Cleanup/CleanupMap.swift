@@ -13,26 +13,27 @@ private struct MapTile: Identifiable {
     var docker = false
 }
 
-struct CleanupMap: View {
+struct FilesTab: View {
     @Environment(Store.self) private var store
     @Environment(NavState.self) private var nav
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Seg([("Trust map", MapMode.trust), ("Folders", MapMode.folders), ("Duplicates", MapMode.duplicates)], selection: Bindable(nav).mapMode)
+                Seg([("Large and old", FilesMode.large), ("Duplicates", .duplicates), ("Folders", .folders), ("Trust map", .trustMap)], selection: Bindable(nav).filesMode)
                 Spacer()
             }.padding(.horizontal, 28).padding(.top, 8).padding(.bottom, 6)
-            switch nav.mapMode {
-            case .trust: TrustMap()
-            case .folders: DiskView(model: store.analyzer)
+            switch nav.filesMode {
+            case .large: LargeFilesView()
             case .duplicates: DedupView(model: store.dedup)
+            case .folders: DiskView(model: store.analyzer)
+            case .trustMap: TrustMap()
             }
         }
     }
 }
 
-private struct TrustMap: View {
+struct TrustMap: View {
     @Environment(Store.self) private var store
     @Environment(NavState.self) private var nav
     @Environment(Basket.self) private var basket
@@ -154,13 +155,13 @@ private struct TrustMap: View {
     @ViewBuilder private func actions(_ t: MapTile) -> some View {
         if let item = t.item {
             let inBasket = basket.contains(item)
-            Button { if !inBasket { basket.toggle(item) }; nav.open(.cleanup, .review) } label: { Text(inBasket ? "In your basket · open it" : "Add \(item.bytes.bytesString) to basket").frame(maxWidth: .infinity) }
+            Button { if !inBasket { basket.toggle(item) }; nav.go(.review) } label: { Text(inBasket ? "In your basket · open it" : "Add \(item.bytes.bytesString) to basket").frame(maxWidth: .infinity) }
                 .buttonStyle(.brandProminent).controlSize(.large)
-            Button { nav.open(.cleanup, .review) } label: { Text("See what is inside").frame(maxWidth: .infinity) }.controlSize(.large)
+            Button { nav.go(.review) } label: { Text("See what is inside").frame(maxWidth: .infinity) }.controlSize(.large)
         } else if let s = t.source {
-            Button { nav.open(.cleanup, .agentData) } label: { Text(s.archivable ? "Archive old sessions" : "Clear \(s.name)").frame(maxWidth: .infinity) }.buttonStyle(.brandProminent).controlSize(.large)
+            Button { nav.go(.agentData) } label: { Text(s.archivable ? "Archive old sessions" : "Clear \(s.name)").frame(maxWidth: .infinity) }.buttonStyle(.brandProminent).controlSize(.large)
         } else if t.docker {
-            Button { nav.dataMode = .containers; nav.open(.cleanup, .agentData) } label: { Text("Open containers").frame(maxWidth: .infinity) }.buttonStyle(.brandProminent).controlSize(.large)
+            Button { nav.dataMode = .containers; nav.go(.agentData) } label: { Text("Open containers").frame(maxWidth: .infinity) }.buttonStyle(.brandProminent).controlSize(.large)
         } else {
             Note(text: "This is in use, or it is not something an agent or dev tool made, so Keeper leaves it alone.")
         }

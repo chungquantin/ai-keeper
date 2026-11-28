@@ -20,8 +20,8 @@ enum TodayData {
         }
         let removable = store.removableWorkspaces
         if !removable.isEmpty {
-            items.append(.init(id: "ws", tone: .blue, title: "\(removable.count) workspace\(removable.count == 1 ? "" : "s") are merged or idle and safe to remove",
-                               subtitle: store.total(removable).bytesString, action: "Review") { n, _ in n.go(.review) })
+            items.append(.init(id: "ws", tone: .blue, title: "\(removable.count) workspace\(removable.count == 1 ? "" : "s") ready to remove",
+                               subtitle: "Merged or idle · \(store.total(removable).bytesString)", action: "Review") { n, _ in n.go(.review) })
         }
         let review = store.skills.filter { let v = SkillLibrary.verdict($0, store.skillScans); return v == .caution || v == .danger }
         if !review.isEmpty {
@@ -34,7 +34,7 @@ enum TodayData {
                                subtitle: String(format: "$%.2f of $%.2f", store.spentToday, budget), action: "Adjust") { n, _ in n.open(.agents, .budgets) })
         }
         let loops = store.advice.agg.loops.count
-        if loops > 0 { items.append(.init(id: "loops", tone: .amber, title: "\(loops) loop\(loops == 1 ? "" : "s") in the last 30 days", subtitle: store.advice.agg.loops[0].loop.detail, action: "See") { n, _ in n.open(.insights, .reliability) }) }
+        if loops > 0 { items.append(.init(id: "loops", tone: .amber, title: "\(loops) loop\(loops == 1 ? "" : "s") in the last 30 days", subtitle: store.advice.agg.loops[0].loop.what, action: "See") { n, _ in n.open(.insights, .reliability) }) }
         return items
     }
 
